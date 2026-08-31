@@ -1,402 +1,976 @@
-﻿const http = require("http");
+const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const WebSocket = require("ws");
 
 const PORT = process.env.PORT || 3000;
+
 const WORLD = 6000;
-const FOOD_COUNT = 700;
-const MAX_PLAYERS = 40;
 const TICK = 30;
 
+const FOOD_COUNT = 850;
+const MAX_PLAYERS = 60;
+const MAX_CHAT_LENGTH = 180;
+
 const colors = [
-  "#42d392","#55a7ff","#ff6680","#ffbf55",
-  "#b56cff","#25d9d0","#f472b6","#a3e635"
+  "#42d392",
+  "#55a7ff",
+  "#ff6680",
+  "#ffbf55",
+  "#b56cff",
+  "#25d9d0",
+  "#f472b6",
+  "#a3e635"
 ];
 
 const players = new Map();
 const foods = [];
+const chat = [];
 
-const random = (a,b) => Math.random()*(b-a)+a;
-const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
-const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
+function random(a, b) {
+  return Math.random() * (b - a) + a;
+}
 
-function makeFood(){
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function randomColor() {
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function randomId() {
+  return Math.random().toString(36).slice(2) +
+         Math.random().toString(36).slice(2);
+}
+
+function makeFood() {
   return {
-    id: Math.random().toString(36).slice(2),
-    x: random(30,WORLD-30),
-    y: random(30,WORLD-30),
-    r: random(3,7),
-    color: colors[Math.floor(random(0,colors.length))]
+    id: randomId(),
+    x: random(25, WORLD - 25),
+    y: random(25, WORLD - 25),
+    r: random(3, 7),
+    color: randomColor()
   };
 }
 
-for(let i=0;i<FOOD_COUNT;i++) foods.push(makeFood());
+for (let i = 0; i < FOOD_COUNT; i++) {
+  foods.push(makeFood());
+}
 
-function createPlayer(id,name){
-  return {
+/* ---------------------------
+   SICUREZZA CHAT / NOMI
+---------------------------- */
+
+function cleanName(name) {
+  return String(name || "Player")
+    .replace(/[^\w ._-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 16) || "Player";
+}
+
+function cleanMessage(message) {
+  return String(message || "")
+    .replace(/[<>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_CHAT_LENGTH);
+}
+
+/* ---------------------------
+   PLAYER
+---------------------------- */
+
+function createPlayer(id, name) {
+  const p = {
     id,
-    name: String(name || "Player")
-      .replace(/[^\w ._-]/g,"")
-      .slice(0,16) || "Player",
-    x: random(300,WORLD-300),
-    y: random(300,WORLD-300),
+    name: cleanName(name),
+    color: randomColor(),
+
+    x: WORLD / 2,
+    y: WORLD / 2,
+
+    targetX: WORLD / 2,
+    targetY: WORLD / 2,
+
     r: 25,
-    color: colors[Math.floor(random(0,colors.length))],
-    targetX: WORLD/2,
-    targetY: WORLD/2,
+
     energy: 100,
     score: 0,
+
     cells: [],
+
+    lastMove: 0,
     lastSplit: 0,
     lastEject: 0,
+
     socket: null
   };
+
+  findSpawn(p);
+
+  return p;
 }
 
-function publicPlayer(p){
+function findSpawn(player) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const x = random(200, WORLD - 200);
+    const y = random(200, WORLD - 200);
+
+    let good = true;
+
+    for (const other of players.values()) {
+      if (distance(
+        { x, y },
+        { x: other.x, y: other.y }
+      ) < 350) {
+        good = false;
+        break;
+      }
+    }
+
+    if (good) {
+      player.x = x;
+      player.y = y;
+      player.targetX = x;
+      player.targetY = y;
+      return;
+    }
+  }
+
+  player.x = random(300, WORLD - 300);
+  player.y = random(300, WORLD - 300);
+  player.targetX = player.x;
+  player.targetY = player.y;
+}
+
+/* ---------------------------
+   CELLS
+---------------------------- */
+
+function getCells(player) {
+  if (player.cells.length > 0) {
+    return player.cells;
+  }
+
+  return [{
+    id: player.id,
+    x: player.x,
+    y: player.y,
+    r: player.r,
+    vx: 0,
+    vy: 0,
+    boost: 0
+  }];
+}
+
+function ensureCells(player) {
+  if (player.cells.length === 0) {
+    player.cells.push({
+      id: player.id,
+      x: player.x,
+      y: player.y,
+      r: player.r,
+      vx: 0,
+      vy: 0,
+      boost: 0
+    });
+  }
+}
+
+function syncPlayerMainData(player) {
+  if (player.cells.length === 1) {
+    const c = player.cells[0];
+
+    player.x = c.x;
+    player.y = c.y;
+    player.r = c.r;
+  }
+}
+
+function publicPlayer(player) {
+  const cells = getCells(player);
+
   return {
-    id:p.id,
-    name:p.name,
-    color:p.color,
-    energy:Math.floor(p.energy),
-    score:Math.floor(p.score),
-    cells:p.cells.length
-      ? p.cells.map(c=>({id:c.id,x:c.x,y:c.y,r:c.r}))
-      : [{id:p.id,x:p.x,y:p.y,r:p.r}]
+    id: player.id,
+    name: player.name,
+    color: player.color,
+    score: Math.floor(player.score),
+    energy: Math.floor(player.energy),
+
+    cells: cells.map(c => ({
+      id: c.id,
+      x: c.x,
+      y: c.y,
+      r: c.r
+    }))
   };
 }
 
-function allCells(){
-  const result=[];
-  for(const p of players.values()){
-    if(p.cells.length){
-      for(const c of p.cells) result.push({owner:p,cell:c});
-    }else{
-      result.push({owner:p,cell:p});
+/* ---------------------------
+   MOVIMENTO
+---------------------------- */
+
+function movePlayer(player) {
+  const cells = getCells(player);
+
+  for (const cell of cells) {
+    const dx = player.targetX - cell.x;
+    const dy = player.targetY - cell.y;
+
+    const d = Math.hypot(dx, dy);
+
+    if (d < 2) continue;
+
+    let speed =
+      7 *
+      Math.pow(25 / Math.max(cell.r, 1), 0.43);
+
+    speed = clamp(speed, 0.75, 8);
+
+    cell.x += (dx / d) * speed;
+    cell.y += (dy / d) * speed;
+
+    if (cell.boost > 0) {
+      cell.x += cell.vx || 0;
+      cell.y += cell.vy || 0;
+
+      cell.vx *= 0.90;
+      cell.vy *= 0.90;
+
+      cell.boost--;
     }
-  }
-  return result;
-}
 
-function movePlayer(p){
-  const cells=p.cells.length?p.cells:[p];
-
-  for(const c of cells){
-    const dx=p.targetX-c.x;
-    const dy=p.targetY-c.y;
-    const d=Math.hypot(dx,dy);
-
-    if(d<2) continue;
-
-    const speed=Math.max(.8,7*Math.pow(25/c.r,.43));
-
-    c.x+=dx/d*speed;
-    c.y+=dy/d*speed;
-
-    c.x=clamp(c.x,c.r,WORLD-c.r);
-    c.y=clamp(c.y,c.r,WORLD-c.r);
-  }
-}
-
-function eatFood(){
-  for(const item of allCells()){
-    const c=item.cell;
-    const p=item.owner;
-
-    for(let i=foods.length-1;i>=0;i--){
-      const f=foods[i];
-
-      if(distance(c,f)<c.r+f.r){
-        c.r=Math.sqrt(c.r*c.r+1);
-        p.score++;
-
-        foods.splice(i,1);
-        foods.push(makeFood());
-      }
-    }
-  }
-}
-
-function splitPlayer(p){
-  const now=Date.now();
-  if(now-p.lastSplit<900)return;
-
-  p.lastSplit=now;
-
-  const cells=p.cells.length?p.cells:[
-    {id:p.id,x:p.x,y:p.y,r:p.r}
-  ];
-
-  if(cells.length>=16)return;
-
-  const created=[];
-
-  for(const c of cells){
-    if(c.r<22)continue;
-
-    const r=c.r/Math.sqrt(2);
-    c.r=r;
-
-    const angle=Math.atan2(
-      p.targetY-c.y,
-      p.targetX-c.x
+    cell.x = clamp(
+      cell.x,
+      cell.r,
+      WORLD - cell.r
     );
 
-    created.push({
-      id:Math.random().toString(36).slice(2),
-      x:clamp(c.x+Math.cos(angle)*r*1.8,r,WORLD-r),
-      y:clamp(c.y+Math.sin(angle)*r*1.8,r,WORLD-r),
-      r,
-      vx:Math.cos(angle)*14,
-      vy:Math.sin(angle)*14,
-      boost:25
-    });
+    cell.y = clamp(
+      cell.y,
+      cell.r,
+      WORLD - cell.r
+    );
   }
 
-  p.cells=cells.concat(created);
+  syncPlayerMainData(player);
 }
 
-function ejectMass(p){
-  const now=Date.now();
+/* ---------------------------
+   CIBO
+---------------------------- */
 
-  if(now-p.lastEject<120)return;
-  if(p.energy<8)return;
+function eatFood() {
+  for (const player of players.values()) {
+    const cells = getCells(player);
 
-  p.lastEject=now;
-  p.energy-=8;
+    for (const cell of cells) {
+      for (let i = foods.length - 1; i >= 0; i--) {
+        const food = foods[i];
 
-  const cells=p.cells.length?p.cells:[p];
+        if (distance(cell, food) < cell.r + food.r) {
+          cell.r = Math.sqrt(
+            cell.r * cell.r + 1
+          );
 
-  for(const c of cells){
-    if(c.r<15)continue;
+          player.score += 1;
 
-    c.r=Math.sqrt(Math.max(20,c.r*c.r-6));
+          foods.splice(i, 1);
+          foods.push(makeFood());
+        }
+      }
+    }
 
-    const angle=Math.atan2(
-      p.targetY-c.y,
-      p.targetX-c.x
+    syncPlayerMainData(player);
+  }
+}
+
+/* ---------------------------
+   SPLIT
+---------------------------- */
+
+function splitPlayer(player) {
+  const now = Date.now();
+
+  if (now - player.lastSplit < 900) {
+    return;
+  }
+
+  player.lastSplit = now;
+
+  ensureCells(player);
+
+  if (player.cells.length >= 16) {
+    return;
+  }
+
+  const originalCells = [...player.cells];
+  const created = [];
+
+  for (const cell of originalCells) {
+    if (cell.r < 24) {
+      continue;
+    }
+
+    if (player.cells.length + created.length >= 16) {
+      break;
+    }
+
+    const oldRadius = cell.r;
+
+    const newRadius =
+      oldRadius / Math.sqrt(2);
+
+    cell.r = newRadius;
+
+    const angle = Math.atan2(
+      player.targetY - cell.y,
+      player.targetX - cell.x
+    );
+
+    const child = {
+      id: randomId(),
+
+      x: clamp(
+        cell.x +
+          Math.cos(angle) *
+          newRadius *
+          1.8,
+
+        newRadius,
+        WORLD - newRadius
+      ),
+
+      y: clamp(
+        cell.y +
+          Math.sin(angle) *
+          newRadius *
+          1.8,
+
+        newRadius,
+        WORLD - newRadius
+      ),
+
+      r: newRadius,
+
+      vx: Math.cos(angle) * 13,
+      vy: Math.sin(angle) * 13,
+
+      boost: 28
+    };
+
+    created.push(child);
+  }
+
+  player.cells.push(...created);
+
+  syncPlayerMainData(player);
+}
+
+/* ---------------------------
+   ESPULSIONE MASSA
+---------------------------- */
+
+function ejectMass(player) {
+  const now = Date.now();
+
+  if (now - player.lastEject < 120) {
+    return;
+  }
+
+  if (player.energy < 8) {
+    return;
+  }
+
+  player.lastEject = now;
+  player.energy -= 8;
+
+  ensureCells(player);
+
+  for (const cell of player.cells) {
+    if (cell.r < 16) {
+      continue;
+    }
+
+    cell.r = Math.sqrt(
+      Math.max(
+        20,
+        cell.r * cell.r - 6
+      )
+    );
+
+    const angle = Math.atan2(
+      player.targetY - cell.y,
+      player.targetX - cell.x
     );
 
     foods.push({
-      id:Math.random().toString(36).slice(2),
-      x:clamp(c.x+Math.cos(angle)*c.r,10,WORLD-10),
-      y:clamp(c.y+Math.sin(angle)*c.r,10,WORLD-10),
-      r:8,
-      color:p.color
+      id: randomId(),
+
+      x: clamp(
+        cell.x +
+          Math.cos(angle) *
+          cell.r *
+          1.5,
+
+        10,
+        WORLD - 10
+      ),
+
+      y: clamp(
+        cell.y +
+          Math.sin(angle) *
+          cell.r *
+          1.5,
+
+        10,
+        WORLD - 10
+      ),
+
+      r: 8,
+      color: player.color
     });
   }
+
+  syncPlayerMainData(player);
 }
 
-function eliminate(p){
-  if(!players.has(p.id))return;
+/* ---------------------------
+   COLLISIONI
+---------------------------- */
 
-  try{
-    p.socket.send(JSON.stringify({
-      type:"dead",
-      score:p.score
-    }));
-  }catch{}
+function allCells() {
+  const result = [];
 
-  players.delete(p.id);
+  for (const player of players.values()) {
+    const cells = getCells(player);
+
+    for (const cell of cells) {
+      result.push({
+        owner: player,
+        cell
+      });
+    }
+  }
+
+  return result;
 }
 
-function collisions(){
-  const cells=allCells();
+function killPlayer(player) {
+  if (!players.has(player.id)) {
+    return;
+  }
 
-  for(let i=0;i<cells.length;i++){
-    for(let j=i+1;j<cells.length;j++){
-      const A=cells[i];
-      const B=cells[j];
+  try {
+    if (
+      player.socket &&
+      player.socket.readyState === WebSocket.OPEN
+    ) {
+      player.socket.send(
+        JSON.stringify({
+          type: "dead",
+          score: player.score
+        })
+      );
+    }
+  } catch {}
 
-      if(A.owner===B.owner)continue;
+  players.delete(player.id);
+}
 
-      const a=A.cell;
-      const b=B.cell;
+function collisions() {
+  const cells = allCells();
 
-      const d=distance(a,b);
-      const big=a.r>b.r?A:B;
-      const small=big===A?B:A;
+  for (let i = 0; i < cells.length; i++) {
+    for (let j = i + 1; j < cells.length; j++) {
+      const A = cells[i];
+      const B = cells[j];
 
-      if(
-        d<big.cell.r*.78 &&
-        big.cell.r>small.cell.r*1.12
-      ){
-        big.cell.r=Math.sqrt(
-          big.cell.r*big.cell.r+
-          small.cell.r*small.cell.r*.8
-        );
-
-        const owner=small.owner;
-
-        if(owner.cells.length){
-          owner.cells=owner.cells.filter(
-            c=>c.id!==small.cell.id
-          );
-        }else{
-          eliminate(owner);
-        }
-
-        big.owner.score+=
-          Math.floor(small.cell.r*small.cell.r);
+      if (A.owner === B.owner) {
+        continue;
       }
+
+      if (
+        !players.has(A.owner.id) ||
+        !players.has(B.owner.id)
+      ) {
+        continue;
+      }
+
+      const a = A.cell;
+      const b = B.cell;
+
+      const d = distance(a, b);
+
+      if (d > Math.max(a.r, b.r) * 0.78) {
+        continue;
+      }
+
+      let big = A;
+      let small = B;
+
+      if (b.r > a.r) {
+        big = B;
+        small = A;
+      }
+
+      if (
+        big.cell.r <=
+        small.cell.r * 1.12
+      ) {
+        continue;
+      }
+
+      big.cell.r = Math.sqrt(
+        big.cell.r * big.cell.r +
+        small.cell.r * small.cell.r * 0.82
+      );
+
+      const owner = small.owner;
+
+      if (owner.cells.length > 0) {
+        owner.cells =
+          owner.cells.filter(
+            c => c.id !== small.cell.id
+          );
+
+        if (owner.cells.length === 0) {
+          killPlayer(owner);
+        }
+      } else {
+        killPlayer(owner);
+      }
+
+      big.owner.score += Math.floor(
+        small.cell.r * small.cell.r
+      );
+
+      syncPlayerMainData(big.owner);
     }
   }
 }
 
-function update(){
-  for(const p of players.values()){
-    movePlayer(p);
-    p.energy=clamp(p.energy+.35,0,100);
+/* ---------------------------
+   CHAT
+---------------------------- */
 
-    if(p.cells.length){
-      for(const c of p.cells){
-        if(c.boost>0){
-          c.x+=c.vx||0;
-          c.y+=c.vy||0;
-          c.vx*=.91;
-          c.vy*=.91;
-          c.boost--;
-        }
+function addChatMessage(player, text) {
+  text = cleanMessage(text);
 
-        c.x=clamp(c.x,c.r,WORLD-c.r);
-        c.y=clamp(c.y,c.r,WORLD-c.r);
+  if (!text) {
+    return;
+  }
+
+  const message = {
+    id: randomId(),
+    playerId: player.id,
+    name: player.name,
+    color: player.color,
+    text,
+    time: new Date().toLocaleTimeString(
+      "it-IT",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
       }
+    )
+  };
 
-      if(
-        p.cells.length===1 &&
-        Date.now()-p.lastSplit>7000
-      ){
-        p.x=p.cells[0].x;
-        p.y=p.cells[0].y;
-        p.r=p.cells[0].r;
-        p.cells=[];
-      }
+  chat.push(message);
+
+  if (chat.length > 80) {
+    chat.splice(
+      0,
+      chat.length - 80
+    );
+  }
+
+  broadcastChat();
+}
+
+function broadcastChat() {
+  const data = JSON.stringify({
+    type: "chatHistory",
+    messages: chat
+  });
+
+  for (const player of players.values()) {
+    if (
+      player.socket &&
+      player.socket.readyState === WebSocket.OPEN
+    ) {
+      try {
+        player.socket.send(data);
+      } catch {}
     }
+  }
+}
+
+/* ---------------------------
+   SERVER GAME LOOP
+---------------------------- */
+
+function update() {
+  for (const player of players.values()) {
+    movePlayer(player);
+
+    player.energy = clamp(
+      player.energy + 0.35,
+      0,
+      100
+    );
   }
 
   eatFood();
   collisions();
 }
 
-function broadcast(){
-  const data=JSON.stringify({
-    type:"state",
-    world:WORLD,
+/* ---------------------------
+   BROADCAST
+---------------------------- */
+
+function broadcastState() {
+  const state = JSON.stringify({
+    type: "state",
+    world: WORLD,
     foods,
-    players:[...players.values()].map(publicPlayer)
+    players: [
+      ...players.values()
+    ].map(publicPlayer)
   });
 
-  for(const p of players.values()){
-    if(p.socket.readyState===WebSocket.OPEN){
-      p.socket.send(data);
+  for (const player of players.values()) {
+    if (
+      player.socket &&
+      player.socket.readyState === WebSocket.OPEN
+    ) {
+      try {
+        player.socket.send(state);
+      } catch {}
     }
   }
 }
 
-const server=http.createServer((req,res)=>{
-  let file=req.url==="/"
-    ? "/index.html"
-    : req.url;
+/* ---------------------------
+   HTTP SERVER
+---------------------------- */
 
-  const publicDir=path.join(__dirname,"public");
-  const filename=path.normalize(path.join(publicDir,file));
+const publicDir = path.join(
+  __dirname,
+  "public"
+);
 
-  if(!filename.startsWith(publicDir)){
-    res.writeHead(403);
-    return res.end("Forbidden");
-  }
+const server = http.createServer(
+  (req, res) => {
+    let requestPath = req.url.split("?")[0];
 
-  fs.readFile(filename,(err,data)=>{
-    if(err){
-      res.writeHead(404);
-      return res.end("Not found");
+    if (requestPath === "/") {
+      requestPath = "/index.html";
     }
 
-    const ext=path.extname(filename);
+    let filename;
 
-    const types={
-      ".html":"text/html",
-      ".js":"text/javascript",
-      ".css":"text/css"
-    };
+    try {
+      filename = path.resolve(
+        publicDir,
+        "." + requestPath
+      );
+    } catch {
+      res.writeHead(400);
+      return res.end("Bad request");
+    }
 
-    res.writeHead(200,{
-      "Content-Type":types[ext]||"application/octet-stream"
-    });
+    if (
+      filename !== publicDir &&
+      !filename.startsWith(publicDir + path.sep)
+    ) {
+      res.writeHead(403);
+      return res.end("Forbidden");
+    }
 
-    res.end(data);
-  });
-});
+    fs.readFile(
+      filename,
+      (error, data) => {
+        if (error) {
+          res.writeHead(404, {
+            "Content-Type":
+              "text/plain; charset=utf-8"
+          });
 
-const wss=new WebSocket.Server({server});
+          return res.end("Not found");
+        }
 
-wss.on("connection",socket=>{
-  if(players.size>=MAX_PLAYERS){
-    socket.send(JSON.stringify({
-      type:"error",
-      message:"Server pieno"
-    }));
-    socket.close();
-    return;
+        const ext =
+          path.extname(filename)
+            .toLowerCase();
+
+        const types = {
+          ".html":
+            "text/html; charset=utf-8",
+
+          ".js":
+            "text/javascript; charset=utf-8",
+
+          ".css":
+            "text/css; charset=utf-8",
+
+          ".json":
+            "application/json; charset=utf-8",
+
+          ".png":
+            "image/png",
+
+          ".jpg":
+            "image/jpeg",
+
+          ".svg":
+            "image/svg+xml",
+
+          ".ico":
+            "image/x-icon"
+        };
+
+        res.writeHead(200, {
+          "Content-Type":
+            types[ext] ||
+            "application/octet-stream",
+
+          "Cache-Control":
+            ext === ".html"
+              ? "no-cache"
+              : "public, max-age=3600"
+        });
+
+        res.end(data);
+      }
+    );
   }
+);
 
-  const id=Math.random().toString(36).slice(2);
-  let player=null;
+/* ---------------------------
+   WEBSOCKET
+---------------------------- */
 
-  socket.on("message",raw=>{
-    let msg;
+const wss =
+  new WebSocket.Server({
+    server
+  });
 
-    try{
-      msg=JSON.parse(raw.toString());
-    }catch{
+wss.on(
+  "connection",
+  socket => {
+    if (players.size >= MAX_PLAYERS) {
+      socket.send(
+        JSON.stringify({
+          type: "error",
+          message: "Server pieno"
+        })
+      );
+
+      socket.close();
       return;
     }
 
-    if(msg.type==="join"){
-      player=createPlayer(id,msg.name);
-      player.socket=socket;
-      players.set(id,player);
+    const id = randomId();
 
-      socket.send(JSON.stringify({
-        type:"welcome",
-        id,
-        world:WORLD
-      }));
+    let player = null;
 
-      return;
-    }
+    socket.on(
+      "message",
+      raw => {
+        let message;
 
-    if(!player)return;
+        try {
+          message =
+            JSON.parse(
+              raw.toString()
+            );
+        } catch {
+          return;
+        }
 
-    if(msg.type==="move"){
-      player.targetX=clamp(
-        Number(msg.x)||player.x,
-        0,
-        WORLD
-      );
+        /* JOIN */
 
-      player.targetY=clamp(
-        Number(msg.y)||player.y,
-        0,
-        WORLD
-      );
-    }
+        if (message.type === "join") {
+          if (player) {
+            return;
+          }
 
-    if(msg.type==="split")splitPlayer(player);
-    if(msg.type==="eject")ejectMass(player);
-  });
+          player =
+            createPlayer(
+              id,
+              message.name
+            );
 
-  socket.on("close",()=>{
-    if(player)players.delete(player.id);
-  });
-});
+          player.socket =
+            socket;
 
-setInterval(()=>{
-  update();
-  broadcast();
-},TICK);
+          players.set(
+            id,
+            player
+          );
 
-server.listen(PORT,()=>{
-  console.log(`Cell Arena: http://localhost:${PORT}`);
-});
+          socket.send(
+            JSON.stringify({
+              type: "welcome",
+              id,
+              world: WORLD,
+              playerCount:
+                players.size
+            })
+          );
+
+          socket.send(
+            JSON.stringify({
+              type: "chatHistory",
+              messages: chat
+            })
+          );
+
+          addChatMessage(
+            player,
+            "è entrato nella partita"
+          );
+
+          return;
+        }
+
+        if (!player) {
+          return;
+        }
+
+        /* MOVIMENTO */
+
+        if (
+          message.type === "move"
+        ) {
+          const x =
+            Number(message.x);
+
+          const y =
+            Number(message.y);
+
+          if (
+            Number.isFinite(x) &&
+            Number.isFinite(y)
+          ) {
+            player.targetX =
+              clamp(
+                x,
+                0,
+                WORLD
+              );
+
+            player.targetY =
+              clamp(
+                y,
+                0,
+                WORLD
+              );
+          }
+        }
+
+        /* SPLIT */
+
+        else if (
+          message.type === "split"
+        ) {
+          splitPlayer(player);
+        }
+
+        /* EJECT */
+
+        else if (
+          message.type === "eject"
+        ) {
+          ejectMass(player);
+        }
+
+        /* CHAT */
+
+        else if (
+          message.type === "chat"
+        ) {
+          addChatMessage(
+            player,
+            message.text
+          );
+        }
+
+        /* CAMBIO NOME */
+
+        else if (
+          message.type ===
+          "changeName"
+        ) {
+          const newName =
+            cleanName(
+              message.name
+            );
+
+          if (newName) {
+            player.name =
+              newName;
+          }
+        }
+      }
+    );
+
+    socket.on(
+      "close",
+      () => {
+        if (player) {
+          addChatMessage(
+            player,
+            "ha lasciato la partita"
+          );
+
+          players.delete(
+            player.id
+          );
+        }
+      }
+    );
+
+    socket.on(
+      "error",
+      () => {}
+    );
+  }
+);
+
+/* ---------------------------
+   GAME LOOP
+---------------------------- */
+
+setInterval(
+  () => {
+    update();
+    broadcastState();
+  },
+  TICK
+);
+
+/* ---------------------------
+   START
+---------------------------- */
+
+server.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+    console.log(
+      `Cell Arena avviato sulla porta ${PORT}`
+    );
+
+    console.log(
+      `World: ${WORLD}x${WORLD}`
+    );
+  }
+);

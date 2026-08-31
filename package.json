@@ -1,12 +1,15 @@
-﻿{
+{
   "name": "cell-arena-online",
-  "version": "1.0.0",
-  "description": "Multiplayer cell arena game",
+  "version": "2.0.0",
+  "description": "Cell Arena multiplayer",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "ws": "^8.18.3"
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

@@ -1,0 +1,328 @@
+﻿<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cell Arena Online</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07101d;color:#fff;font-family:Arial}
+canvas{display:block;width:100%;height:100%}
+#menu,#dead{
+position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+background:#02050bdd;z-index:10}
+.card{
+width:min(400px,92vw);background:#0c1728;padding:30px;
+border-radius:22px;box-shadow:0 25px 80px #000
+}
+h1{font-size:40px;margin-top:0}
+input,button{width:100%;padding:13px;border:0;border-radius:11px;margin-top:10px;font-size:16px}
+input{background:#142238;color:#fff}
+button{background:#42d392;font-weight:bold;cursor:pointer}
+#hud,#board,#status{
+position:fixed;z-index:4;background:#081322dd;border-radius:14px
+}
+#hud{left:15px;top:15px;padding:12px 15px}
+#board{right:15px;top:15px;width:200px;padding:13px}
+#status{
+bottom:15px;left:50%;transform:translateX(-50%);
+padding:8px 14px;color:#aebbd0;font-size:12px
+}
+.row{display:flex;justify-content:space-between;margin:5px 0;font-size:13px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="hud">
+<b>Massa: <span id="mass">0</span></b><br>
+Punteggio: <span id="score">0</span>
+</div>
+
+<div id="board">
+<b>ðŸ† CLASSIFICA</b>
+<div id="players"></div>
+</div>
+
+<div id="status">Disconnesso</div>
+
+<div id="menu">
+<div class="card">
+<h1>ðŸŸ¢ Cell Arena</h1>
+<p>Multiplayer online.</p>
+<input id="name" maxlength="16" value="Player">
+<button onclick="connect()">ENTRA NELL'ARENA</button>
+</div>
+</div>
+
+<div id="dead" class="hidden">
+<div class="card">
+<h1>ðŸ’¥ Eliminato</h1>
+<p>Punteggio: <span id="finalScore">0</span></p>
+<button onclick="location.reload()">RIGIOCA</button>
+</div>
+</div>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+let W,H,DPR;
+let socket,myId=null,world=6000;
+
+let state={foods:[],players:[]};
+
+let camera={x:3000,y:3000,zoom:1};
+let mouse={x:innerWidth/2,y:innerHeight/2};
+let lastSend=0;
+
+function resize(){
+ DPR=devicePixelRatio||1;
+ W=innerWidth;H=innerHeight;
+ canvas.width=W*DPR;
+ canvas.height=H*DPR;
+ ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+addEventListener("resize",resize);
+resize();
+
+addEventListener("mousemove",e=>{
+ mouse.x=e.clientX;
+ mouse.y=e.clientY;
+ sendMove();
+});
+
+addEventListener("touchmove",e=>{
+ if(e.touches[0]){
+  mouse.x=e.touches[0].clientX;
+  mouse.y=e.touches[0].clientY;
+  sendMove();
+ }
+},{passive:true});
+
+addEventListener("keydown",e=>{
+ if(e.code==="Space"){
+  e.preventDefault();
+  send({type:"split"});
+ }
+ if(e.code==="KeyW")send({type:"eject"});
+});
+
+function send(data){
+ if(socket&&socket.readyState===WebSocket.OPEN)
+  socket.send(JSON.stringify(data));
+}
+
+function connect(){
+ const protocol=location.protocol==="https:"?"wss://":"ws://";
+ socket=new WebSocket(protocol+location.host);
+
+ socket.onopen=()=>{
+  document.getElementById("status").textContent="ðŸŸ¢ Online";
+  send({
+   type:"join",
+   name:document.getElementById("name").value
+  });
+  document.getElementById("menu").classList.add("hidden");
+ };
+
+ socket.onmessage=e=>{
+  const msg=JSON.parse(e.data);
+
+  if(msg.type==="welcome"){
+   myId=msg.id;
+   world=msg.world;
+  }
+
+  if(msg.type==="state"){
+   state=msg;
+   updateHUD();
+  }
+
+  if(msg.type==="dead"){
+   document.getElementById("finalScore").textContent=msg.score;
+   document.getElementById("dead").classList.remove("hidden");
+  }
+
+  if(msg.type==="error")alert(msg.message);
+ };
+
+ socket.onclose=()=>{
+  document.getElementById("status").textContent="ðŸ”´ Disconnesso";
+ };
+}
+
+function getMe(){
+ return state.players.find(p=>p.id===myId);
+}
+
+function sendMove(){
+ const now=performance.now();
+ if(now-lastSend<30)return;
+ lastSend=now;
+
+ const me=getMe();
+ if(!me)return;
+
+ const x=(mouse.x-W/2)/camera.zoom+camera.x;
+ const y=(mouse.y-H/2)/camera.zoom+camera.y;
+
+ send({type:"move",x,y});
+}
+
+function updateHUD(){
+ const me=getMe();
+ if(!me)return;
+
+ let mass=0;
+
+ for(const c of me.cells||[])
+  mass+=c.r*c.r;
+
+ document.getElementById("mass").textContent=Math.floor(mass);
+ document.getElementById("score").textContent=me.score;
+
+ const ranking=[...state.players]
+  .map(p=>{
+   let m=0;
+   for(const c of p.cells||[])m+=c.r*c.r;
+   return {name:p.name,mass:m,me:p.id===myId};
+  })
+  .sort((a,b)=>b.mass-a.mass)
+  .slice(0,8);
+
+ document.getElementById("players").innerHTML=
+ ranking.map((p,i)=>`
+ <div class="row" style="${p.me?'color:#42d392;font-weight:bold':''}">
+ <span>${i+1}. ${escapeHTML(p.name)}</span>
+ <span>${Math.floor(p.mass)}</span>
+ </div>`).join("");
+}
+
+function escapeHTML(s){
+ return String(s)
+ .replaceAll("&","&amp;")
+ .replaceAll("<","&lt;")
+ .replaceAll(">","&gt;");
+}
+
+function screen(x,y){
+ return {
+  x:(x-camera.x)*camera.zoom+W/2,
+  y:(y-camera.y)*camera.zoom+H/2
+ };
+}
+
+function drawGrid(){
+ const size=100;
+ const left=camera.x-W/2/camera.zoom;
+ const top=camera.y-H/2/camera.zoom;
+
+ ctx.strokeStyle="#ffffff08";
+ ctx.lineWidth=1;
+
+ for(let x=Math.floor(left/size)*size;
+     x<left+W/camera.zoom+size;x+=size){
+  const p=screen(x,0);
+  ctx.beginPath();
+  ctx.moveTo(p.x,0);
+  ctx.lineTo(p.x,H);
+  ctx.stroke();
+ }
+
+ for(let y=Math.floor(top/size)*size;
+     y<top+H/camera.zoom+size;y+=size){
+  const p=screen(0,y);
+  ctx.beginPath();
+  ctx.moveTo(0,p.y);
+  ctx.lineTo(W,p.y);
+  ctx.stroke();
+ }
+}
+
+function draw(){
+ ctx.clearRect(0,0,W,H);
+ ctx.fillStyle="#07101d";
+ ctx.fillRect(0,0,W,H);
+
+ drawGrid();
+
+ const a=screen(0,0);
+ const b=screen(world,world);
+
+ ctx.strokeStyle="#42d39255";
+ ctx.lineWidth=5;
+ ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);
+
+ for(const f of state.foods||[]){
+  const p=screen(f.x,f.y);
+  ctx.beginPath();
+  ctx.arc(p.x,p.y,f.r*camera.zoom,0,Math.PI*2);
+  ctx.fillStyle=f.color;
+  ctx.fill();
+ }
+
+ const players=[...(state.players||[])];
+
+ for(const p of players){
+  for(const c of p.cells||[]){
+   drawCell(p,c);
+  }
+ }
+
+ updateCamera();
+}
+
+function drawCell(player,c){
+ const p=screen(c.x,c.y);
+ const r=c.r*camera.zoom;
+
+ ctx.beginPath();
+ ctx.arc(p.x,p.y,r,0,Math.PI*2);
+ ctx.fillStyle=player.color;
+ ctx.fill();
+
+ ctx.beginPath();
+ ctx.arc(
+  p.x-r*.28,
+  p.y-r*.28,
+  r*.34,
+  0,Math.PI*2
+ );
+ ctx.fillStyle="#ffffff20";
+ ctx.fill();
+
+ if(r>18){
+  ctx.fillStyle="#fff";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.font=`bold ${Math.max(10,r*.24)}px Arial`;
+  ctx.fillText(player.name,p.x,p.y);
+ }
+}
+
+function updateCamera(){
+ const me=getMe();
+ if(!me||!me.cells||!me.cells.length)return;
+
+ const c=me.cells[0];
+
+ camera.x+=(c.x-camera.x)*.12;
+ camera.y+=(c.y-camera.y)*.12;
+
+ const z=Math.max(.45,Math.min(1.15,42/c.r));
+
+ camera.zoom+=(z-camera.zoom)*.05;
+}
+
+function loop(){
+ draw();
+ requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>

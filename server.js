@@ -1,18 +1,28 @@
+"use strict";
+
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const WebSocket = require("ws");
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 const WORLD = 6000;
-const TICK = 30;
+const TICK_MS = 30;
 
 const FOOD_COUNT = 850;
 const MAX_PLAYERS = 60;
-const MAX_CHAT_LENGTH = 180;
+const MAX_CELLS = 16;
 
-const colors = [
+const MOVE_SPEED = 4.2;
+const MAX_SPEED = 5;
+
+const MAX_CHAT_LENGTH = 180;
+const MAX_CHAT_MESSAGES = 100;
+
+const FOOD_MASS = 1;
+
+const COLORS = [
   "#42d392",
   "#55a7ff",
   "#ff6680",
@@ -26,9 +36,10 @@ const colors = [
 const players = new Map();
 const foods = [];
 const chat = [];
+const events = [];
 
-function random(a, b) {
-  return Math.random() * (b - a) + a;
+function random(min, max) {
+  return Math.random() * (max - min) + min;
 }
 
 function clamp(value, min, max) {
@@ -40,31 +51,17 @@ function distance(a, b) {
 }
 
 function randomColor() {
-  return colors[Math.floor(Math.random() * colors.length)];
+  return COLORS[
+    Math.floor(Math.random() * COLORS.length)
+  ];
 }
 
 function randomId() {
-  return Math.random().toString(36).slice(2) +
-         Math.random().toString(36).slice(2);
+  return (
+    Math.random().toString(36).slice(2) +
+    Math.random().toString(36).slice(2)
+  );
 }
-
-function makeFood() {
-  return {
-    id: randomId(),
-    x: random(25, WORLD - 25),
-    y: random(25, WORLD - 25),
-    r: random(3, 7),
-    color: randomColor()
-  };
-}
-
-for (let i = 0; i < FOOD_COUNT; i++) {
-  foods.push(makeFood());
-}
-
-/* ---------------------------
-   SICUREZZA CHAT / NOMI
----------------------------- */
 
 function cleanName(name) {
   return String(name || "Player")
@@ -82,12 +79,39 @@ function cleanMessage(message) {
     .slice(0, MAX_CHAT_LENGTH);
 }
 
-/* ---------------------------
+function makeFood(x, y) {
+  return {
+    id: randomId(),
+    x: x ?? random(30, WORLD - 30),
+    y: y ?? random(30, WORLD - 30),
+    r: random(3, 7),
+    color: randomColor()
+  };
+}
+
+for (let i = 0; i < FOOD_COUNT; i++) {
+  foods.push(makeFood());
+}
+
+/* =========================================================
    PLAYER
----------------------------- */
+========================================================= */
+
+function createCell(player, radius, x, y) {
+  return {
+    id: randomId(),
+    owner: player.id,
+    x,
+    y,
+    r: radius,
+    vx: 0,
+    vy: 0,
+    boost: 0
+  };
+}
 
 function createPlayer(id, name) {
-  const p = {
+  const player = {
     id,
     name: cleanName(name),
     color: randomColor(),
@@ -98,23 +122,35 @@ function createPlayer(id, name) {
     targetX: WORLD / 2,
     targetY: WORLD / 2,
 
-    r: 25,
-
-    energy: 100,
     score: 0,
+    energy: 100,
+
+    level: 1,
+    xp: 0,
 
     cells: [],
 
-    lastMove: 0,
     lastSplit: 0,
     lastEject: 0,
+    lastChat: 0,
 
-    socket: null
+    socket: null,
+
+    alive: true
   };
 
-  findSpawn(p);
+  findSpawn(player);
 
-  return p;
+  player.cells.push(
+    createCell(
+      player,
+      25,
+      player.x,
+      player.y
+    )
+  );
+
+  return player;
 }
 
 function findSpawn(player) {
@@ -122,19 +158,18 @@ function findSpawn(player) {
     const x = random(200, WORLD - 200);
     const y = random(200, WORLD - 200);
 
-    let good = true;
+    let valid = true;
 
     for (const other of players.values()) {
-      if (distance(
-        { x, y },
-        { x: other.x, y: other.y }
-      ) < 350) {
-        good = false;
+      if (
+        distance({ x, y }, other) < 350
+      ) {
+        valid = false;
         break;
       }
     }
 
-    if (good) {
+    if (valid) {
       player.x = x;
       player.y = y;
       player.targetX = x;
@@ -145,103 +180,88 @@ function findSpawn(player) {
 
   player.x = random(300, WORLD - 300);
   player.y = random(300, WORLD - 300);
+
   player.targetX = player.x;
   player.targetY = player.y;
 }
 
-/* ---------------------------
-   CELLS
----------------------------- */
+/* =========================================================
+   XP
+========================================================= */
 
-function getCells(player) {
-  if (player.cells.length > 0) {
-    return player.cells;
-  }
+function gainXP(player, amount) {
+  player.xp += amount;
 
-  return [{
-    id: player.id,
-    x: player.x,
-    y: player.y,
-    r: player.r,
-    vx: 0,
-    vy: 0,
-    boost: 0
-  }];
-}
+  while (
+    player.xp >= player.level * 50
+  ) {
+    player.xp -= player.level * 50;
+    player.level++;
 
-function ensureCells(player) {
-  if (player.cells.length === 0) {
-    player.cells.push({
-      id: player.id,
-      x: player.x,
-      y: player.y,
-      r: player.r,
-      vx: 0,
-      vy: 0,
-      boost: 0
+    send(player, {
+      type: "levelUp",
+      level: player.level
     });
   }
 }
 
-function syncPlayerMainData(player) {
-  if (player.cells.length === 1) {
-    const c = player.cells[0];
-
-    player.x = c.x;
-    player.y = c.y;
-    player.r = c.r;
-  }
-}
-
-function publicPlayer(player) {
-  const cells = getCells(player);
-
-  return {
-    id: player.id,
-    name: player.name,
-    color: player.color,
-    score: Math.floor(player.score),
-    energy: Math.floor(player.energy),
-
-    cells: cells.map(c => ({
-      id: c.id,
-      x: c.x,
-      y: c.y,
-      r: c.r
-    }))
-  };
-}
-
-/* ---------------------------
+/* =========================================================
    MOVIMENTO
----------------------------- */
+========================================================= */
+
+function getSpeed(cell) {
+  let speed =
+    MOVE_SPEED *
+    Math.pow(
+      25 / Math.max(cell.r, 1),
+      0.43
+    );
+
+  return clamp(
+    speed,
+    0.45,
+    MAX_SPEED
+  );
+}
 
 function movePlayer(player) {
-  const cells = getCells(player);
+  const cells = player.cells;
 
   for (const cell of cells) {
-    const dx = player.targetX - cell.x;
-    const dy = player.targetY - cell.y;
+    let targetX = player.targetX;
+    let targetY = player.targetY;
+
+    if (cell !== cells[0]) {
+      targetX =
+        player.targetX +
+        Math.cos(cell.id.length) * 20;
+
+      targetY =
+        player.targetY +
+        Math.sin(cell.id.length) * 20;
+    }
+
+    const dx = targetX - cell.x;
+    const dy = targetY - cell.y;
 
     const d = Math.hypot(dx, dy);
 
-    if (d < 2) continue;
+    if (d > 2) {
+      const speed = getSpeed(cell);
 
-    let speed =
-      7 *
-      Math.pow(25 / Math.max(cell.r, 1), 0.43);
+      cell.x +=
+        (dx / d) * speed;
 
-    speed = clamp(speed, 0.75, 8);
-
-    cell.x += (dx / d) * speed;
-    cell.y += (dy / d) * speed;
+      cell.y +=
+        (dy / d) * speed;
+    }
 
     if (cell.boost > 0) {
-      cell.x += cell.vx || 0;
-      cell.y += cell.vy || 0;
+      cell.x += cell.vx;
+      cell.y += cell.vy;
 
-      cell.vx *= 0.90;
-      cell.vy *= 0.90;
+      cell.vx *= 0.9;
+      cell.vy *= 0.9;
 
       cell.boost--;
     }
@@ -259,73 +279,82 @@ function movePlayer(player) {
     );
   }
 
-  syncPlayerMainData(player);
+  if (cells.length > 0) {
+    player.x = cells[0].x;
+    player.y = cells[0].y;
+  }
 }
 
-/* ---------------------------
-   CIBO
----------------------------- */
+/* =========================================================
+   FOOD
+========================================================= */
 
 function eatFood() {
   for (const player of players.values()) {
-    const cells = getCells(player);
-
-    for (const cell of cells) {
-      for (let i = foods.length - 1; i >= 0; i--) {
+    for (const cell of player.cells) {
+      for (
+        let i = foods.length - 1;
+        i >= 0;
+        i--
+      ) {
         const food = foods[i];
 
-        if (distance(cell, food) < cell.r + food.r) {
+        if (
+          distance(cell, food) <
+          cell.r + food.r
+        ) {
           cell.r = Math.sqrt(
-            cell.r * cell.r + 1
+            cell.r * cell.r +
+            FOOD_MASS
           );
 
-          player.score += 1;
+          player.score++;
+          gainXP(player, 1);
 
           foods.splice(i, 1);
           foods.push(makeFood());
         }
       }
     }
-
-    syncPlayerMainData(player);
   }
 }
 
-/* ---------------------------
+/* =========================================================
    SPLIT
----------------------------- */
+========================================================= */
 
 function splitPlayer(player) {
   const now = Date.now();
 
-  if (now - player.lastSplit < 900) {
+  if (
+    now - player.lastSplit < 900
+  ) {
+    return;
+  }
+
+  if (
+    player.cells.length >= MAX_CELLS
+  ) {
     return;
   }
 
   player.lastSplit = now;
 
-  ensureCells(player);
+  const original = [...player.cells];
 
-  if (player.cells.length >= 16) {
-    return;
-  }
+  for (const cell of original) {
+    if (
+      player.cells.length >= MAX_CELLS
+    ) {
+      break;
+    }
 
-  const originalCells = [...player.cells];
-  const created = [];
-
-  for (const cell of originalCells) {
     if (cell.r < 24) {
       continue;
     }
 
-    if (player.cells.length + created.length >= 16) {
-      break;
-    }
-
-    const oldRadius = cell.r;
-
     const newRadius =
-      oldRadius / Math.sqrt(2);
+      cell.r / Math.sqrt(2);
 
     cell.r = newRadius;
 
@@ -334,53 +363,49 @@ function splitPlayer(player) {
       player.targetX - cell.x
     );
 
-    const child = {
-      id: randomId(),
-
-      x: clamp(
+    const child = createCell(
+      player,
+      newRadius,
+      clamp(
         cell.x +
-          Math.cos(angle) *
-          newRadius *
-          1.8,
-
+        Math.cos(angle) *
+        newRadius *
+        2,
         newRadius,
         WORLD - newRadius
       ),
-
-      y: clamp(
+      clamp(
         cell.y +
-          Math.sin(angle) *
-          newRadius *
-          1.8,
-
+        Math.sin(angle) *
+        newRadius *
+        2,
         newRadius,
         WORLD - newRadius
-      ),
+      )
+    );
 
-      r: newRadius,
+    child.vx =
+      Math.cos(angle) * 10;
 
-      vx: Math.cos(angle) * 13,
-      vy: Math.sin(angle) * 13,
+    child.vy =
+      Math.sin(angle) * 10;
 
-      boost: 28
-    };
+    child.boost = 25;
 
-    created.push(child);
+    player.cells.push(child);
   }
-
-  player.cells.push(...created);
-
-  syncPlayerMainData(player);
 }
 
-/* ---------------------------
-   ESPULSIONE MASSA
----------------------------- */
+/* =========================================================
+   EJECT MASS
+========================================================= */
 
 function ejectMass(player) {
   const now = Date.now();
 
-  if (now - player.lastEject < 120) {
+  if (
+    now - player.lastEject < 120
+  ) {
     return;
   }
 
@@ -391,8 +416,6 @@ function ejectMass(player) {
   player.lastEject = now;
   player.energy -= 8;
 
-  ensureCells(player);
-
   for (const cell of player.cells) {
     if (cell.r < 16) {
       continue;
@@ -400,7 +423,7 @@ function ejectMass(player) {
 
     cell.r = Math.sqrt(
       Math.max(
-        20,
+        16,
         cell.r * cell.r - 6
       )
     );
@@ -410,112 +433,118 @@ function ejectMass(player) {
       player.targetX - cell.x
     );
 
-    foods.push({
-      id: randomId(),
-
-      x: clamp(
-        cell.x +
+    foods.push(
+      makeFood(
+        clamp(
+          cell.x +
           Math.cos(angle) *
           cell.r *
-          1.5,
-
-        10,
-        WORLD - 10
-      ),
-
-      y: clamp(
-        cell.y +
+          1.6,
+          10,
+          WORLD - 10
+        ),
+        clamp(
+          cell.y +
           Math.sin(angle) *
           cell.r *
-          1.5,
-
-        10,
-        WORLD - 10
-      ),
-
-      r: 8,
-      color: player.color
-    });
+          1.6,
+          10,
+          WORLD - 10
+        )
+      )
+    );
   }
-
-  syncPlayerMainData(player);
 }
 
-/* ---------------------------
-   COLLISIONI
----------------------------- */
+/* =========================================================
+   COLLISIONS
+========================================================= */
 
-function allCells() {
-  const result = [];
-
-  for (const player of players.values()) {
-    const cells = getCells(player);
-
-    for (const cell of cells) {
-      result.push({
-        owner: player,
-        cell
-      });
-    }
-  }
-
-  return result;
-}
-
-function killPlayer(player) {
-  if (!players.has(player.id)) {
+function killPlayer(player, killer) {
+  if (!player.alive) {
     return;
   }
 
-  try {
-    if (
-      player.socket &&
-      player.socket.readyState === WebSocket.OPEN
-    ) {
-      player.socket.send(
-        JSON.stringify({
-          type: "dead",
-          score: player.score
-        })
-      );
-    }
-  } catch {}
+  player.alive = false;
+
+  send(player, {
+    type: "dead",
+    score: player.score,
+    level: player.level
+  });
+
+  if (killer) {
+    gainXP(
+      killer,
+      20
+    );
+
+    killer.score += 20;
+  }
 
   players.delete(player.id);
 }
 
 function collisions() {
-  const cells = allCells();
+  const all = [];
 
-  for (let i = 0; i < cells.length; i++) {
-    for (let j = i + 1; j < cells.length; j++) {
-      const A = cells[i];
-      const B = cells[j];
+  for (const player of players.values()) {
+    for (const cell of player.cells) {
+      all.push({
+        player,
+        cell
+      });
+    }
+  }
 
-      if (A.owner === B.owner) {
-        continue;
-      }
+  for (
+    let i = 0;
+    i < all.length;
+    i++
+  ) {
+    for (
+      let j = i + 1;
+      j < all.length;
+      j++
+    ) {
+      const A = all[i];
+      const B = all[j];
 
       if (
-        !players.has(A.owner.id) ||
-        !players.has(B.owner.id)
+        A.player === B.player
       ) {
         continue;
       }
 
-      const a = A.cell;
-      const b = B.cell;
+      if (
+        !players.has(A.player.id) ||
+        !players.has(B.player.id)
+      ) {
+        continue;
+      }
 
-      const d = distance(a, b);
+      const d =
+        distance(
+          A.cell,
+          B.cell
+        );
 
-      if (d > Math.max(a.r, b.r) * 0.78) {
+      if (
+        d >
+        Math.max(
+          A.cell.r,
+          B.cell.r
+        ) * 0.78
+      ) {
         continue;
       }
 
       let big = A;
       let small = B;
 
-      if (b.r > a.r) {
+      if (
+        B.cell.r > A.cell.r
+      ) {
         big = B;
         small = A;
       }
@@ -527,45 +556,103 @@ function collisions() {
         continue;
       }
 
-      big.cell.r = Math.sqrt(
-        big.cell.r * big.cell.r +
-        small.cell.r * small.cell.r * 0.82
-      );
+      big.cell.r =
+        Math.sqrt(
+          big.cell.r ** 2 +
+          small.cell.r ** 2 *
+          0.82
+        );
 
-      const owner = small.owner;
+      big.player.score +=
+        Math.floor(
+          small.cell.r ** 2
+        );
 
-      if (owner.cells.length > 0) {
-        owner.cells =
-          owner.cells.filter(
-            c => c.id !== small.cell.id
-          );
+      big.player.xp += 20;
 
-        if (owner.cells.length === 0) {
-          killPlayer(owner);
-        }
-      } else {
-        killPlayer(owner);
+      small.player.cells =
+        small.player.cells.filter(
+          c =>
+            c.id !==
+            small.cell.id
+        );
+
+      if (
+        small.player.cells.length === 0
+      ) {
+        killPlayer(
+          small.player,
+          big.player
+        );
       }
-
-      big.owner.score += Math.floor(
-        small.cell.r * small.cell.r
-      );
-
-      syncPlayerMainData(big.owner);
     }
   }
 }
 
-/* ---------------------------
-   CHAT
----------------------------- */
+/* =========================================================
+   ENERGY
+========================================================= */
 
-function addChatMessage(player, text) {
+function updateEnergy(player) {
+  player.energy =
+    clamp(
+      player.energy + 0.35,
+      0,
+      100
+    );
+}
+
+/* =========================================================
+   CHAT
+========================================================= */
+
+function send(player, data) {
+  if (
+    player.socket &&
+    player.socket.readyState ===
+    WebSocket.OPEN
+  ) {
+    try {
+      player.socket.send(
+        JSON.stringify(data)
+      );
+    } catch {}
+  }
+}
+
+function broadcast(data) {
+  const encoded =
+    JSON.stringify(data);
+
+  for (const player of players.values()) {
+    if (
+      player.socket &&
+      player.socket.readyState ===
+      WebSocket.OPEN
+    ) {
+      try {
+        player.socket.send(encoded);
+      } catch {}
+    }
+  }
+}
+
+function addChat(player, text) {
+  const now = Date.now();
+
+  if (
+    now - player.lastChat < 500
+  ) {
+    return;
+  }
+
   text = cleanMessage(text);
 
   if (!text) {
     return;
   }
+
+  player.lastChat = now;
 
   const message = {
     id: randomId(),
@@ -573,189 +660,210 @@ function addChatMessage(player, text) {
     name: player.name,
     color: player.color,
     text,
-    time: new Date().toLocaleTimeString(
-      "it-IT",
-      {
-        hour: "2-digit",
-        minute: "2-digit"
-      }
-    )
+    time: new Date()
+      .toLocaleTimeString(
+        "it-IT",
+        {
+          hour: "2-digit",
+          minute: "2-digit"
+        }
+      )
   };
 
   chat.push(message);
 
-  if (chat.length > 80) {
-    chat.splice(
-      0,
-      chat.length - 80
-    );
+  while (
+    chat.length >
+    MAX_CHAT_MESSAGES
+  ) {
+    chat.shift();
   }
 
-  broadcastChat();
-}
-
-function broadcastChat() {
-  const data = JSON.stringify({
-    type: "chatHistory",
-    messages: chat
+  broadcast({
+    type: "chatMessage",
+    message
   });
-
-  for (const player of players.values()) {
-    if (
-      player.socket &&
-      player.socket.readyState === WebSocket.OPEN
-    ) {
-      try {
-        player.socket.send(data);
-      } catch {}
-    }
-  }
 }
 
-/* ---------------------------
-   SERVER GAME LOOP
----------------------------- */
+/* =========================================================
+   PUBLIC STATE
+========================================================= */
+
+function publicPlayer(player) {
+  return {
+    id: player.id,
+    name: player.name,
+    color: player.color,
+    score: player.score,
+    energy: Math.floor(
+      player.energy
+    ),
+    level: player.level,
+    xp: player.xp,
+
+    cells:
+      player.cells.map(
+        cell => ({
+          id: cell.id,
+          x: cell.x,
+          y: cell.y,
+          r: cell.r
+        })
+      )
+  };
+}
+
+function publicState() {
+  return {
+    type: "state",
+    world: WORLD,
+    foods,
+    players:
+      [...players.values()]
+        .map(publicPlayer)
+  };
+}
+
+/* =========================================================
+   GAME LOOP
+========================================================= */
 
 function update() {
   for (const player of players.values()) {
     movePlayer(player);
-
-    player.energy = clamp(
-      player.energy + 0.35,
-      0,
-      100
-    );
+    updateEnergy(player);
   }
 
   eatFood();
   collisions();
 }
 
-/* ---------------------------
-   BROADCAST
----------------------------- */
-
 function broadcastState() {
-  const state = JSON.stringify({
-    type: "state",
-    world: WORLD,
-    foods,
-    players: [
-      ...players.values()
-    ].map(publicPlayer)
-  });
-
-  for (const player of players.values()) {
-    if (
-      player.socket &&
-      player.socket.readyState === WebSocket.OPEN
-    ) {
-      try {
-        player.socket.send(state);
-      } catch {}
-    }
-  }
+  broadcast(
+    publicState()
+  );
 }
 
-/* ---------------------------
-   HTTP SERVER
----------------------------- */
-
-const publicDir = path.join(
-  __dirname,
-  "public"
+setInterval(
+  () => {
+    update();
+    broadcastState();
+  },
+  TICK_MS
 );
 
-const server = http.createServer(
-  (req, res) => {
-    let requestPath = req.url.split("?")[0];
+/* =========================================================
+   HTTP
+========================================================= */
 
-    if (requestPath === "/") {
-      requestPath = "/index.html";
-    }
+const publicDir =
+  path.join(
+    __dirname,
+    "public"
+  );
 
-    let filename;
+const server =
+  http.createServer(
+    (req, res) => {
+      let requestPath =
+        req.url.split("?")[0];
 
-    try {
-      filename = path.resolve(
-        publicDir,
-        "." + requestPath
-      );
-    } catch {
-      res.writeHead(400);
-      return res.end("Bad request");
-    }
-
-    if (
-      filename !== publicDir &&
-      !filename.startsWith(publicDir + path.sep)
-    ) {
-      res.writeHead(403);
-      return res.end("Forbidden");
-    }
-
-    fs.readFile(
-      filename,
-      (error, data) => {
-        if (error) {
-          res.writeHead(404, {
-            "Content-Type":
-              "text/plain; charset=utf-8"
-          });
-
-          return res.end("Not found");
-        }
-
-        const ext =
-          path.extname(filename)
-            .toLowerCase();
-
-        const types = {
-          ".html":
-            "text/html; charset=utf-8",
-
-          ".js":
-            "text/javascript; charset=utf-8",
-
-          ".css":
-            "text/css; charset=utf-8",
-
-          ".json":
-            "application/json; charset=utf-8",
-
-          ".png":
-            "image/png",
-
-          ".jpg":
-            "image/jpeg",
-
-          ".svg":
-            "image/svg+xml",
-
-          ".ico":
-            "image/x-icon"
-        };
-
-        res.writeHead(200, {
-          "Content-Type":
-            types[ext] ||
-            "application/octet-stream",
-
-          "Cache-Control":
-            ext === ".html"
-              ? "no-cache"
-              : "public, max-age=3600"
-        });
-
-        res.end(data);
+      if (
+        requestPath === "/"
+      ) {
+        requestPath =
+          "/index.html";
       }
-    );
-  }
-);
 
-/* ---------------------------
+      let filename;
+
+      try {
+        filename =
+          path.resolve(
+            publicDir,
+            "." + requestPath
+          );
+      } catch {
+        res.writeHead(400);
+        return res.end(
+          "Bad request"
+        );
+      }
+
+      if (
+        filename !== publicDir &&
+        !filename.startsWith(
+          publicDir +
+          path.sep
+        )
+      ) {
+        res.writeHead(403);
+        return res.end(
+          "Forbidden"
+        );
+      }
+
+      fs.readFile(
+        filename,
+        (error, data) => {
+          if (error) {
+            res.writeHead(
+              404,
+              {
+                "Content-Type":
+                  "text/plain; charset=utf-8"
+              }
+            );
+
+            return res.end(
+              "Not found"
+            );
+          }
+
+          const ext =
+            path.extname(
+              filename
+            ).toLowerCase();
+
+          const types = {
+            ".html":
+              "text/html; charset=utf-8",
+            ".js":
+              "text/javascript; charset=utf-8",
+            ".css":
+              "text/css; charset=utf-8",
+            ".json":
+              "application/json; charset=utf-8",
+            ".png":
+              "image/png",
+            ".jpg":
+              "image/jpeg",
+            ".svg":
+              "image/svg+xml"
+          };
+
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                types[ext] ||
+                "application/octet-stream",
+              "Cache-Control":
+                ext === ".html"
+                  ? "no-cache"
+                  : "public, max-age=3600"
+            }
+          );
+
+          res.end(data);
+        }
+      );
+    }
+  );
+
+/* =========================================================
    WEBSOCKET
----------------------------- */
+========================================================= */
 
 const wss =
   new WebSocket.Server({
@@ -765,11 +873,15 @@ const wss =
 wss.on(
   "connection",
   socket => {
-    if (players.size >= MAX_PLAYERS) {
+    if (
+      players.size >=
+      MAX_PLAYERS
+    ) {
       socket.send(
         JSON.stringify({
           type: "error",
-          message: "Server pieno"
+          message:
+            "Server pieno"
         })
       );
 
@@ -777,7 +889,8 @@ wss.on(
       return;
     }
 
-    const id = randomId();
+    const id =
+      randomId();
 
     let player = null;
 
@@ -795,9 +908,19 @@ wss.on(
           return;
         }
 
+        if (
+          !message ||
+          typeof message.type !==
+          "string"
+        ) {
+          return;
+        }
+
         /* JOIN */
 
-        if (message.type === "join") {
+        if (
+          message.type === "join"
+        ) {
           if (player) {
             return;
           }
@@ -816,27 +939,32 @@ wss.on(
             player
           );
 
-          socket.send(
-            JSON.stringify({
+          send(
+            player,
+            {
               type: "welcome",
               id,
               world: WORLD,
               playerCount:
                 players.size
-            })
+            }
           );
 
-          socket.send(
-            JSON.stringify({
-              type: "chatHistory",
-              messages: chat
-            })
-          );
-
-          addChatMessage(
+          send(
             player,
-            "è entrato nella partita"
+            {
+              type:
+                "chatHistory",
+              messages: chat
+            }
           );
+
+          broadcast({
+            type:
+              "system",
+            text:
+              `${player.name} è entrato nella partita`
+          });
 
           return;
         }
@@ -845,10 +973,11 @@ wss.on(
           return;
         }
 
-        /* MOVIMENTO */
+        /* MOVE */
 
         if (
-          message.type === "move"
+          message.type ===
+          "move"
         ) {
           const x =
             Number(message.x);
@@ -879,7 +1008,8 @@ wss.on(
         /* SPLIT */
 
         else if (
-          message.type === "split"
+          message.type ===
+          "split"
         ) {
           splitPlayer(player);
         }
@@ -887,7 +1017,8 @@ wss.on(
         /* EJECT */
 
         else if (
-          message.type === "eject"
+          message.type ===
+          "eject"
         ) {
           ejectMass(player);
         }
@@ -895,29 +1026,32 @@ wss.on(
         /* CHAT */
 
         else if (
-          message.type === "chat"
+          message.type ===
+          "chat"
         ) {
-          addChatMessage(
+          addChat(
             player,
             message.text
           );
         }
 
-        /* CAMBIO NOME */
+        /* NAME */
 
         else if (
           message.type ===
           "changeName"
         ) {
-          const newName =
+          player.name =
             cleanName(
               message.name
             );
 
-          if (newName) {
-            player.name =
-              newName;
-          }
+          broadcast({
+            type:
+              "nameChanged",
+            id: player.id,
+            name: player.name
+          });
         }
       }
     );
@@ -925,16 +1059,20 @@ wss.on(
     socket.on(
       "close",
       () => {
-        if (player) {
-          addChatMessage(
-            player,
-            "ha lasciato la partita"
-          );
-
-          players.delete(
-            player.id
-          );
+        if (!player) {
+          return;
         }
+
+        broadcast({
+          type:
+            "system",
+          text:
+            `${player.name} ha lasciato la partita`
+        });
+
+        players.delete(
+          player.id
+        );
       }
     );
 
@@ -945,32 +1083,28 @@ wss.on(
   }
 );
 
-/* ---------------------------
-   GAME LOOP
----------------------------- */
-
-setInterval(
-  () => {
-    update();
-    broadcastState();
-  },
-  TICK
-);
-
-/* ---------------------------
+/* =========================================================
    START
----------------------------- */
+========================================================= */
 
 server.listen(
   PORT,
   "0.0.0.0",
   () => {
     console.log(
-      `Cell Arena avviato sulla porta ${PORT}`
+      `Cell Arena 3.0 avviato sulla porta ${PORT}`
     );
 
     console.log(
       `World: ${WORLD}x${WORLD}`
+    );
+
+    console.log(
+      `Players max: ${MAX_PLAYERS}`
+    );
+
+    console.log(
+      `Movement speed: ${MOVE_SPEED}`
     );
   }
 );

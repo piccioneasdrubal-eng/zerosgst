@@ -2,13 +2,11 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cell Arena</title>
 
 <style>
-*{
-  box-sizing:border-box;
-}
+*{box-sizing:border-box}
 
 html,body{
   margin:0;
@@ -17,115 +15,221 @@ html,body{
   overflow:hidden;
   background:#050914;
   color:#fff;
-  font-family:Arial,Helvetica,sans-serif;
+  font-family:Inter,Arial,sans-serif;
 }
 
 body{
-  touch-action:none;
+  user-select:none;
 }
 
 canvas{
+  position:fixed;
+  inset:0;
   display:block;
 }
 
-button,
-input,
-select{
+button,input,select{
   font:inherit;
+}
+
+button{
+  cursor:pointer;
 }
 
 .hidden{
   display:none!important;
 }
 
-/* =========================
-   CONNECTION
-========================= */
+/* =========================================================
+   TOP STATUS
+========================================================= */
 
 #connection{
   position:fixed;
+  z-index:100;
   top:12px;
   left:50%;
   transform:translateX(-50%);
-  z-index:100;
   padding:7px 13px;
-  border-radius:20px;
-  background:#101827ee;
+  border-radius:999px;
+  background:#0a1220e8;
   border:1px solid #ffffff12;
-  color:#ffbf55;
+  color:#ffbd55;
   font-size:11px;
+  backdrop-filter:blur(12px);
+  box-shadow:0 8px 30px #0007;
   pointer-events:none;
-  box-shadow:0 5px 25px #0006;
 }
 
-/* =========================
+/* =========================================================
    HUD
-========================= */
+========================================================= */
 
 #hud{
   position:fixed;
-  left:15px;
-  top:15px;
   z-index:20;
-  min-width:205px;
+  left:16px;
+  top:16px;
+  width:220px;
   padding:14px;
-  border-radius:15px;
-  background:#091322e8;
+  border-radius:16px;
+  background:#081120dd;
   border:1px solid #ffffff10;
-  box-shadow:0 12px 40px #0007;
-  backdrop-filter:blur(12px);
+  backdrop-filter:blur(14px);
+  box-shadow:0 15px 50px #0006;
 }
 
-#mass{
-  display:block;
-  font-size:19px;
-  margin-bottom:5px;
+.hud-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:8px;
 }
 
-#levelInfo{
-  color:#9eacc1;
+.hud-title strong{
+  font-size:17px;
+}
+
+.hud-small{
+  color:#8795aa;
+  font-size:11px;
+}
+
+.stat{
+  display:flex;
+  justify-content:space-between;
+  margin-top:7px;
+  color:#b9c5d8;
   font-size:12px;
+}
+
+.stat b{
+  color:#fff;
 }
 
 .bar{
   width:100%;
   height:7px;
-  margin-top:8px;
+  background:#ffffff10;
+  border-radius:10px;
   overflow:hidden;
-  border-radius:20px;
-  background:#ffffff12;
+  margin-top:8px;
 }
 
 .bar i{
   display:block;
   width:0%;
   height:100%;
+  border-radius:10px;
   background:linear-gradient(90deg,#42d392,#55a7ff);
-  transition:width .15s;
 }
 
-.energy{
-  margin-top:7px;
-  color:#b7c4d8;
-  font-size:12px;
+/* =========================================================
+   USER
+========================================================= */
+
+#userButton{
+  position:fixed;
+  z-index:30;
+  right:250px;
+  top:16px;
+  width:auto;
+  margin:0;
+  padding:10px 14px;
+  border:1px solid #ffffff12;
+  border-radius:12px;
+  background:#081120e8;
+  color:#fff;
+  backdrop-filter:blur(12px);
+  box-shadow:0 10px 35px #0005;
 }
 
-/* =========================
+#userButton:hover{
+  background:#102038;
+}
+
+#userMenu{
+  position:fixed;
+  z-index:90;
+  right:250px;
+  top:66px;
+  width:260px;
+  padding:17px;
+  border-radius:18px;
+  background:#0b1627f5;
+  border:1px solid #ffffff14;
+  box-shadow:0 25px 80px #000b;
+  backdrop-filter:blur(15px);
+}
+
+#userMenu h3{
+  margin:0 0 12px;
+}
+
+.user-status{
+  margin-bottom:13px;
+  color:#42d392;
+  font-size:11px;
+}
+
+label{
+  display:block;
+  color:#9aa9be;
+  font-size:11px;
+  margin:7px 0 5px;
+}
+
+input,select{
+  width:100%;
+  border:1px solid #ffffff14;
+  outline:none;
+  border-radius:10px;
+  background:#101d31;
+  color:#fff;
+  padding:11px;
+}
+
+input:focus,select:focus{
+  border-color:#42d39266;
+}
+
+.action{
+  width:100%;
+  border:0;
+  padding:12px;
+  margin-top:8px;
+  border-radius:11px;
+  background:#42d392;
+  color:#04120c;
+  font-weight:800;
+}
+
+.action.alt{
+  background:#ffffff10;
+  color:#fff;
+}
+
+.action.danger{
+  background:#ff6680;
+  color:#21050b;
+}
+
+/* =========================================================
    LEADERBOARD
-========================= */
+========================================================= */
 
 #board{
   position:fixed;
-  right:15px;
-  top:15px;
   z-index:20;
-  width:220px;
+  top:16px;
+  right:16px;
+  width:215px;
   padding:14px;
-  border-radius:15px;
-  background:#091322e8;
+  border-radius:16px;
+  background:#081120dd;
   border:1px solid #ffffff10;
-  box-shadow:0 12px 40px #0007;
-  backdrop-filter:blur(12px);
+  backdrop-filter:blur(14px);
+  box-shadow:0 15px 50px #0006;
 }
 
 #board h3{
@@ -136,135 +240,121 @@ select{
 .row{
   display:flex;
   justify-content:space-between;
-  gap:10px;
-  margin:6px 0;
-  color:#c9d4e4;
+  gap:8px;
+  padding:5px 0;
+  color:#b9c5d8;
   font-size:12px;
 }
 
-/* =========================
-   USER
-========================= */
-
-#userButton{
-  position:fixed;
-  right:250px;
-  top:15px;
-  z-index:30;
-  width:auto;
-  margin:0;
-  padding:9px 13px;
-  border:1px solid #ffffff12;
-  border-radius:12px;
-  background:#091322ee;
-  color:#fff;
-  cursor:pointer;
-  backdrop-filter:blur(10px);
-}
-
-#userButton:hover{
-  background:#12223a;
-}
-
-#userMenu{
-  position:fixed;
-  right:250px;
-  top:65px;
-  z-index:50;
-  width:260px;
-  padding:17px;
-  border-radius:16px;
-  background:#0b1627f7;
-  border:1px solid #ffffff15;
-  box-shadow:0 25px 70px #000b;
-  backdrop-filter:blur(15px);
-}
-
-#userMenu h3{
-  margin:0 0 13px;
-}
-
-.profileStatus{
-  margin-bottom:12px;
+.row.me{
   color:#42d392;
-  font-size:11px;
+  font-weight:800;
 }
 
-label{
-  display:block;
-  margin:7px 0 4px;
-  color:#9dacbf;
-  font-size:12px;
-}
+/* =========================================================
+   MINIMAP
+========================================================= */
 
-input,
-select{
-  width:100%;
-  padding:11px;
-  margin:0;
+#miniWrap{
+  position:fixed;
+  z-index:20;
+  right:16px;
+  bottom:16px;
+  padding:5px;
+  border-radius:13px;
+  background:#081120dd;
   border:1px solid #ffffff14;
+  box-shadow:0 15px 45px #0007;
+}
+
+#mini{
+  width:150px;
+  height:150px;
+  display:block;
+  border-radius:9px;
+}
+
+/* =========================================================
+   MISSION
+========================================================= */
+
+#mission{
+  position:fixed;
+  z-index:20;
+  left:16px;
+  bottom:16px;
+  padding:11px 14px;
+  border-radius:13px;
+  background:#081120dd;
+  border:1px solid #ffffff10;
+  backdrop-filter:blur(12px);
+  font-size:11px;
+  color:#aebbd0;
+}
+
+#mission b{
+  color:#fff;
+}
+
+/* =========================================================
+   POWER
+========================================================= */
+
+#power{
+  position:fixed;
+  z-index:20;
+  left:50%;
+  bottom:17px;
+  transform:translateX(-50%);
+  display:flex;
+  gap:7px;
+}
+
+.power-card{
+  padding:8px 12px;
   border-radius:10px;
-  outline:none;
-  background:#111f34;
-  color:#fff;
+  background:#0b1728e8;
+  border:1px solid #ffe66d44;
+  color:#ffe66d;
+  font-size:11px;
+  box-shadow:0 10px 35px #0006;
 }
 
-button{
-  width:100%;
-  padding:12px;
-  margin-top:9px;
-  border:0;
-  border-radius:11px;
-  background:#42d392;
-  color:#06130d;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-button:hover{
-  filter:brightness(1.08);
-}
-
-button.alt{
-  background:#ffffff10;
-  color:#fff;
-}
-
-/* =========================
+/* =========================================================
    CHAT
-========================= */
+========================================================= */
 
 #chat{
   position:fixed;
-  left:15px;
-  bottom:15px;
-  z-index:30;
+  z-index:60;
+  left:16px;
+  bottom:16px;
   width:350px;
   height:320px;
-  display:flex;
-  flex-direction:column;
+  border-radius:17px;
   overflow:hidden;
-  border-radius:16px;
-  background:#07101de9;
+  background:#07101dec;
   border:1px solid #ffffff12;
   box-shadow:0 20px 70px #0009;
-  backdrop-filter:blur(13px);
+  backdrop-filter:blur(15px);
+  display:flex;
+  flex-direction:column;
 }
 
 #chatHeader{
-  height:43px;
+  height:44px;
   flex-shrink:0;
   display:flex;
   align-items:center;
   justify-content:space-between;
   padding:0 12px;
-  background:#0d1a2cee;
-  border-bottom:1px solid #ffffff0c;
+  background:#0d1b2eea;
+  border-bottom:1px solid #ffffff0d;
 }
 
 #chatTitle{
-  font-weight:bold;
-  font-size:13px;
+  font-size:12px;
+  font-weight:800;
 }
 
 #chatOnline{
@@ -276,7 +366,9 @@ button.alt{
 #chatClose{
   width:auto;
   margin:0;
-  padding:3px 8px;
+  padding:4px 8px;
+  border:0;
+  border-radius:7px;
   background:#ffffff10;
   color:#fff;
 }
@@ -290,36 +382,36 @@ button.alt{
 
 .chatMessage{
   margin-bottom:9px;
-  font-size:12px;
+  font-size:11px;
   line-height:1.4;
   word-break:break-word;
 }
 
 .chatName{
-  margin-right:5px;
-  font-weight:bold;
+  font-weight:800;
 }
 
 .chatTime{
-  color:#64748b;
+  color:#596a82;
   font-size:9px;
+  margin-left:4px;
 }
 
 .chatText{
-  color:#d9e3f0;
+  color:#dbe5f2;
 }
 
 #chatInputArea{
   display:flex;
   gap:6px;
-  padding:7px;
-  background:#081322;
-  border-top:1px solid #ffffff0c;
+  padding:8px;
+  background:#091424;
+  border-top:1px solid #ffffff0d;
 }
 
 #chatInput{
-  flex:1;
   min-width:0;
+  margin:0;
 }
 
 #chatSend{
@@ -330,137 +422,129 @@ button.alt{
 
 #chatOpen{
   position:fixed;
-  left:15px;
-  bottom:15px;
-  z-index:29;
+  z-index:55;
+  left:16px;
+  bottom:16px;
   width:auto;
   margin:0;
   padding:10px 14px;
-  background:#0b1627ee;
-  color:#fff;
   border:1px solid #ffffff14;
-}
-
-/* =========================
-   POWER
-========================= */
-
-#power{
-  position:fixed;
-  left:50%;
-  bottom:16px;
-  transform:translateX(-50%);
-  z-index:20;
-}
-
-.powerBadge{
-  padding:8px 13px;
-  border-radius:10px;
-  background:#ffffff13;
-  border:1px solid #ffffff12;
-  font-size:12px;
-}
-
-/* =========================
-   MISSION
-========================= */
-
-#mission{
-  position:fixed;
-  left:15px;
-  bottom:350px;
-  z-index:20;
-  padding:10px 13px;
-  border-radius:12px;
-  background:#091322e8;
-  color:#b9c7da;
-  font-size:11px;
-}
-
-/* =========================
-   MINIMAP
-========================= */
-
-#mini{
-  position:fixed;
-  right:15px;
-  bottom:15px;
-  z-index:20;
-  width:150px;
-  height:150px;
-  border:2px solid #ffffff22;
   border-radius:11px;
-  background:#050914;
+  background:#0b1728ee;
+  color:#fff;
 }
 
-/* =========================
-   MENU / PAUSE / GAMEOVER
-========================= */
+/* =========================================================
+   MENU / PAUSE / GAME OVER
+========================================================= */
 
 .overlay{
   position:fixed;
+  z-index:80;
   inset:0;
-  z-index:90;
   display:flex;
   align-items:center;
   justify-content:center;
+  padding:20px;
   background:
     radial-gradient(
-      circle at center,
-      #172944dd,
-      #02050bee
+      circle at 50% 35%,
+      #172b4dcc,
+      #030711f2 70%
     );
 }
 
 .card{
-  width:min(460px,92vw);
+  width:min(440px,94vw);
   padding:30px;
   border-radius:23px;
-  background:#0b1628f7;
+  background:#0a1425f5;
   border:1px solid #ffffff14;
-  box-shadow:0 30px 100px #000;
+  box-shadow:
+    0 30px 100px #000d,
+    inset 0 1px #ffffff08;
+  backdrop-filter:blur(18px);
 }
 
 .logo{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:7px;
+}
+
+.logoDot{
+  width:19px;
+  height:19px;
+  border-radius:50%;
+  background:#42d392;
+  box-shadow:0 0 22px #42d392;
+}
+
+h1{
   margin:0;
-  font-size:42px;
+  font-size:38px;
   letter-spacing:-1px;
 }
 
-.subtitle{
-  margin:8px 0 22px;
-  color:#91a1b7;
+h2{
+  margin:0 0 10px;
+}
+
+.card p{
+  color:#8f9eb4;
   line-height:1.5;
   font-size:13px;
 }
 
-.infoBox{
-  padding:12px;
-  margin-top:15px;
-  border-radius:11px;
+.modeInfo{
+  margin:8px 0 14px;
+  padding:10px;
+  border-radius:10px;
   background:#ffffff08;
-  color:#91a1b7;
+  color:#8492a8;
   font-size:11px;
-  line-height:1.6;
 }
 
-/* =========================
-   MOBILE
-========================= */
+.menuButtons{
+  margin-top:7px;
+}
 
-@media(max-width:700px){
+/* =========================================================
+   CONTROLS
+========================================================= */
+
+#controls{
+  position:fixed;
+  z-index:20;
+  left:50%;
+  top:16px;
+  transform:translateX(-50%);
+  color:#738197;
+  font-size:10px;
+  padding:7px 10px;
+  border-radius:9px;
+  background:#081120aa;
+  border:1px solid #ffffff09;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media(max-width:760px){
 
   #hud{
     left:10px;
-    top:10px;
-    min-width:165px;
+    top:55px;
+    width:175px;
     padding:10px;
   }
 
   #board{
     right:10px;
-    top:65px;
-    width:165px;
+    top:55px;
+    width:170px;
   }
 
   #userButton{
@@ -473,26 +557,33 @@ button.alt{
     top:58px;
   }
 
+  #controls{
+    display:none;
+  }
+
   #chat{
     left:10px;
     bottom:10px;
     width:calc(100vw - 20px);
-    height:270px;
+    height:275px;
+  }
+
+  #miniWrap{
+    right:10px;
+    bottom:10px;
+  }
+
+  #mini{
+    width:100px;
+    height:100px;
   }
 
   #mission{
     display:none;
   }
 
-  #mini{
-    right:10px;
-    bottom:10px;
-    width:100px;
-    height:100px;
-  }
-
   #power{
-    bottom:120px;
+    bottom:10px;
   }
 }
 </style>
@@ -502,39 +593,48 @@ button.alt{
 
 <canvas id="c"></canvas>
 
-<div id="connection">
-  🔴 Disconnesso
+<div id="connection">🔴 Disconnesso</div>
+
+<div id="controls">
+  🖱 Movimento · SPACE Split · W Massa · ESC Pausa/Menu
 </div>
 
-<!-- =========================
-     HUD
-========================= -->
+<!-- HUD -->
 
 <div id="hud">
 
-  <span id="mass">
-    Massa: 25
-  </span>
+  <div class="hud-title">
+    <strong>🟢 Cell Arena</strong>
+    <span class="hud-small">LIVE</span>
+  </div>
 
-  <div id="levelInfo">
-    Livello <span id="level">1</span>
-    · XP <span id="xp">0</span>
+  <div class="stat">
+    <span>Massa</span>
+    <b id="mass">25</b>
+  </div>
+
+  <div class="stat">
+    <span>Livello</span>
+    <b id="level">1</b>
+  </div>
+
+  <div class="stat">
+    <span>XP</span>
+    <b id="xp">0</b>
   </div>
 
   <div class="bar">
     <i id="xpbar"></i>
   </div>
 
-  <div class="energy">
-    ⚡ Energia:
-    <span id="energy">100</span>%
+  <div class="stat">
+    <span>⚡ Energia</span>
+    <b><span id="energy">100</span>%</b>
   </div>
 
 </div>
 
-<!-- =========================
-     USER BUTTON
-========================= -->
+<!-- USER -->
 
 <button id="userButton">
   👤 <span id="userNameButton">Player</span>
@@ -544,51 +644,57 @@ button.alt{
 
   <h3>👤 Profilo</h3>
 
-  <div class="profileStatus">
+  <div class="user-status">
     🟢 Account locale
   </div>
 
-  <label for="userNameInput">
-    Nickname
-  </label>
+  <label>Nickname</label>
 
   <input
     id="userNameInput"
     maxlength="16"
     value="Player"
-    autocomplete="off"
   >
 
-  <button id="saveName">
+  <button class="action" id="saveName">
     💾 Salva nome
   </button>
 
-  <button
-    class="alt"
-    id="closeUser"
-  >
+  <button class="action alt" id="closeUser">
     Chiudi
   </button>
 
 </div>
 
-<!-- =========================
-     LEADERBOARD
-========================= -->
+<!-- CLASSIFICA -->
 
 <div id="board">
 
-  <h3>
-    🏆 Classifica
-  </h3>
+  <h3>🏆 Classifica</h3>
 
   <div id="rows"></div>
 
 </div>
 
-<!-- =========================
-     CHAT
-========================= -->
+<!-- MINIMAP -->
+
+<div id="miniWrap">
+  <canvas id="mini" width="150" height="150"></canvas>
+</div>
+
+<!-- MISSION -->
+
+<div id="mission">
+  🎯 <b>Missione</b><br>
+  Raccogli 30 particelle:
+  <span id="missionCount">0</span>/30
+</div>
+
+<!-- POWER -->
+
+<div id="power"></div>
+
+<!-- CHAT -->
 
 <div id="chat">
 
@@ -596,46 +702,25 @@ button.alt{
 
     <div id="chatTitle">
       💬 Chat globale
-      <span id="chatOnline">
-        ● 0 online
-      </span>
+      <span id="chatOnline">● 0 online</span>
     </div>
 
-    <button id="chatClose">
-      −
-    </button>
+    <button id="chatClose">−</button>
 
   </div>
 
-  <div id="chatMessages">
-
-    <div class="chatMessage">
-
-      <span
-        class="chatName"
-        style="color:#42d392"
-      >
-        Sistema
-      </span>
-
-      <span class="chatText">
-        Benvenuto nella chat globale!
-      </span>
-
-    </div>
-
-  </div>
+  <div id="chatMessages"></div>
 
   <div id="chatInputArea">
 
     <input
       id="chatInput"
       maxlength="180"
-      placeholder="Scrivi un messaggio..."
       autocomplete="off"
+      placeholder="Scrivi un messaggio..."
     >
 
-    <button id="chatSend">
+    <button class="action" id="chatSend">
       ➤
     </button>
 
@@ -647,70 +732,31 @@ button.alt{
   💬 Chat
 </button>
 
-<!-- =========================
-     MISSION
-========================= -->
+<!-- MENU -->
 
-<div id="mission">
-
-  🎯 <b>Missione:</b>
-  raccogli 30 particelle
-
-  <br>
-
-  Progressi:
-  <span id="missionCount">0</span>/30
-
-</div>
-
-<div id="power"></div>
-
-<!-- =========================
-     MINIMAP
-========================= -->
-
-<canvas
-  id="mini"
-  width="150"
-  height="150"
-></canvas>
-
-<!-- =========================
-     MAIN MENU
-========================= -->
-
-<div
-  id="menu"
-  class="overlay"
->
+<div id="menu" class="overlay">
 
   <div class="card">
 
-    <h1 class="logo">
-      🟢 Cell Arena
-    </h1>
+    <div class="logo">
+      <span class="logoDot"></span>
+      <h1>Cell Arena</h1>
+    </div>
 
-    <p class="subtitle">
-      Arena multiplayer arcade.
-      Cresci, dividi la cellula,
-      elimina gli avversari e scala
-      la classifica.
+    <p>
+      Entra nell'arena, raccogli particelle,
+      cresci e diventa la cellula più grande.
     </p>
 
-    <label for="name">
-      Nome
-    </label>
+    <label>Nome</label>
 
     <input
       id="name"
       maxlength="16"
       value="Player"
-      autocomplete="off"
     >
 
-    <label for="mode">
-      Modalità
-    </label>
+    <label>Modalità</label>
 
     <select id="mode">
 
@@ -728,48 +774,41 @@ button.alt{
 
     </select>
 
-    <button id="playButton">
-      🎮 GIOCA
-    </button>
+    <div class="modeInfo" id="modeInfo">
+      Modalità classica: cresci, elimina i rivali
+      e conquista la classifica.
+    </div>
 
-    <div class="infoBox">
-      🖱️ Muovi il mouse per guidare la cellula<br>
-      ␣ <b>SPACE</b> = Split<br>
-      <b>W</b> = Espelli massa<br>
-      <b>ESC</b> = Menu pausa
+    <div class="menuButtons">
+
+      <button class="action" id="playButton">
+        GIOCA
+      </button>
+
     </div>
 
   </div>
 
 </div>
 
-<!-- =========================
-     PAUSE
-========================= -->
+<!-- PAUSA -->
 
-<div
-  id="pause"
-  class="overlay hidden"
->
+<div id="pause" class="overlay hidden">
 
   <div class="card">
 
-    <h2>
-      ⏸ Partita in pausa
-    </h2>
+    <h2>⏸ Partita in pausa</h2>
 
-    <p class="subtitle">
-      La partita è stata messa in pausa.
+    <p>
+      La partita è sospesa.
+      Premi ESC per continuare.
     </p>
 
-    <button id="resumeButton">
-      ▶️ Continua
+    <button class="action" id="resumeButton">
+      ▶ Continua
     </button>
 
-    <button
-      id="pauseMenuButton"
-      class="alt"
-    >
+    <button class="action alt" id="pauseMenuButton">
       🏠 Torna al menu
     </button>
 
@@ -777,34 +816,21 @@ button.alt{
 
 </div>
 
-<!-- =========================
-     GAME OVER
-========================= -->
+<!-- GAME OVER -->
 
-<div
-  id="over"
-  class="overlay hidden"
->
+<div id="over" class="overlay hidden">
 
   <div class="card">
 
-    <h2>
-      💥 Game Over
-    </h2>
+    <h2>💥 Game Over</h2>
 
-    <p
-      id="result"
-      class="subtitle"
-    ></p>
+    <p id="result"></p>
 
-    <button id="replayButton">
+    <button class="action" id="retryButton">
       🔄 Rigioca
     </button>
 
-    <button
-      id="gameMenuButton"
-      class="alt"
-    >
+    <button class="action alt" id="overMenuButton">
       🏠 Menu principale
     </button>
 
@@ -818,69 +844,43 @@ button.alt{
    CANVAS
 ========================================================= */
 
-const canvas =
-  document.getElementById("c");
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
 
-const ctx =
-  canvas.getContext("2d");
+const mini=document.getElementById("mini");
+const mctx=mini.getContext("2d");
 
-const mini =
-  document.getElementById("mini");
-
-const mctx =
-  mini.getContext("2d");
-
-let SW = innerWidth;
-let SH = innerHeight;
-let DPR = devicePixelRatio || 1;
+let SW=innerWidth;
+let SH=innerHeight;
+let DPR=devicePixelRatio||1;
 
 function resize(){
 
-  SW = innerWidth;
-  SH = innerHeight;
+  SW=innerWidth;
+  SH=innerHeight;
+  DPR=devicePixelRatio||1;
 
-  DPR =
-    Math.min(
-      devicePixelRatio || 1,
-      2
-    );
+  canvas.width=SW*DPR;
+  canvas.height=SH*DPR;
 
-  canvas.width =
-    SW * DPR;
-
-  canvas.height =
-    SH * DPR;
-
-  canvas.style.width =
-    SW + "px";
-
-  canvas.style.height =
-    SH + "px";
+  canvas.style.width=SW+"px";
+  canvas.style.height=SH+"px";
 
   ctx.setTransform(
-    DPR,
-    0,
-    0,
-    DPR,
-    0,
-    0
+    DPR,0,0,DPR,0,0
   );
 }
 
-addEventListener(
-  "resize",
-  resize
-);
-
+addEventListener("resize",resize);
 resize();
 
 /* =========================================================
-   VARIABLES
+   CONFIG
 ========================================================= */
 
-const WORLD = 6000;
+const WORLD=6000;
 
-const COLORS = [
+const COLORS=[
   "#42d392",
   "#55a7ff",
   "#ff6680",
@@ -891,52 +891,60 @@ const COLORS = [
   "#a3e635"
 ];
 
-let foods = [];
-let bots = [];
-let cells = [];
-let particles = [];
-let powerups = [];
-let portals = [];
-let obstacles = [];
+/*
+  Movimento volutamente più lento
+  rispetto alla versione precedente.
+*/
+const PLAYER_SPEED=3.6;
+const BOT_SPEED=.95;
 
-let player = null;
+let foods=[];
+let bots=[];
+let cells=[];
+let particles=[];
+let powerups=[];
+let portals=[];
+let obstacles=[];
 
-let running = false;
-let paused = false;
+let player=null;
 
-let mode = "classic";
+let running=false;
+let paused=false;
 
-let last = 0;
-let timeAlive = 0;
+let mode="classic";
 
-let mission = 0;
-let xp = 0;
-let level = 1;
-let energy = 100;
-
-let activePower = null;
-let powerTimer = 0;
-
-let socket = null;
-let reconnectTimer = null;
-
-const mouse = {
-  x: SW / 2,
-  y: SH / 2
+let mouse={
+  x:SW/2,
+  y:SH/2
 };
 
-const cam = {
-  x: WORLD / 2,
-  y: WORLD / 2,
-  zoom: 1
+let cam={
+  x:WORLD/2,
+  y:WORLD/2,
+  zoom:1
 };
+
+let mission=0;
+let xp=0;
+let level=1;
+let energy=100;
+let timeAlive=0;
+
+let activePower=null;
+let powerTimer=0;
+
+let last=performance.now();
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
 function R(a,b){
-  return Math.random() * (b-a) + a;
+  return Math.random()*(b-a)+a;
+}
+
+function clamp(v,a,b){
+  return Math.max(a,Math.min(b,v));
 }
 
 function D(a,b){
@@ -946,18 +954,10 @@ function D(a,b){
   );
 }
 
-function clamp(v,a,b){
-  return Math.max(
-    a,
-    Math.min(b,v)
-  );
-}
-
-function randomColor(){
+function color(){
   return COLORS[
     Math.floor(
-      Math.random() *
-      COLORS.length
+      Math.random()*COLORS.length
     )
   ];
 }
@@ -990,10 +990,8 @@ function makeCell(
     y,
     r,
     mass:r*r,
-
     name,
     color:col,
-
     player:isPlayer,
 
     vx:0,
@@ -1005,26 +1003,17 @@ function makeCell(
     ),
 
     splitCooldown:0,
-    aiTimer:R(1,4)
+    aiTimer:R(.5,2)
   };
 }
 
 function makeFood(){
 
   return {
-    x:R(
-      30,
-      WORLD-30
-    ),
-
-    y:R(
-      30,
-      WORLD-30
-    ),
-
+    x:R(30,WORLD-30),
+    y:R(30,WORLD-30),
     r:R(3,7),
-
-    color:randomColor()
+    color:color()
   };
 }
 
@@ -1034,76 +1023,64 @@ function makeFood(){
 
 function reset(){
 
-  foods = [];
-  bots = [];
-  cells = [];
-  particles = [];
-  powerups = [];
-  portals = [];
-  obstacles = [];
+  foods=[];
+  bots=[];
+  cells=[];
+  particles=[];
+  powerups=[];
+  portals=[];
+  obstacles=[];
 
-  xp = 0;
-  level = 1;
-  mission = 0;
-  energy = 100;
+  xp=0;
+  level=1;
+  mission=0;
+  energy=100;
+  timeAlive=0;
 
-  timeAlive = 0;
+  activePower=null;
+  powerTimer=0;
 
-  activePower = null;
-  powerTimer = 0;
-
-  for(
-    let i=0;
-    i<850;
-    i++
-  ){
-    foods.push(
-      makeFood()
-    );
+  for(let i=0;i<850;i++){
+    foods.push(makeFood());
   }
 
-  const name =
-    document.getElementById(
-      "name"
-    ).value.trim()
-    || "Player";
+  const name=
+    document.getElementById("name")
+      .value
+      .trim()
+      .slice(0,16)
+      ||"Player";
 
-  player =
-    makeCell(
-      WORLD/2,
-      WORLD/2,
-      25,
-      name,
-      "#42d392",
-      true
-    );
+  player=makeCell(
+    WORLD/2,
+    WORLD/2,
+    25,
+    name,
+    "#42d392",
+    true
+  );
 
   cells.push(player);
 
-  for(
-    let i=0;
-    i<24;
-    i++
-  ){
+  /*
+    Bot più numerosi ma più lenti.
+  */
 
-    const b =
-      makeCell(
-        R(100,WORLD-100),
-        R(100,WORLD-100),
-        R(18,58),
-        "Bot " + (i+1),
-        randomColor()
-      );
+  for(let i=0;i<30;i++){
+
+    const b=makeCell(
+      R(150,WORLD-150),
+      R(150,WORLD-150),
+      R(18,58),
+      "Bot "+(i+1),
+      color()
+    );
 
     bots.push(b);
     cells.push(b);
   }
 
-  for(
-    let i=0;
-    i<45;
-    i++
-  ){
+  for(let i=0;i<45;i++){
 
     obstacles.push({
       x:R(150,WORLD-150),
@@ -1112,11 +1089,7 @@ function reset(){
     });
   }
 
-  for(
-    let i=0;
-    i<6;
-    i++
-  ){
+  for(let i=0;i<7;i++){
 
     portals.push({
       x:R(300,WORLD-300),
@@ -1126,29 +1099,23 @@ function reset(){
     });
   }
 
-  for(
-    let i=0;
-    i<14;
-    i++
-  ){
+  const types=[
+    "speed",
+    "shield",
+    "magnet",
+    "mass",
+    "freeze"
+  ];
+
+  for(let i=0;i<15;i++){
 
     powerups.push({
       x:R(100,WORLD-100),
       y:R(100,WORLD-100),
-
-      type:[
-        "speed",
-        "shield",
-        "magnet",
-        "mass",
-        "freeze"
-      ][i%5],
-
+      type:types[i%types.length],
       r:14
     });
   }
-
-  updateProfileName(name);
 }
 
 /* =========================================================
@@ -1157,10 +1124,8 @@ function reset(){
 
 function startGame(){
 
-  mode =
-    document.getElementById(
-      "mode"
-    ).value;
+  mode=
+    document.getElementById("mode").value;
 
   reset();
 
@@ -1176,52 +1141,15 @@ function startGame(){
     .getElementById("pause")
     .classList.add("hidden");
 
-  paused = false;
-  running = true;
+  running=true;
+  paused=false;
+
+  updateUserName();
 
   connectSocket();
 
-  last =
-    performance.now();
+  last=performance.now();
 }
-
-function returnToMenu(){
-
-  paused = false;
-  running = false;
-
-  document
-    .getElementById("pause")
-    .classList.add("hidden");
-
-  document
-    .getElementById("over")
-    .classList.add("hidden");
-
-  document
-    .getElementById("menu")
-    .classList.remove("hidden");
-}
-
-function togglePause(){
-
-  if(!running){
-    return;
-  }
-
-  paused = !paused;
-
-  document
-    .getElementById("pause")
-    .classList.toggle(
-      "hidden",
-      !paused
-    );
-}
-
-/* =========================================================
-   BUTTONS
-========================================================= */
 
 document
   .getElementById("playButton")
@@ -1230,43 +1158,43 @@ document
     startGame
   );
 
-document
-  .getElementById("resumeButton")
-  .addEventListener(
-    "click",
-    togglePause
-  );
+/* =========================================================
+   MODE DESCRIPTION
+========================================================= */
+
+const modeInfo={
+  classic:
+    "Modalità classica: cresci, elimina i rivali e conquista la classifica.",
+
+  survival:
+    "Sopravvivenza: i bot diventano progressivamente più grandi.",
+
+  chaos:
+    "Chaos: movimento e IA più imprevedibili."
+};
 
 document
-  .getElementById("pauseMenuButton")
+  .getElementById("mode")
   .addEventListener(
-    "click",
-    returnToMenu
-  );
-
-document
-  .getElementById("replayButton")
-  .addEventListener(
-    "click",
-    startGame
-  );
-
-document
-  .getElementById("gameMenuButton")
-  .addEventListener(
-    "click",
-    returnToMenu
+    "change",
+    e=>{
+      document.getElementById(
+        "modeInfo"
+      ).textContent=
+        modeInfo[e.target.value];
+    }
   );
 
 /* =========================================================
-   MOUSE / TOUCH
+   MOUSE
 ========================================================= */
 
 addEventListener(
   "mousemove",
   e=>{
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
+
+    mouse.x=e.clientX;
+    mouse.y=e.clientY;
 
     sendMove();
   }
@@ -1276,122 +1204,17 @@ addEventListener(
   "touchmove",
   e=>{
 
-    if(e.touches[0]){
+    const t=e.touches[0];
 
-      mouse.x =
-        e.touches[0].clientX;
+    if(!t)return;
 
-      mouse.y =
-        e.touches[0].clientY;
+    mouse.x=t.clientX;
+    mouse.y=t.clientY;
 
-      sendMove();
-    }
+    sendMove();
 
   },
-  {
-    passive:true
-  }
-);
-
-/* =========================================================
-   KEYBOARD
-========================================================= */
-
-addEventListener(
-  "keydown",
-  e=>{
-
-    const chatInput =
-      document.getElementById(
-        "chatInput"
-      );
-
-    const userInput =
-      document.getElementById(
-        "userNameInput"
-      );
-
-    if(
-      e.target === chatInput ||
-      e.target === userInput
-    ){
-
-      if(
-        e.code === "Escape" &&
-        e.target === userInput
-      ){
-
-        closeUserMenu();
-      }
-
-      return;
-    }
-
-    if(e.code === "Escape"){
-
-      e.preventDefault();
-
-      const userMenu =
-        document.getElementById(
-          "userMenu"
-        );
-
-      if(
-        !userMenu.classList.contains(
-          "hidden"
-        )
-      ){
-
-        closeUserMenu();
-
-        return;
-      }
-
-      if(
-        !document
-          .getElementById("menu")
-          .classList.contains("hidden")
-      ){
-        return;
-      }
-
-      if(
-        !document
-          .getElementById("over")
-          .classList.contains("hidden")
-      ){
-        return;
-      }
-
-      togglePause();
-
-      return;
-    }
-
-    if(!running || paused){
-      return;
-    }
-
-    if(e.code === "Space"){
-
-      e.preventDefault();
-
-      split();
-
-      sendAction("split");
-
-      return;
-    }
-
-    if(e.code === "KeyW"){
-
-      eject();
-
-      sendAction("eject");
-
-      return;
-    }
-  }
+  {passive:true}
 );
 
 /* =========================================================
@@ -1403,95 +1226,84 @@ function worldMouse(){
   return {
 
     x:
-      (mouse.x - SW/2) /
-      cam.zoom +
+      (mouse.x-SW/2)/
+      cam.zoom+
       cam.x,
 
     y:
-      (mouse.y - SH/2) /
-      cam.zoom +
+      (mouse.y-SH/2)/
+      cam.zoom+
       cam.y
+
   };
 }
 
 /* =========================================================
-   MOVEMENT
+   SPEED
 ========================================================= */
 
-function speed(c){
+function cellSpeed(c){
 
-  let s =
-    4.2 *
+  let s=
+    PLAYER_SPEED*
     Math.pow(
-      25 /
-      Math.max(c.r,1),
-      .43
+      25/Math.max(c.r,1),
+      .38
     );
 
-  if(
-    c === player &&
-    activePower === "speed"
-  ){
-    s *= 1.65;
+  if(c===player && activePower==="speed"){
+    s*=1.55;
   }
 
-  if(mode === "chaos"){
-    s *= 1.08;
+  if(mode==="chaos"){
+    s*=1.06;
+  }
+
+  if(c!==player){
+    s*=.8;
   }
 
   return clamp(
     s,
-    .45,
-    5.2
+    .35,
+    4.7
   );
 }
 
+/* =========================================================
+   PLAYER MOVEMENT
+========================================================= */
+
 function movePlayer(){
 
-  if(!player){
-    return;
+  if(!player)return;
+
+  const t=worldMouse();
+
+  const dx=t.x-player.x;
+  const dy=t.y-player.y;
+
+  const d=Math.hypot(dx,dy);
+
+  if(d>2){
+
+    const s=cellSpeed(player);
+
+    player.x+=dx/d*s;
+    player.y+=dy/d*s;
   }
 
-  const t =
-    worldMouse();
+  player.x=clamp(
+    player.x,
+    player.r,
+    WORLD-player.r
+  );
 
-  const dx =
-    t.x - player.x;
-
-  const dy =
-    t.y - player.y;
-
-  const d =
-    Math.hypot(
-      dx,
-      dy
-    );
-
-  if(d > 2){
-
-    const s =
-      speed(player);
-
-    player.x +=
-      dx/d*s;
-
-    player.y +=
-      dy/d*s;
-  }
-
-  player.x =
-    clamp(
-      player.x,
-      player.r,
-      WORLD-player.r
-    );
-
-  player.y =
-    clamp(
-      player.y,
-      player.r,
-      WORLD-player.r
-    );
+  player.y=clamp(
+    player.y,
+    player.r,
+    WORLD-player.r
+  );
 }
 
 /* =========================================================
@@ -1504,68 +1316,64 @@ function split(){
     !running ||
     paused ||
     !player ||
-    player.splitCooldown > 0 ||
-    player.r < 25
+    player.splitCooldown>0 ||
+    player.r<25 ||
+    cells.filter(c=>c.player).length>=16
   ){
     return;
   }
 
-  const amount =
-    player.mass * .35;
+  const amount=
+    player.mass*.35;
 
-  player.mass -= amount;
+  player.mass-=amount;
 
-  player.r =
-    Math.sqrt(
-      player.mass
-    );
+  player.r=
+    Math.sqrt(player.mass);
 
-  const t =
-    worldMouse();
+  const t=worldMouse();
 
-  const a =
+  const a=
     Math.atan2(
       t.y-player.y,
       t.x-player.x
     );
 
-  const child =
-    makeCell(
-      player.x +
-        Math.cos(a) *
-        player.r *
-        1.8,
+  const child=makeCell(
+    player.x+
+      Math.cos(a)*
+      player.r*1.8,
 
-      player.y +
-        Math.sin(a) *
-        player.r *
-        1.8,
+    player.y+
+      Math.sin(a)*
+      player.r*1.8,
 
-      Math.sqrt(amount),
+    Math.sqrt(amount),
+    player.name,
+    player.color,
+    true
+  );
 
-      player.name,
-      player.color,
-      true
-    );
+  child.vx=
+    Math.cos(a)*7;
 
-  child.vx =
-    Math.cos(a)*11;
+  child.vy=
+    Math.sin(a)*7;
 
-  child.vy =
-    Math.sin(a)*11;
-
-  child.splitCooldown = 2;
+  child.splitCooldown=1.5;
 
   cells.push(child);
 
-  player.splitCooldown = 2;
+  player.splitCooldown=1.5;
 
   burst(
     player.x,
     player.y,
     "#fff",
-    12
+    15
   );
+
+  sendAction("split");
 }
 
 /* =========================================================
@@ -1576,25 +1384,27 @@ function eject(){
 
   if(
     !player ||
-    player.mass < 30 ||
-    energy < 8
+    player.mass<30 ||
+    energy<8
   ){
     return;
   }
 
-  energy -= 8;
+  energy-=8;
 
-  player.mass -= 6;
+  player.mass-=6;
 
-  player.r =
+  player.r=
     Math.sqrt(
-      player.mass
+      Math.max(
+        16,
+        player.mass
+      )
     );
 
-  const t =
-    worldMouse();
+  const t=worldMouse();
 
-  const a =
+  const a=
     Math.atan2(
       t.y-player.y,
       t.x-player.x
@@ -1603,23 +1413,24 @@ function eject(){
   foods.push({
 
     x:
-      player.x +
-      Math.cos(a) *
-      player.r,
+      player.x+
+      Math.cos(a)*
+      player.r*1.2,
 
     y:
-      player.y +
-      Math.sin(a) *
-      player.r,
+      player.y+
+      Math.sin(a)*
+      player.r*1.2,
 
     r:8,
-
     color:"#8affc9"
   });
+
+  sendAction("eject");
 }
 
 /* =========================================================
-   PLAYER CELLS
+   PLAYER SPLIT CELLS
 ========================================================= */
 
 function updatePlayerCells(){
@@ -1630,115 +1441,99 @@ function updatePlayerCells(){
     )
   ){
 
-    if(c === player){
+    if(c===player){
       continue;
     }
 
-    c.x += c.vx;
-    c.y += c.vy;
+    c.x+=c.vx;
+    c.y+=c.vy;
 
-    c.vx *= .91;
-    c.vy *= .91;
+    c.vx*=.91;
+    c.vy*=.91;
 
-    c.x =
-      clamp(
-        c.x,
-        c.r,
-        WORLD-c.r
-      );
+    c.x=clamp(
+      c.x,
+      c.r,
+      WORLD-c.r
+    );
 
-    c.y =
-      clamp(
-        c.y,
-        c.r,
-        WORLD-c.r
-      );
+    c.y=clamp(
+      c.y,
+      c.r,
+      WORLD-c.r
+    );
 
-    if(
-      c.splitCooldown > 0
-    ){
-      c.splitCooldown -= .016;
+    if(c.splitCooldown>0){
+      c.splitCooldown-=.016;
     }
   }
 
-  movePlayer();
+  if(player){
+    movePlayer();
 
-  if(
-    player &&
-    player.splitCooldown > 0
-  ){
-    player.splitCooldown -= .016;
+    if(player.splitCooldown>0){
+      player.splitCooldown-=.016;
+    }
   }
 }
 
 /* =========================================================
-   BOTS
+   BOT AI
 ========================================================= */
 
 function updateBots(dt){
 
   for(const b of bots){
 
-    b.aiTimer -= dt;
+    b.aiTimer-=dt;
 
-    if(
-      b.aiTimer <= 0
-    ){
+    if(b.aiTimer<=0){
 
-      b.aiTimer =
-        R(.7,3);
+      b.aiTimer=R(.8,2.5);
 
-      b.angle +=
-        R(-1.7,1.7);
+      b.angle+=R(-1.2,1.2);
     }
 
-    let nearest = null;
-    let best = Infinity;
+    let nearest=null;
+    let best=Infinity;
 
-    for(
-      const f of foods
-    ){
+    for(const f of foods){
 
-      const q =
-        (f.x-b.x)**2 +
+      const q=
+        (f.x-b.x)**2+
         (f.y-b.y)**2;
 
       if(
-        q < best &&
-        q < 650*650
+        q<best &&
+        q<700*700
       ){
 
-        best = q;
-        nearest = f;
+        best=q;
+        nearest=f;
       }
     }
 
     if(nearest){
 
-      b.angle =
+      b.angle=
         Math.atan2(
           nearest.y-b.y,
           nearest.x-b.x
         );
     }
 
-    for(
-      const c of cells
-    ){
+    for(const c of cells){
 
-      if(c === b){
-        continue;
-      }
+      if(c===b)continue;
 
-      const d =
-        D(b,c);
+      const d=D(b,c);
 
       if(
-        d < 350 &&
-        c.r > b.r*1.35
+        d<350 &&
+        c.r>b.r*1.35
       ){
 
-        b.angle =
+        b.angle=
           Math.atan2(
             b.y-c.y,
             b.x-c.x
@@ -1746,44 +1541,41 @@ function updateBots(dt){
       }
     }
 
-    const s =
-      speed(b)*.72;
+    let s=cellSpeed(b);
 
-    b.x +=
+    s*=.8;
+
+    b.x+=
       Math.cos(b.angle)*s;
 
-    b.y +=
+    b.y+=
       Math.sin(b.angle)*s;
 
     if(
-      b.x < b.r ||
-      b.x > WORLD-b.r
+      b.x<b.r ||
+      b.x>WORLD-b.r
     ){
-      b.angle =
-        Math.PI-b.angle;
+      b.angle=Math.PI-b.angle;
     }
 
     if(
-      b.y < b.r ||
-      b.y > WORLD-b.r
+      b.y<b.r ||
+      b.y>WORLD-b.r
     ){
-      b.angle =
-        -b.angle;
+      b.angle=-b.angle;
     }
 
-    b.x =
-      clamp(
-        b.x,
-        b.r,
-        WORLD-b.r
-      );
+    b.x=clamp(
+      b.x,
+      b.r,
+      WORLD-b.r
+    );
 
-    b.y =
-      clamp(
-        b.y,
-        b.r,
-        WORLD-b.r
-      );
+    b.y=clamp(
+      b.y,
+      b.r,
+      WORLD-b.r
+    );
   }
 }
 
@@ -1799,34 +1591,26 @@ function eatFood(c){
     i--
   ){
 
-    const f =
-      foods[i];
+    const f=foods[i];
 
     if(
-      D(c,f) <
+      D(c,f)<
       c.r+f.r
     ){
 
-      c.mass += 1;
+      c.mass+=1;
 
-      c.r =
-        Math.sqrt(
-          c.mass
-        );
+      c.r=
+        Math.sqrt(c.mass);
 
-      foods.splice(
-        i,
-        1
-      );
-
-      foods.push(
-        makeFood()
-      );
+      foods.splice(i,1);
+      foods.push(makeFood());
 
       if(c.player){
 
-        xp++;
         mission++;
+
+        gainXP(1);
 
         burst(
           f.x,
@@ -1835,16 +1619,12 @@ function eatFood(c){
           4
         );
 
-        if(
-          mission >= 30
-        ){
+        if(mission>=30){
 
-          mission = 0;
+          mission=0;
 
           gainXP(15);
         }
-
-        gainXP(1);
       }
     }
   }
@@ -1856,22 +1636,25 @@ function eatFood(c){
 
 function gainXP(n){
 
-  xp += n;
+  xp+=n;
 
   while(
-    xp >= level*50
+    xp>=level*50
   ){
 
-    xp -= level*50;
+    xp-=level*50;
 
     level++;
 
-    burst(
-      player.x,
-      player.y,
-      "#ffe66d",
-      25
-    );
+    if(player){
+
+      burst(
+        player.x,
+        player.y,
+        "#ffe66d",
+        25
+      );
+    }
   }
 }
 
@@ -1887,8 +1670,7 @@ function collisions(){
     i++
   ){
 
-    const a =
-      cells[i];
+    const a=cells[i];
 
     for(
       let j=i+1;
@@ -1896,107 +1678,74 @@ function collisions(){
       j++
     ){
 
-      const b =
-        cells[j];
+      const b=cells[j];
+
+      if(!a||!b||a===b){
+        continue;
+      }
+
+      const d=D(a,b);
 
       if(
-        !a ||
-        !b ||
-        a === b
+        d>
+        Math.max(a.r,b.r)*.78
       ){
         continue;
       }
 
-      const d =
-        D(a,b);
+      const big=
+        a.r>b.r?a:b;
+
+      const small=
+        big===a?b:a;
 
       if(
-        d >
-        Math.max(
-          a.r,
-          b.r
-        )*.78
+        big.r<=small.r*1.12
       ){
         continue;
       }
 
-      const big =
-        a.r > b.r
-          ? a
-          : b;
-
-      const small =
-        big === a
-          ? b
-          : a;
-
-      if(
-        big.r <=
-        small.r*1.12
-      ){
-        continue;
-      }
-
-      big.mass +=
+      big.mass+=
         small.mass*.82;
 
-      big.r =
-        Math.sqrt(
-          big.mass
-        );
+      big.r=
+        Math.sqrt(big.mass);
 
       if(small.player){
 
-        if(
-          activePower ===
-          "shield"
-        ){
+        if(activePower==="shield"){
 
-          activePower = null;
+          activePower=null;
+          powerTimer=0;
 
         }else{
 
           gameOver();
-
           return;
         }
       }
 
-      const index =
-        cells.indexOf(
-          small
-        );
+      const index=
+        cells.indexOf(small);
 
-      if(index >= 0){
-
-        cells.splice(
-          index,
-          1
-        );
+      if(index>=0){
+        cells.splice(index,1);
       }
 
-      if(
-        bots.includes(
-          small
-        )
-      ){
+      if(bots.includes(small)){
 
         bots.splice(
-          bots.indexOf(
-            small
-          ),
+          bots.indexOf(small),
           1
         );
 
-        const nb =
-          makeCell(
-            R(100,WORLD-100),
-            R(100,WORLD-100),
-            R(18,58),
-            "Bot " +
-            ((Math.random()*999)|0),
-            randomColor()
-          );
+        const nb=makeCell(
+          R(100,WORLD-100),
+          R(100,WORLD-100),
+          R(18,58),
+          "Bot "+Math.floor(R(10,999)),
+          color()
+        );
 
         bots.push(nb);
         cells.push(nb);
@@ -2005,6 +1754,8 @@ function collisions(){
       if(big.player){
         gainXP(20);
       }
+
+      shake=8;
     }
   }
 }
@@ -2021,131 +1772,114 @@ function powerCheck(){
     i--
   ){
 
-    const p =
-      powerups[i];
+    const p=powerups[i];
 
-    if(
-      player &&
-      D(player,p) <
-      player.r+p.r
+    for(
+      const c of cells.filter(
+        x=>x.player
+      )
     ){
 
-      activePower =
-        p.type;
+      if(
+        D(c,p)<
+        c.r+p.r
+      ){
 
-      powerTimer = 8;
+        activePower=p.type;
+        powerTimer=8;
 
-      powerups.splice(
-        i,
-        1
-      );
+        powerups.splice(i,1);
 
-      burst(
-        p.x,
-        p.y,
-        "#fff",
-        20
-      );
+        burst(
+          p.x,
+          p.y,
+          "#ffe66d",
+          20
+        );
 
-      setTimeout(
-        ()=>{
+        setTimeout(()=>{
+
+          const types=[
+            "speed",
+            "shield",
+            "magnet",
+            "mass",
+            "freeze"
+          ];
 
           powerups.push({
 
-            x:R(
-              100,
-              WORLD-100
-            ),
+            x:R(100,WORLD-100),
+            y:R(100,WORLD-100),
 
-            y:R(
-              100,
-              WORLD-100
-            ),
-
-            type:[
-              "speed",
-              "shield",
-              "magnet",
-              "mass",
-              "freeze"
-            ][
-              Math.floor(
-                Math.random()*5
-              )
-            ],
+            type:
+              types[
+                Math.floor(
+                  Math.random()*types.length
+                )
+              ],
 
             r:14
+
           });
 
-        },
-        5000
-      );
+        },5000);
+
+        break;
+      }
     }
   }
 }
 
 function applyPower(dt){
 
-  if(!activePower){
-    return;
+  if(!activePower)return;
+
+  if(activePower==="mass"){
+
+    player.mass+=.35*dt*60;
+
+    player.r=
+      Math.sqrt(player.mass);
   }
 
-  if(
-    activePower === "mass"
-  ){
+  if(activePower==="magnet"){
 
-    player.mass +=
-      .35 * dt * 60;
+    for(const f of foods){
 
-    player.r =
-      Math.sqrt(
-        player.mass
-      );
-  }
+      const d=D(player,f);
 
-  if(
-    activePower === "magnet"
-  ){
+      if(d<450){
 
-    for(
-      const f of foods
-    ){
-
-      const d =
-        D(player,f);
-
-      if(d < 450){
-
-        f.x +=
-          (player.x-f.x) /
-          Math.max(d,1) *
+        f.x+=
+          (player.x-f.x)/
+          Math.max(d,1)*
           2.5;
 
-        f.y +=
-          (player.y-f.y) /
-          Math.max(d,1) *
+        f.y+=
+          (player.y-f.y)/
+          Math.max(d,1)*
           2.5;
       }
     }
   }
 
-  if(
-    activePower === "freeze"
-  ){
+  if(activePower==="freeze"){
 
-    for(
-      const b of bots
-    ){
-      b.aiTimer = 1;
+    for(const b of bots){
+      b.aiTimer=Math.max(
+        b.aiTimer,
+        1
+      );
     }
   }
 
-  powerTimer -= dt;
+  powerTimer-=dt;
 
-  if(
-    powerTimer <= 0
-  ){
-    activePower = null;
+  if(powerTimer<=0){
+
+    activePower=null;
+    powerTimer=0;
   }
 }
 
@@ -2155,32 +1889,28 @@ function applyPower(dt){
 
 function portalsUpdate(){
 
-  for(
-    const p of portals
-  ){
+  for(const p of portals){
 
-    for(
-      const c of cells
-    ){
+    for(const c of cells){
 
       if(
-        D(c,p) <
+        D(c,p)<
         c.r+p.r
       ){
 
-        const q =
+        const q=
           portals.find(
-            x=>x !== p
+            x=>x!==p
           );
 
         if(q){
 
-          c.x =
-            q.x +
+          c.x=
+            q.x+
             R(-20,20);
 
-          c.y =
-            q.y +
+          c.y=
+            q.y+
             R(-20,20);
 
           burst(
@@ -2201,45 +1931,29 @@ function portalsUpdate(){
 
 function obstaclePhysics(){
 
-  for(
-    const c of cells
-  ){
+  for(const c of cells){
 
-    for(
-      const o of obstacles
-    ){
+    for(const o of obstacles){
 
-      let dx =
-        c.x-o.x;
+      let dx=c.x-o.x;
+      let dy=c.y-o.y;
 
-      let dy =
-        c.y-o.y;
+      let d=Math.hypot(dx,dy);
 
-      let d =
-        Math.hypot(
-          dx,
-          dy
-        );
+      const min=c.r+o.r;
 
-      const min =
-        c.r+o.r;
+      if(d<min){
 
-      if(
-        d < min
-      ){
+        if(d<1)d=1;
 
-        if(d < 1){
-          d = 1;
-        }
-
-        c.x =
-          o.x +
-          dx/d *
+        c.x=
+          o.x+
+          dx/d*
           min;
 
-        c.y =
-          o.y +
-          dy/d *
+        c.y=
+          o.y+
+          dy/d*
           min;
       }
     }
@@ -2249,6 +1963,8 @@ function obstaclePhysics(){
 /* =========================================================
    PARTICLES
 ========================================================= */
+
+let shake=0;
 
 function burst(
   x,
@@ -2288,28 +2004,23 @@ function updateParticles(dt){
     i--
   ){
 
-    const p =
-      particles[i];
+    const p=particles[i];
 
-    p.x +=
-      p.vx;
+    p.x+=p.vx;
+    p.y+=p.vy;
 
-    p.y +=
-      p.vy;
+    p.vx*=.97;
+    p.vy*=.97;
 
-    p.vx *= .97;
-    p.vy *= .97;
+    p.life-=dt;
 
-    p.life -= dt;
-
-    if(
-      p.life <= 0
-    ){
-      particles.splice(
-        i,
-        1
-      );
+    if(p.life<=0){
+      particles.splice(i,1);
     }
+  }
+
+  if(shake>0){
+    shake*=.85;
   }
 }
 
@@ -2319,29 +2030,26 @@ function updateParticles(dt){
 
 function cameraUpdate(){
 
-  if(!player){
-    return;
-  }
+  if(!player)return;
 
-  cam.x +=
-    (player.x-cam.x)*.08;
+  cam.x+=
+    (player.x-cam.x)*
+    .055;
 
-  cam.y +=
-    (player.y-cam.y)*.08;
+  cam.y+=
+    (player.y-cam.y)*
+    .055;
 
-  const z =
+  const z=
     clamp(
-      40 /
-      Math.max(
-        player.r,
-        1
-      ),
+      40/player.r,
       .45,
       1.15
     );
 
-  cam.zoom +=
-    (z-cam.zoom)*.04;
+  cam.zoom+=
+    (z-cam.zoom)*
+    .025;
 }
 
 function toScreen(x,y){
@@ -2349,14 +2057,15 @@ function toScreen(x,y){
   return {
 
     x:
-      (x-cam.x) *
-      cam.zoom +
+      (x-cam.x)*
+      cam.zoom+
       SW/2,
 
     y:
-      (y-cam.y) *
-      cam.zoom +
+      (y-cam.y)*
+      cam.zoom+
       SH/2
+
   };
 }
 
@@ -2373,8 +2082,7 @@ function draw(){
     SH
   );
 
-  ctx.fillStyle =
-    "#07101d";
+  ctx.fillStyle="#050914";
 
   ctx.fillRect(
     0,
@@ -2385,107 +2093,72 @@ function draw(){
 
   ctx.save();
 
-  const left =
-    cam.x -
-    SW/2/
-    cam.zoom;
+  if(shake>0){
 
-  const top =
-    cam.y -
-    SH/2/
-    cam.zoom;
+    ctx.translate(
+      R(-shake,shake),
+      R(-shake,shake)
+    );
+  }
 
-  ctx.strokeStyle =
-    "#ffffff08";
+  const left=
+    cam.x-
+    SW/2/cam.zoom;
 
-  ctx.lineWidth = 1;
+  const top=
+    cam.y-
+    SH/2/cam.zoom;
+
+  /* GRID */
+
+  ctx.strokeStyle="#ffffff07";
+  ctx.lineWidth=1;
 
   for(
-    let x=
-      Math.floor(
-        left/100
-      )*100;
+    let x=Math.floor(left/100)*100;
 
-    x <
-      left+
-      SW/cam.zoom+
-      100;
+    x<
+    left+
+    SW/cam.zoom+
+    100;
 
     x+=100
   ){
 
-    const p =
-      toScreen(
-        x,
-        0
-      );
+    const p=toScreen(x,0);
 
     ctx.beginPath();
-
-    ctx.moveTo(
-      p.x,
-      0
-    );
-
-    ctx.lineTo(
-      p.x,
-      SH
-    );
-
+    ctx.moveTo(p.x,0);
+    ctx.lineTo(p.x,SH);
     ctx.stroke();
   }
 
   for(
-    let y=
-      Math.floor(
-        top/100
-      )*100;
+    let y=Math.floor(top/100)*100;
 
-    y <
-      top+
-      SH/cam.zoom+
-      100;
+    y<
+    top+
+    SH/cam.zoom+
+    100;
 
     y+=100
   ){
 
-    const p =
-      toScreen(
-        0,
-        y
-      );
+    const p=toScreen(0,y);
 
     ctx.beginPath();
-
-    ctx.moveTo(
-      0,
-      p.y
-    );
-
-    ctx.lineTo(
-      SW,
-      p.y
-    );
-
+    ctx.moveTo(0,p.y);
+    ctx.lineTo(SW,p.y);
     ctx.stroke();
   }
 
-  const a =
-    toScreen(
-      0,
-      0
-    );
+  /* WORLD BORDER */
 
-  const b =
-    toScreen(
-      WORLD,
-      WORLD
-    );
+  const a=toScreen(0,0);
+  const b=toScreen(WORLD,WORLD);
 
-  ctx.strokeStyle =
-    "#42d39255";
-
-  ctx.lineWidth = 5;
+  ctx.strokeStyle="#42d39255";
+  ctx.lineWidth=5;
 
   ctx.strokeRect(
     a.x,
@@ -2494,17 +2167,14 @@ function draw(){
     b.y-a.y
   );
 
-  /* obstacles */
+  /* OBSTACLES */
 
-  for(
-    const o of obstacles
-  ){
+  for(const o of obstacles){
 
-    const p =
-      toScreen(
-        o.x,
-        o.y
-      );
+    const p=toScreen(
+      o.x,
+      o.y
+    );
 
     ctx.beginPath();
 
@@ -2516,28 +2186,21 @@ function draw(){
       Math.PI*2
     );
 
-    ctx.fillStyle =
-      "#26354c";
-
+    ctx.fillStyle="#17263b";
     ctx.fill();
 
-    ctx.strokeStyle =
-      "#ffffff15";
-
+    ctx.strokeStyle="#ffffff13";
     ctx.stroke();
   }
 
-  /* portals */
+  /* PORTALS */
 
-  for(
-    const p of portals
-  ){
+  for(const p of portals){
 
-    const q =
-      toScreen(
-        p.x,
-        p.y
-      );
+    const q=toScreen(
+      p.x,
+      p.y
+    );
 
     ctx.beginPath();
 
@@ -2549,32 +2212,25 @@ function draw(){
       Math.PI*2
     );
 
-    ctx.strokeStyle =
-      "#8b7cff";
+    ctx.strokeStyle="#8b7cff";
+    ctx.lineWidth=4;
 
-    ctx.lineWidth = 4;
-
-    ctx.shadowBlur = 15;
-
-    ctx.shadowColor =
-      "#8b7cff";
+    ctx.shadowBlur=18;
+    ctx.shadowColor="#8b7cff";
 
     ctx.stroke();
 
-    ctx.shadowBlur = 0;
+    ctx.shadowBlur=0;
   }
 
-  /* food */
+  /* FOOD */
 
-  for(
-    const f of foods
-  ){
+  for(const f of foods){
 
-    const p =
-      toScreen(
-        f.x,
-        f.y
-      );
+    const p=toScreen(
+      f.x,
+      f.y
+    );
 
     ctx.beginPath();
 
@@ -2586,23 +2242,18 @@ function draw(){
       Math.PI*2
     );
 
-    ctx.fillStyle =
-      f.color;
-
+    ctx.fillStyle=f.color;
     ctx.fill();
   }
 
-  /* powerups */
+  /* POWERUPS */
 
-  for(
-    const p of powerups
-  ){
+  for(const p of powerups){
 
-    const q =
-      toScreen(
-        p.x,
-        p.y
-      );
+    const q=toScreen(
+      p.x,
+      p.y
+    );
 
     ctx.beginPath();
 
@@ -2614,53 +2265,43 @@ function draw(){
       Math.PI*2
     );
 
-    ctx.fillStyle =
-      "#ffe66d";
+    ctx.fillStyle="#ffe66d";
 
-    ctx.shadowBlur = 14;
-
-    ctx.shadowColor =
-      "#ffe66d";
+    ctx.shadowBlur=16;
+    ctx.shadowColor="#ffe66d";
 
     ctx.fill();
 
-    ctx.shadowBlur = 0;
+    ctx.shadowBlur=0;
 
-    ctx.fillStyle =
-      "#111";
+    ctx.fillStyle="#111";
 
-    ctx.font =
-      "bold 11px Arial";
-
-    ctx.textAlign =
-      "center";
+    ctx.font="bold 10px Arial";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
 
     ctx.fillText(
       p.type[0].toUpperCase(),
       q.x,
-      q.y+4
+      q.y
     );
   }
 
-  /* cells */
+  /* CELLS */
 
-  const ordered =
+  const ordered=
     [...cells].sort(
       (a,b)=>a.r-b.r
     );
 
-  for(
-    const c of ordered
-  ){
+  for(const c of ordered){
 
-    const p =
-      toScreen(
-        c.x,
-        c.y
-      );
+    const p=toScreen(
+      c.x,
+      c.y
+    );
 
-    const r =
-      c.r*cam.zoom;
+    const r=c.r*cam.zoom;
 
     ctx.beginPath();
 
@@ -2672,10 +2313,10 @@ function draw(){
       Math.PI*2
     );
 
-    ctx.fillStyle =
-      c.color;
-
+    ctx.fillStyle=c.color;
     ctx.fill();
+
+    /* shine */
 
     ctx.beginPath();
 
@@ -2687,15 +2328,14 @@ function draw(){
       Math.PI*2
     );
 
-    ctx.fillStyle =
-      "#ffffff22";
-
+    ctx.fillStyle="#ffffff22";
     ctx.fill();
+
+    /* shield */
 
     if(
       c.player &&
-      activePower ===
-      "shield"
+      activePower==="shield"
     ){
 
       ctx.beginPath();
@@ -2703,37 +2343,34 @@ function draw(){
       ctx.arc(
         p.x,
         p.y,
-        r+6,
+        r+7,
         0,
         Math.PI*2
       );
 
-      ctx.strokeStyle =
-        "#6df";
+      ctx.strokeStyle="#65ddff";
+      ctx.lineWidth=3;
 
-      ctx.lineWidth = 3;
+      ctx.shadowBlur=12;
+      ctx.shadowColor="#65ddff";
 
       ctx.stroke();
+
+      ctx.shadowBlur=0;
     }
 
-    if(r > 18){
+    if(r>18){
 
-      ctx.fillStyle =
-        "#fff";
+      ctx.fillStyle="#fff";
 
-      ctx.textAlign =
-        "center";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
 
-      ctx.textBaseline =
-        "middle";
-
-      ctx.font =
-        `bold ${
-          Math.max(
-            10,
-            r*.24
-          )
-        }px Arial`;
+      ctx.font=
+        `bold ${Math.max(
+          10,
+          r*.24
+        )}px Arial`;
 
       ctx.fillText(
         c.name,
@@ -2743,19 +2380,16 @@ function draw(){
     }
   }
 
-  /* particles */
+  /* PARTICLES */
 
-  for(
-    const p of particles
-  ){
+  for(const p of particles){
 
-    const q =
-      toScreen(
-        p.x,
-        p.y
-      );
+    const q=toScreen(
+      p.x,
+      p.y
+    );
 
-    ctx.globalAlpha =
+    ctx.globalAlpha=
       Math.max(
         0,
         p.life
@@ -2771,13 +2405,11 @@ function draw(){
       Math.PI*2
     );
 
-    ctx.fillStyle =
-      p.color;
-
+    ctx.fillStyle=p.color;
     ctx.fill();
   }
 
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha=1;
 
   ctx.restore();
 
@@ -2790,34 +2422,28 @@ function draw(){
 
 function drawMini(){
 
-  const size = 150;
-
-  const scale =
-    size/WORLD;
+  const s=150;
 
   mctx.clearRect(
     0,
     0,
-    size,
-    size
+    s,
+    s
   );
 
-  mctx.fillStyle =
-    "#07101d";
-
+  mctx.fillStyle="#050914";
   mctx.fillRect(
     0,
     0,
-    size,
-    size
+    s,
+    s
   );
 
-  for(
-    const f of foods
-  ){
+  const scale=s/WORLD;
 
-    mctx.fillStyle =
-      "#ffffff35";
+  for(const f of foods){
+
+    mctx.fillStyle="#ffffff35";
 
     mctx.fillRect(
       f.x*scale,
@@ -2827,12 +2453,9 @@ function drawMini(){
     );
   }
 
-  for(
-    const b of bots
-  ){
+  for(const b of bots){
 
-    mctx.fillStyle =
-      b.color;
+    mctx.fillStyle=b.color;
 
     mctx.fillRect(
       b.x*scale-1,
@@ -2844,8 +2467,7 @@ function drawMini(){
 
   if(player){
 
-    mctx.fillStyle =
-      "#fff";
+    mctx.fillStyle="#fff";
 
     mctx.beginPath();
 
@@ -2862,125 +2484,81 @@ function drawMini(){
 }
 
 /* =========================================================
-   HUD
+   LEADERBOARD / HUD
 ========================================================= */
 
 function leaderboard(){
 
-  if(!player){
-    return;
-  }
+  if(!player)return;
 
-  const arr =
+  const arr=
     cells
       .map(c=>({
-
         name:c.name,
-
         mass:c.mass,
-
         player:c.player
-
       }))
       .sort(
-        (a,b)=>
-          b.mass-a.mass
+        (a,b)=>b.mass-a.mass
       )
       .slice(0,8);
 
-  document.getElementById(
-    "rows"
-  ).innerHTML =
-
+  document.getElementById("rows").innerHTML=
     arr.map(
-      (x,i)=>`
-
-        <div
-          class="row"
-          style="${
-            x.player
-            ? "color:#42d392;font-weight:bold"
-            : ""
-          }"
-        >
-
-          <span>
-            ${i+1}. ${
-              escapeHTML(
-                x.name
-              )
-            }
-          </span>
-
-          <span>
-            ${Math.floor(x.mass)}
-          </span>
-
-        </div>
-
-      `
+      (x,i)=>
+        `<div class="row ${x.player?"me":""}">
+          <span>${i+1}. ${escapeHTML(x.name)}</span>
+          <span>${Math.floor(x.mass)}</span>
+        </div>`
     ).join("");
 
-  document.getElementById(
-    "mass"
-  ).textContent =
-    "Massa: " +
-    Math.floor(
-      player.mass
-    );
+  document.getElementById("mass")
+    .textContent=
+    Math.floor(player.mass);
 
-  document.getElementById(
-    "level"
-  ).textContent =
+  document.getElementById("level")
+    .textContent=
     level;
 
-  document.getElementById(
-    "xp"
-  ).textContent =
+  document.getElementById("xp")
+    .textContent=
     xp;
 
-  document.getElementById(
-    "xpbar"
-  ).style.width =
+  document.getElementById("xpbar")
+    .style.width=
     (
-      xp /
-      (level*50) *
+      xp/
+      (level*50)*
       100
-    ) + "%";
+    )+"%";
 
-  document.getElementById(
-    "energy"
-  ).textContent =
-    Math.floor(
-      energy
-    );
+  document.getElementById("energy")
+    .textContent=
+    Math.floor(energy);
 
-  document.getElementById(
-    "missionCount"
-  ).textContent =
+  document.getElementById("missionCount")
+    .textContent=
     Math.min(
       30,
       mission
     );
 
-  document.getElementById(
-    "power"
-  ).innerHTML =
+  if(activePower){
 
-    activePower
+    document.getElementById(
+      "power"
+    ).innerHTML=
+      `<div class="power-card">
+        ⚡ ${activePower.toUpperCase()}
+        · ${Math.ceil(powerTimer)}s
+      </div>`;
 
-      ? `
-        <div class="powerBadge">
-          ⚡ ${
-            activePower.toUpperCase()
-          }
-          · ${Math.ceil(
-            powerTimer
-          )}s
-        </div>
-      `
+  }else{
 
-      : "";
+    document.getElementById(
+      "power"
+    ).innerHTML="";
+  }
 }
 
 /* =========================================================
@@ -2989,189 +2567,229 @@ function leaderboard(){
 
 function gameOver(){
 
-  if(!running){
-    return;
-  }
+  if(!running)return;
 
-  running = false;
+  running=false;
 
   document.getElementById(
     "result"
-  ).textContent =
-
-    `Hai raggiunto il livello ${
-      level
-    } con ${
-      Math.floor(
-        player.mass
-      )
-    } di massa e ${
-      Math.floor(
-        timeAlive
-      )
-    } secondi di sopravvivenza.`;
+  ).textContent=
+    `Livello ${level} · Massa ${Math.floor(
+      player ? player.mass : 0
+    )} · Sopravvivenza ${Math.floor(
+      timeAlive
+    )} secondi.`;
 
   document
     .getElementById("over")
-    .classList.remove(
-      "hidden"
-    );
+    .classList.remove("hidden");
 }
 
 /* =========================================================
-   TICK
+   PAUSE
 ========================================================= */
 
-function tick(dt){
+function togglePause(){
 
-  if(paused){
+  if(
+    !running &&
+    document
+      .getElementById("menu")
+      .classList.contains("hidden")
+  ){
     return;
   }
 
-  timeAlive += dt;
+  if(!running)return;
 
-  energy =
-    clamp(
-      energy + dt*3,
-      0,
-      100
+  paused=!paused;
+
+  document
+    .getElementById("pause")
+    .classList.toggle(
+      "hidden",
+      !paused
     );
+}
 
-  if(
-    mode === "survival"
-  ){
+document
+  .getElementById("resumeButton")
+  .addEventListener(
+    "click",
+    togglePause
+  );
 
-    for(
-      const b of bots
+function returnToMenu(){
+
+  paused=false;
+  running=false;
+
+  document
+    .getElementById("pause")
+    .classList.add("hidden");
+
+  document
+    .getElementById("over")
+    .classList.add("hidden");
+
+  document
+    .getElementById("menu")
+    .classList.remove("hidden");
+}
+
+document
+  .getElementById("pauseMenuButton")
+  .addEventListener(
+    "click",
+    returnToMenu
+  );
+
+document
+  .getElementById("overMenuButton")
+  .addEventListener(
+    "click",
+    returnToMenu
+  );
+
+document
+  .getElementById("retryButton")
+  .addEventListener(
+    "click",
+    startGame
+  );
+
+/* =========================================================
+   ESC
+========================================================= */
+
+addEventListener(
+  "keydown",
+  e=>{
+
+    if(
+      e.target===
+      document.getElementById("chatInput") ||
+      e.target===
+      document.getElementById("userNameInput") ||
+      e.target===
+      document.getElementById("name")
     ){
+      return;
+    }
+
+    if(e.code==="Escape"){
+
+      e.preventDefault();
+
+      const userMenu=
+        document.getElementById(
+          "userMenu"
+        );
 
       if(
-        Math.random() <
-        .0008
+        !userMenu.classList.contains(
+          "hidden"
+        )
       ){
 
-        b.mass *= 1.03;
+        userMenu.classList.add(
+          "hidden"
+        );
 
-        b.r =
-          Math.sqrt(
-            b.mass
-          );
+        return;
+      }
+
+      if(
+        !document
+          .getElementById("menu")
+          .classList.contains("hidden")
+      ){
+        return;
+      }
+
+      if(
+        !document
+          .getElementById("over")
+          .classList.contains("hidden")
+      ){
+        return;
+      }
+
+      /*
+        ESC durante la partita:
+        partita -> pausa
+      */
+
+      if(running){
+
+        togglePause();
+
+        return;
+      }
+
+      /*
+        ESC mentre è in pausa:
+        pausa -> menu
+      */
+
+      if(paused){
+
+        returnToMenu();
+
+        return;
+      }
+    }
+
+    if(e.code==="Space"){
+
+      e.preventDefault();
+
+      if(running && !paused){
+
+        split();
+      }
+    }
+
+    if(e.code==="KeyW"){
+
+      if(running && !paused){
+
+        eject();
       }
     }
   }
-
-  if(
-    mode === "chaos" &&
-    Math.random() <
-    dt*.25
-  ){
-
-    const b =
-      bots[
-        Math.floor(
-          Math.random() *
-          bots.length
-        )
-      ];
-
-    if(b){
-
-      b.angle =
-        R(
-          0,
-          Math.PI*2
-        );
-    }
-  }
-
-  updatePlayerCells();
-
-  updateBots(dt);
-
-  for(
-    const c of cells
-  ){
-    eatFood(c);
-  }
-
-  powerCheck();
-
-  applyPower(dt);
-
-  portalsUpdate();
-
-  obstaclePhysics();
-
-  collisions();
-
-  updateParticles(dt);
-
-  cameraUpdate();
-
-  leaderboard();
-}
-
-/* =========================================================
-   LOOP
-========================================================= */
-
-function loop(now){
-
-  const dt =
-    Math.min(
-      .05,
-      (now-last)/1000
-    );
-
-  last = now;
-
-  if(running){
-
-    tick(dt);
-    draw();
-  }
-
-  requestAnimationFrame(
-    loop
-  );
-}
-
-requestAnimationFrame(
-  loop
 );
 
 /* =========================================================
    USER MENU
 ========================================================= */
 
-const userButton =
+const userButton=
   document.getElementById(
     "userButton"
   );
 
-const userMenu =
+const userMenu=
   document.getElementById(
     "userMenu"
   );
 
-function closeUserMenu(){
+function updateUserName(){
 
-  userMenu.classList.add(
-    "hidden"
-  );
-}
-
-function updateProfileName(name){
+  const name=
+    document.getElementById("name")
+      .value
+      .trim()
+      .slice(0,16)
+      ||"Player";
 
   document.getElementById(
     "userNameButton"
-  ).textContent =
-    name || "Player";
+  ).textContent=name;
 
   document.getElementById(
     "userNameInput"
-  ).value =
-    name || "Player";
+  ).value=name;
 }
 
 userButton.addEventListener(
@@ -3181,6 +2799,7 @@ userButton.addEventListener(
     userMenu.classList.toggle(
       "hidden"
     );
+
   }
 );
 
@@ -3188,7 +2807,11 @@ document
   .getElementById("closeUser")
   .addEventListener(
     "click",
-    closeUserMenu
+    ()=>{
+      userMenu.classList.add(
+        "hidden"
+      );
+    }
   );
 
 document
@@ -3197,42 +2820,33 @@ document
     "click",
     ()=>{
 
-      const input =
+      const newName=
         document.getElementById(
           "userNameInput"
-        );
-
-      const name =
-        input.value
+        ).value
           .trim()
-          .replace(/\s+/g," ")
-          .slice(0,16);
-
-      if(!name){
-        return;
-      }
+          .slice(0,16)
+          ||"Player";
 
       document.getElementById(
         "name"
-      ).value =
-        name;
+      ).value=newName;
 
-      updateProfileName(
-        name
-      );
+      updateUserName();
 
       if(player){
 
-        player.name =
-          name;
+        player.name=newName;
 
         sendJSON({
           type:"changeName",
-          name
+          name:newName
         });
       }
 
-      closeUserMenu();
+      userMenu.classList.add(
+        "hidden"
+      );
     }
   );
 
@@ -3240,100 +2854,77 @@ document
   .getElementById("name")
   .addEventListener(
     "input",
-    e=>{
-
-      const name =
-        e.target.value
-          .slice(0,16);
-
-      updateProfileName(
-        name
-      );
-    }
+    updateUserName
   );
 
 /* =========================================================
    CHAT
 ========================================================= */
 
-const chat =
+const chat=
   document.getElementById(
     "chat"
   );
 
-const chatMessages =
+const chatMessages=
   document.getElementById(
     "chatMessages"
   );
 
-const chatInput =
+const chatInput=
   document.getElementById(
     "chatInput"
   );
 
 function addChatMessage(msg){
 
-  const div =
+  const div=
     document.createElement(
       "div"
     );
 
-  div.className =
-    "chatMessage";
+  div.className="chatMessage";
 
-  const name =
+  const name=
     escapeHTML(
-      msg.name ||
-      "Player"
+      msg.name||"Player"
     );
 
-  const text =
+  const text=
     escapeHTML(
-      msg.text ||
-      ""
+      msg.text||""
     );
 
-  const time =
+  const time=
     escapeHTML(
-      msg.time ||
-      ""
+      msg.time||""
     );
 
-  const col =
-    /^#[0-9a-f]{3,8}$/i.test(
-      msg.color || ""
+  const col=
+    /^#[0-9a-fA-F]{6}$/.test(
+      msg.color||""
     )
-      ? msg.color
-      : "#42d392";
+      ?msg.color
+      :"#42d392";
 
-  div.innerHTML = `
-
-    <span
+  div.innerHTML=
+    `<span
       class="chatName"
-      style="color:${col}"
-    >
+      style="color:${col}">
       ${name}
     </span>
-
     <span class="chatTime">
       ${time}
     </span>
-
     <br>
-
     <span class="chatText">
       ${text}
-    </span>
+    </span>`;
 
-  `;
-
-  chatMessages.appendChild(
-    div
-  );
+  chatMessages.appendChild(div);
 
   while(
-    chatMessages.children.length >
-    100
+    chatMessages.children.length>100
   ){
 
     chatMessages.removeChild(
@@ -3341,37 +2932,37 @@ function addChatMessage(msg){
     );
   }
 
-  chatMessages.scrollTop =
+  chatMessages.scrollTop=
     chatMessages.scrollHeight;
 }
 
+addChatMessage({
+  name:"Sistema",
+  color:"#42d392",
+  text:"Benvenuto nella chat globale!",
+  time:""
+});
+
 function sendChat(){
 
-  const text =
+  const text=
     chatInput.value
       .replace(/\s+/g," ")
       .trim()
       .slice(0,180);
 
-  if(!text){
-    return;
-  }
+  if(!text)return;
 
   if(
     !socket ||
-    socket.readyState !==
+    socket.readyState!==
     WebSocket.OPEN
   ){
 
     addChatMessage({
-
       name:"Sistema",
-
       color:"#ff6680",
-
-      text:
-        "Non sei connesso al server.",
-
+      text:"Non sei connesso al server.",
       time:""
     });
 
@@ -3383,7 +2974,7 @@ function sendChat(){
     text
   });
 
-  chatInput.value = "";
+  chatInput.value="";
 }
 
 document
@@ -3399,20 +2990,11 @@ chatInput.addEventListener(
 
     e.stopPropagation();
 
-    if(
-      e.key === "Enter"
-    ){
+    if(e.key==="Enter"){
 
       e.preventDefault();
 
       sendChat();
-    }
-
-    if(
-      e.key === "Escape"
-    ){
-
-      chatInput.blur();
     }
   }
 );
@@ -3428,9 +3010,7 @@ document
       );
 
       document
-        .getElementById(
-          "chatOpen"
-        )
+        .getElementById("chatOpen")
         .classList.remove(
           "hidden"
         );
@@ -3448,9 +3028,7 @@ document
       );
 
       document
-        .getElementById(
-          "chatOpen"
-        )
+        .getElementById("chatOpen")
         .classList.add(
           "hidden"
         );
@@ -3461,21 +3039,21 @@ document
    WEBSOCKET
 ========================================================= */
 
+let socket=null;
+let reconnectTimer=null;
+
 function setConnection(
   text,
-  color
+  col
 ){
 
-  const el =
+  const el=
     document.getElementById(
       "connection"
     );
 
-  el.textContent =
-    text;
-
-  el.style.color =
-    color;
+  el.textContent=text;
+  el.style.color=col;
 }
 
 function connectSocket(){
@@ -3483,31 +3061,28 @@ function connectSocket(){
   if(
     socket &&
     (
-      socket.readyState ===
+      socket.readyState===
       WebSocket.OPEN ||
 
-      socket.readyState ===
+      socket.readyState===
       WebSocket.CONNECTING
     )
   ){
     return;
   }
 
-  const protocol =
-    location.protocol ===
-    "https:"
-      ? "wss:"
-      : "ws:";
+  const protocol=
+    location.protocol==="https:"
+      ?"wss:"
+      :"ws:";
 
-  const url =
+  const url=
     `${protocol}//${location.host}`;
 
   try{
 
-    socket =
-      new WebSocket(
-        url
-      );
+    socket=
+      new WebSocket(url);
 
   }catch{
 
@@ -3526,19 +3101,15 @@ function connectSocket(){
       );
 
       sendJSON({
-
         type:"join",
-
         name:
           player
-            ? player.name
-            : (
+            ?player.name
+            :(
               document
-                .getElementById(
-                  "name"
-                )
-                .value ||
-              "Player"
+                .getElementById("name")
+                .value
+                ||"Player"
             )
       });
     }
@@ -3552,7 +3123,7 @@ function connectSocket(){
 
       try{
 
-        msg =
+        msg=
           JSON.parse(
             e.data
           );
@@ -3562,9 +3133,7 @@ function connectSocket(){
         return;
       }
 
-      handleServerMessage(
-        msg
-      );
+      handleServerMessage(msg);
     }
   );
 
@@ -3595,15 +3164,13 @@ function connectSocket(){
 
 function scheduleReconnect(){
 
-  if(reconnectTimer){
-    return;
-  }
+  if(reconnectTimer)return;
 
-  reconnectTimer =
+  reconnectTimer=
     setTimeout(
       ()=>{
 
-        reconnectTimer = null;
+        reconnectTimer=null;
 
         connectSocket();
 
@@ -3616,16 +3183,14 @@ function sendJSON(data){
 
   if(
     socket &&
-    socket.readyState ===
+    socket.readyState===
     WebSocket.OPEN
   ){
 
     try{
 
       socket.send(
-        JSON.stringify(
-          data
-        )
+        JSON.stringify(data)
       );
 
       return true;
@@ -3640,18 +3205,16 @@ function sendMove(){
 
   if(
     !player ||
-    !running
+    !running ||
+    paused
   ){
     return;
   }
 
-  const t =
-    worldMouse();
+  const t=worldMouse();
 
   sendJSON({
-
     type:"move",
-
     x:t.x,
     y:t.y
   });
@@ -3665,14 +3228,12 @@ function sendAction(type){
 }
 
 /* =========================================================
-   SERVER MESSAGE
+   SERVER MESSAGES
 ========================================================= */
 
 function handleServerMessage(msg){
 
-  if(
-    msg.type === "welcome"
-  ){
+  if(msg.type==="welcome"){
 
     setConnection(
       "🟢 Connesso",
@@ -3682,17 +3243,13 @@ function handleServerMessage(msg){
     return;
   }
 
-  if(
-    msg.type ===
-    "chatHistory"
-  ){
+  if(msg.type==="chatHistory"){
 
-    chatMessages.innerHTML =
-      "";
+    chatMessages.innerHTML="";
 
     for(
       const message of
-      (msg.messages || [])
+      (msg.messages||[])
     ){
 
       addChatMessage(
@@ -3703,43 +3260,33 @@ function handleServerMessage(msg){
     return;
   }
 
-  if(
-    msg.type === "dead"
-  ){
+  if(msg.type==="dead"){
 
     gameOver();
 
     return;
   }
 
-  if(
-    msg.type === "error"
-  ){
+  if(msg.type==="error"){
 
     addChatMessage({
-
       name:"Sistema",
-
       color:"#ff6680",
-
       text:
-        msg.message ||
+        msg.message||
         "Errore server",
-
       time:""
     });
 
     return;
   }
 
-  if(
-    msg.type === "state"
-  ){
+  if(msg.type==="state"){
 
     updateOnlineCount(
       msg.players
-        ? msg.players.length
-        : 0
+        ?msg.players.length
+        :0
     );
   }
 }
@@ -3748,25 +3295,128 @@ function updateOnlineCount(n){
 
   document.getElementById(
     "chatOnline"
-  ).textContent =
-    `● ${n || 0} online`;
+  ).textContent=
+    `● ${n||0} online`;
 }
+
+/* =========================================================
+   GAME TICK
+========================================================= */
+
+function tick(dt){
+
+  if(
+    !running ||
+    paused
+  ){
+    return;
+  }
+
+  timeAlive+=dt;
+
+  energy=
+    clamp(
+      energy+dt*3,
+      0,
+      100
+    );
+
+  if(mode==="survival"){
+
+    for(const b of bots){
+
+      if(
+        Math.random()<
+        dt*.045
+      ){
+
+        b.mass*=1.025;
+
+        b.r=
+          Math.sqrt(b.mass);
+      }
+    }
+  }
+
+  if(
+    mode==="chaos" &&
+    Math.random()<
+    dt*.35
+  ){
+
+    const b=
+      bots[
+        Math.floor(
+          Math.random()*bots.length
+        )
+      ];
+
+    if(b){
+
+      b.angle=
+        R(
+          0,
+          Math.PI*2
+        );
+    }
+  }
+
+  updatePlayerCells();
+
+  updateBots(dt);
+
+  for(const c of cells){
+    eatFood(c);
+  }
+
+  powerCheck();
+
+  applyPower(dt);
+
+  portalsUpdate();
+
+  obstaclePhysics();
+
+  collisions();
+
+  updateParticles(dt);
+
+  cameraUpdate();
+
+  leaderboard();
+}
+
+/* =========================================================
+   LOOP
+========================================================= */
+
+function loop(now){
+
+  const dt=
+    Math.min(
+      .05,
+      (now-last)/1000
+    );
+
+  last=now;
+
+  tick(dt);
+  draw();
+
+  requestAnimationFrame(
+    loop
+  );
+}
+
+requestAnimationFrame(
+  loop
+);
 
 /* =========================================================
    INIT
 ========================================================= */
 
-updateProfileName(
-  document.getElementById(
-    "name"
-  ).value
-);
-
-/*
-  Connessione immediata:
-  così il badge non rimane
-  inutilmente su "Disconnesso".
-*/
+updateUserName();
 
 connectSocket();
 

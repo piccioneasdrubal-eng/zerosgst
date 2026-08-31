@@ -1,20 +1,24 @@
+"use strict";
+
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const WebSocket = require("ws");
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 const WORLD = 6000;
 const TICK = 40;
 
-const FOOD_COUNT = 900;
+const FOOD_COUNT = 1000;
+const POWER_COUNT = 35;
 const MAX_PLAYERS = 60;
+const MAX_BOTS = 12;
 const MAX_CELLS = 16;
 const MAX_CHAT_LENGTH = 180;
 
-const PLAYER_SPEED = 3.7;
-const SPLIT_SPEED = 12;
+const PLAYER_SPEED = 4.2;
+const SPLIT_SPEED = 13;
 const EJECT_SPEED = 8;
 
 const colors = [
@@ -25,12 +29,22 @@ const colors = [
   "#b56cff",
   "#25d9d0",
   "#f472b6",
-  "#a3e635"
+  "#a3e635",
+  "#fb7185",
+  "#38bdf8"
+];
+
+const powerTypes = [
+  "energy",
+  "speed",
+  "growth",
+  "shield"
 ];
 
 const players = new Map();
 const foods = [];
 const ejected = [];
+const powers = [];
 const chat = [];
 
 function random(a, b) {
@@ -45,15 +59,15 @@ function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function randomColor() {
-  return colors[Math.floor(Math.random() * colors.length)];
-}
-
 function randomId() {
   return (
     Math.random().toString(36).slice(2) +
     Math.random().toString(36).slice(2)
   );
+}
+
+function randomColor() {
+  return colors[Math.floor(Math.random() * colors.length)];
 }
 
 function cleanName(name) {
@@ -82,8 +96,24 @@ function makeFood() {
   };
 }
 
+function makePower() {
+  return {
+    id: randomId(),
+    x: random(80, WORLD - 80),
+    y: random(80, WORLD - 80),
+    r: 12,
+    type: powerTypes[
+      Math.floor(Math.random() * powerTypes.length)
+    ]
+  };
+}
+
 for (let i = 0; i < FOOD_COUNT; i++) {
   foods.push(makeFood());
+}
+
+for (let i = 0; i < POWER_COUNT; i++) {
+  powers.push(makePower());
 }
 
 function findSpawn() {
@@ -95,12 +125,11 @@ function findSpawn() {
 
     for (const p of players.values()) {
       for (const c of p.cells) {
-        if (Math.hypot(x - c.x, y - c.y) < 350) {
+        if (Math.hypot(x - c.x, y - c.y) < 400) {
           good = false;
           break;
         }
       }
-
       if (!good) break;
     }
 
@@ -121,29 +150,42 @@ function makeCell(x, y, r, player, vx = 0, vy = 0) {
     r,
     vx,
     vy,
-    playerId: player.id,
-    boost: 0
+    boost: 0,
+    shield: 0
   };
 }
 
-function createPlayer(id, name) {
+function createPlayer(id, name, bot = false) {
   const spawn = findSpawn();
 
   const player = {
     id,
     name: cleanName(name),
     color: randomColor(),
+    bot,
 
     targetX: spawn.x,
     targetY: spawn.y,
 
     energy: 100,
     score: 0,
+    xp: 0,
+    level: 1,
+
+    mode: "classic",
+
+    kills: 0,
+    foodEaten: 0,
+    powerups: 0,
 
     cells: [],
 
     lastSplit: 0,
     lastEject: 0,
+    lastBotThink: 0,
+
+    speedBoost: 0,
+    growthBoost: 0,
 
     socket: null
   };
@@ -167,19 +209,36 @@ function totalMass(player) {
   );
 }
 
+function addXP(player, amount) {
+  player.xp += amount;
+
+  while (player.xp >= player.level * 100) {
+    player.xp -= player.level * 100;
+    player.level++;
+    player.energy = 100;
+  }
+}
+
 function publicPlayer(player) {
   return {
     id: player.id,
     name: player.name,
     color: player.color,
+    bot: player.bot,
+
     score: Math.floor(player.score),
+    xp: Math.floor(player.xp),
+    level: player.level,
+
     energy: Math.floor(player.energy),
+    kills: player.kills,
 
     cells: player.cells.map(c => ({
       id: c.id,
       x: c.x,
       y: c.y,
-      r: c.r
+      r: c.r,
+      shield: c.shield > 0
     }))
   };
 }
@@ -210,10 +269,13 @@ function addChatMessage(player, text) {
     name: player.name,
     color: player.color,
     text,
-    time: new Date().toLocaleTimeString("it-IT", {
-      hour: "2-digit",
-      minute: "2-digit"
-    })
+    time: new Date().toLocaleTimeString(
+      "it-IT",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    )
   });
 
   if (chat.length > 80) {
@@ -234,12 +296,19 @@ function moveCell(cell, player) {
   if (d > 1) {
     let speed =
       PLAYER_SPEED *
-      Math.pow(25 / Math.max(cell.r, 1), 0.35);
+      Math.pow(
+        25 / Math.max(cell.r, 1),
+        0.30
+      );
 
-    speed = clamp(speed, 0.8, 4.8);
+    if (player.speedBoost > 0) {
+      speed *= 1.6;
+    }
 
-    cell.x += (dx / d) * speed;
-    cell.y += (dy / d) * speed;
+    speed = clamp(speed, 0.7, 7);
+
+    cell.x += dx / d * speed;
+    cell.y += dy / d * speed;
   }
 
   if (cell.boost > 0) {
@@ -269,31 +338,55 @@ function updateMovement() {
   for (const player of players.values()) {
     for (const cell of player.cells) {
       moveCell(cell, player);
+
+      if (cell.shield > 0) {
+        cell.shield--;
+      }
     }
 
     player.energy = clamp(
-      player.energy + 0.25,
+      player.energy + 0.22,
       0,
       100
     );
+
+    if (player.speedBoost > 0) {
+      player.speedBoost--;
+    }
+
+    if (player.growthBoost > 0) {
+      player.growthBoost--;
+    }
   }
 }
 
 function eatFood() {
   for (const player of players.values()) {
     for (const cell of player.cells) {
-      for (let i = foods.length - 1; i >= 0; i--) {
+      for (
+        let i = foods.length - 1;
+        i >= 0;
+        i--
+      ) {
         const food = foods[i];
 
         if (
           distance(cell, food) <
           cell.r + food.r
         ) {
+          const gain =
+            player.growthBoost > 0
+              ? 2
+              : 1;
+
           cell.r = Math.sqrt(
-            cell.r * cell.r + 1
+            cell.r * cell.r + gain
           );
 
           player.score++;
+          player.foodEaten++;
+
+          addXP(player, 4);
 
           foods.splice(i, 1);
           foods.push(makeFood());
@@ -303,11 +396,61 @@ function eatFood() {
   }
 }
 
+function collectPowers() {
+  for (let i = powers.length - 1; i >= 0; i--) {
+    const power = powers[i];
+
+    let collected = false;
+
+    for (const player of players.values()) {
+      for (const cell of player.cells) {
+        if (
+          distance(cell, power) <
+          cell.r + power.r
+        ) {
+          applyPower(player, power.type);
+
+          powers.splice(i, 1);
+          powers.push(makePower());
+
+          player.powerups++;
+          addXP(player, 15);
+
+          collected = true;
+          break;
+        }
+      }
+
+      if (collected) break;
+    }
+  }
+}
+
+function applyPower(player, type) {
+  if (type === "energy") {
+    player.energy = 100;
+  }
+
+  if (type === "speed") {
+    player.speedBoost = 400;
+  }
+
+  if (type === "growth") {
+    player.growthBoost = 600;
+  }
+
+  if (type === "shield") {
+    for (const cell of player.cells) {
+      cell.shield = 500;
+    }
+  }
+}
+
 function splitPlayer(player) {
   const now = Date.now();
 
   if (
-    now - player.lastSplit < 700 ||
+    now - player.lastSplit < 650 ||
     player.cells.length >= MAX_CELLS
   ) {
     return;
@@ -348,7 +491,6 @@ function splitPlayer(player) {
         newRadius,
         WORLD - newRadius
       ),
-
       clamp(
         cell.y +
           Math.sin(angle) *
@@ -357,10 +499,8 @@ function splitPlayer(player) {
         newRadius,
         WORLD - newRadius
       ),
-
       newRadius,
       player,
-
       Math.cos(angle) * SPLIT_SPEED,
       Math.sin(angle) * SPLIT_SPEED
     );
@@ -409,12 +549,12 @@ function ejectMass(player) {
       x:
         cell.x +
         Math.cos(angle) *
-        (cell.r + 10),
+        (cell.r + 12),
 
       y:
         cell.y +
         Math.sin(angle) *
-        (cell.r + 10),
+        (cell.r + 12),
 
       r: 7,
 
@@ -427,16 +567,18 @@ function ejectMass(player) {
         EJECT_SPEED,
 
       color: player.color,
-
       owner: player.id,
-
       life: 350
     });
   }
 }
 
 function updateEjected() {
-  for (let i = ejected.length - 1; i >= 0; i--) {
+  for (
+    let i = ejected.length - 1;
+    i >= 0;
+    i--
+  ) {
     const e = ejected[i];
 
     e.x += e.vx;
@@ -467,15 +609,14 @@ function updateEjected() {
           cell.r + e.r
         ) {
           if (
-            cell.r >
-            e.r * 1.1
+            cell.r > e.r * 1.1
           ) {
             cell.r = Math.sqrt(
-              cell.r * cell.r +
-              10
+              cell.r * cell.r + 10
             );
 
             player.score += 10;
+            addXP(player, 10);
 
             eaten = true;
             break;
@@ -531,7 +672,10 @@ function killPlayer(player) {
       player.socket.send(
         JSON.stringify({
           type: "dead",
-          score: Math.floor(player.score)
+          score: Math.floor(player.score),
+          xp: Math.floor(player.xp),
+          level: player.level,
+          kills: player.kills
         })
       );
     } catch {}
@@ -546,7 +690,11 @@ function collisions() {
   for (let i = 0; i < all.length; i++) {
     const A = all[i];
 
-    for (let j = i + 1; j < all.length; j++) {
+    for (
+      let j = i + 1;
+      j < all.length;
+      j++
+    ) {
       const B = all[j];
 
       if (A.player === B.player) continue;
@@ -561,14 +709,15 @@ function collisions() {
       const d =
         distance(A.cell, B.cell);
 
-      const touching =
-        d <
+      if (
+        d >=
         Math.max(
           A.cell.r,
           B.cell.r
-        ) * 0.78;
-
-      if (!touching) continue;
+        ) * 0.78
+      ) {
+        continue;
+      }
 
       let big = A;
       let small = B;
@@ -588,6 +737,10 @@ function collisions() {
         continue;
       }
 
+      if (small.cell.shield > 0) {
+        continue;
+      }
+
       big.cell.r = Math.sqrt(
         big.cell.r *
           big.cell.r +
@@ -602,35 +755,147 @@ function collisions() {
           small.cell.r
         );
 
+      big.player.kills++;
+
+      addXP(
+        big.player,
+        Math.floor(
+          small.cell.r * 2
+        )
+      );
+
       removeCell(
         small.player,
         small.cell
       );
-
-      if (
-        !players.has(
-          small.player.id
-        )
-      ) {
-        continue;
-      }
     }
   }
 }
 
+function botThink(bot) {
+  const now = Date.now();
+
+  if (now - bot.lastBotThink < 500) {
+    return;
+  }
+
+  bot.lastBotThink = now;
+
+  const main = bot.cells[0];
+
+  if (!main) return;
+
+  let target = null;
+  let targetDistance = Infinity;
+
+  for (const food of foods) {
+    const d = distance(main, food);
+
+    if (d < targetDistance) {
+      target = food;
+      targetDistance = d;
+    }
+  }
+
+  for (const other of players.values()) {
+    if (other === bot) continue;
+
+    const otherCell = other.cells[0];
+
+    if (!otherCell) continue;
+
+    if (
+      main.r >
+      otherCell.r * 1.35
+    ) {
+      const d =
+        distance(main, otherCell);
+
+      if (d < targetDistance) {
+        target = otherCell;
+        targetDistance = d;
+      }
+    }
+  }
+
+  if (target) {
+    bot.targetX = target.x;
+    bot.targetY = target.y;
+  }
+
+  if (
+    main.r > 32 &&
+    Math.random() < 0.15
+  ) {
+    splitPlayer(bot);
+  }
+
+  if (
+    Math.random() < 0.04
+  ) {
+    ejectMass(bot);
+  }
+}
+
+function updateBots() {
+  for (const player of players.values()) {
+    if (player.bot) {
+      botThink(player);
+    }
+  }
+}
+
+function spawnBots() {
+  const desired =
+    Math.min(
+      MAX_BOTS,
+      Math.max(
+        4,
+        10 - Math.floor(players.size / 8)
+      )
+    );
+
+  let bots = [...players.values()]
+    .filter(p => p.bot)
+    .length;
+
+  while (bots < desired) {
+    if (players.size >= MAX_PLAYERS) break;
+
+    const bot =
+      createPlayer(
+        "bot-" + randomId(),
+        "Bot " + (bots + 1),
+        true
+      );
+
+    players.set(
+      bot.id,
+      bot
+    );
+
+    bots++;
+  }
+}
+
 function update() {
+  spawnBots();
+  updateBots();
   updateMovement();
   updateEjected();
   eatFood();
+  collectPowers();
   collisions();
 }
 
 function broadcastState() {
-  const state = {
+  broadcast({
     type: "state",
     world: WORLD,
 
     foods,
+
+    powers,
 
     ejected: ejected.map(e => ({
       id: e.id,
@@ -643,9 +908,7 @@ function broadcastState() {
     players: [
       ...players.values()
     ].map(publicPlayer)
-  };
-
-  broadcast(state);
+  });
 }
 
 /* HTTP */
@@ -735,11 +998,10 @@ const server =
     );
   });
 
-/* WEBSOCKET */
-
 const wss =
   new WebSocket.Server({
-    server
+    server,
+    maxPayload: 16 * 1024
   });
 
 wss.on("connection", socket => {
@@ -756,7 +1018,6 @@ wss.on("connection", socket => {
   }
 
   const id = randomId();
-
   let player = null;
 
   socket.on("message", raw => {
@@ -766,6 +1027,13 @@ wss.on("connection", socket => {
       message =
         JSON.parse(raw.toString());
     } catch {
+      return;
+    }
+
+    if (
+      !message ||
+      typeof message.type !== "string"
+    ) {
       return;
     }
 
@@ -780,6 +1048,16 @@ wss.on("connection", socket => {
 
       player.socket = socket;
 
+      if (
+        typeof message.mode === "string"
+      ) {
+        player.mode =
+          ["classic", "survival", "chaos"]
+            .includes(message.mode)
+              ? message.mode
+              : "classic";
+      }
+
       players.set(
         player.id,
         player
@@ -790,8 +1068,7 @@ wss.on("connection", socket => {
           type: "welcome",
           id: player.id,
           world: WORLD,
-          playerCount:
-            players.size
+          playerCount: players.size
         })
       );
 
@@ -848,19 +1125,26 @@ wss.on("connection", socket => {
       return;
     }
 
-    if (
-      message.type ===
-      "changeName"
-    ) {
+    if (message.type === "changeName") {
       const newName =
         cleanName(message.name);
 
       player.name = newName;
+
+      broadcast({
+        type: "nameChanged",
+        id: player.id,
+        name: player.name
+      });
+
+      return;
     }
   });
 
   socket.on("close", () => {
-    if (player) {
+    if (!player) return;
+
+    if (players.has(player.id)) {
       addChatMessage(
         player,
         "ha lasciato la partita"
@@ -885,7 +1169,7 @@ server.listen(
   "0.0.0.0",
   () => {
     console.log(
-      `Cell Arena avviato sulla porta ${PORT}`
+      `Cell Arena 2.0 avviato sulla porta ${PORT}`
     );
   }
 );

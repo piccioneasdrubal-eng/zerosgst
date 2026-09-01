@@ -675,7 +675,7 @@ function ext_entCollectPowerup(player, pUp) { if(pUp.type==='speed') player.spee
 let powerupsList = [];
 function ext_entUpdatePowerupsList(dt) { }
 function ext_entDrawPowerupsList(ctx) { }
-function ext_entClearAllEntities() { foods=[]; ejected=[]; bots=[]; viruses=[]; particles=[]; }
+function ext_entClearAllEntities() { foods=[]; ejected=[]; bots=[]; viruses=[]; particles=[]; powerups=[]; }
 function ext_entCountTotalEntities() { return foods.length + ejected.length + bots.length + viruses.length + particles.length; }
 function ext_entGetAveragePlayerPosition() { if(!player)return {x:0,y:0}; let tx=0,ty=0; player.cells.forEach(c=>{tx+=c.x;ty+=c.y;}); return {x:tx/player.cells.length, y:ty/player.cells.length}; }
 function ext_entCalculateCellSpeed(c) { return ext_mathClamp(185 / (c.r/25), 42, 185); }
@@ -928,8 +928,26 @@ let ejected=[];
 let bots=[];
 let viruses=[];
 let particles=[];
+let powerups=[]; // NUOVO: potenziamenti raccoglibili (velocità / massa)
 
 let player=null;
+
+let gameMode="classic";       // NUOVO: collega finalmente la select #mode al gameplay
+let modeEnergyRegen=1;
+let powerupSpawnTimer=6;
+
+const POWERUP_TARGET=6;
+
+let comboCount=0;             // NUOVO: streak di uccisioni (badge #comboBadge)
+let comboTimer=0;
+
+// NUOVO: differenze reali tra le modalità Classic/Survival/Chaos
+// (prima la select "PROTOCOLLO" nel menu era puramente decorativa)
+const MODE_CONFIG={
+  classic:  { botMul:1,   virusMul:1,   invuln:3, energyRegen:1,   startMass:25 },
+  survival: { botMul:1.4, virusMul:1.6, invuln:1, energyRegen:0.6, startMass:20 },
+  chaos:    { botMul:2,   virusMul:0.4, invuln:2, energyRegen:1.3, startMass:32 }
+};
 
 let running=false;
 let paused=false;
@@ -1108,17 +1126,25 @@ function resetWorld(){
 
   ext_entClearAllEntities();
 
+  gameMode=(document.getElementById("mode").value)||"classic";
+  const cfg=MODE_CONFIG[gameMode]||MODE_CONFIG.classic;
+  modeEnergyRegen=cfg.energyRegen;
+
   for(let i=0;i<FOOD_TARGET;i++){
     foods.push(createFood());
   }
 
-  for(let i=0;i<BOT_TARGET;i++){
+  const botCount=Math.round(BOT_TARGET*cfg.botMul);
+  for(let i=0;i<botCount;i++){
     bots.push(createBot(i));
   }
 
-  for(let i=0;i<VIRUS_TARGET;i++){
+  const virusCount=Math.round(VIRUS_TARGET*cfg.virusMul);
+  for(let i=0;i<virusCount;i++){
     viruses.push(createVirus());
   }
+
+  powerupSpawnTimer=rand(4,8);
 
   const name=
     document.getElementById("name").value.trim().slice(0,16)
@@ -1134,13 +1160,14 @@ function resetWorld(){
     cells:[{
       x:WORLD/2,
       y:WORLD/2,
-      r:25,
+      r:cfg.startMass,
       vx:0,
       vy:0,
       splitAge:0,
       mergeTimer:0
     }],
-    invuln:3
+    invuln:cfg.invuln,
+    speedBoostTimer:0
   };
 
   camera.x=WORLD/2;
@@ -1153,6 +1180,11 @@ function resetWorld(){
   kills=0;
   foodEaten=0;
   gameTime=0;
+
+  comboCount=0;
+  comboTimer=0;
+  const badge=document.getElementById("comboBadge");
+  if(badge) badge.classList.remove("show");
 }
 
 /* =========================================================
@@ -1238,6 +1270,10 @@ function updatePlayer(dt){
 
       let speed=cellSpeed(c);
 
+      if(player.speedBoostTimer>0){
+        speed*=1.35;
+      }
+
       if(energy>0&&boosting){
         speed*=1.55;
         energy-=dt*18;
@@ -1251,6 +1287,10 @@ function updatePlayer(dt){
 
     c.splitAge+=dt;
     c.mergeTimer=Math.max(0,c.mergeTimer-dt);
+  }
+
+  if(player.speedBoostTimer>0){
+    player.speedBoostTimer=Math.max(0,player.speedBoostTimer-dt);
   }
 
   eatFood();
@@ -1314,6 +1354,100 @@ function eatEjected(){
       }
     }
   }
+}
+
+/* =========================================================
+   POWERUP
+========================================================= */
+
+function spawnPowerup(){
+  const type=Math.random()<0.5?"speed":"mass";
+  powerups.push(ext_entSpawnPowerup(rand(150,WORLD-150), rand(150,WORLD-150), type));
+}
+
+function updatePowerups(dt){
+
+  powerupSpawnTimer-=dt;
+  if(powerupSpawnTimer<=0 && powerups.length<POWERUP_TARGET){
+    spawnPowerup();
+    powerupSpawnTimer=rand(10,18);
+  }
+
+  for(const p of powerups)p.pulse+=dt;
+
+  if(!player)return;
+
+  for(let i=powerups.length-1;i>=0;i--){
+    const p=powerups[i];
+
+    for(const c of player.cells){
+      if(dist(c,p)<c.r+p.r){
+        collectPowerup(p);
+        powerups.splice(i,1);
+        break;
+      }
+    }
+  }
+}
+
+function collectPowerup(p){
+  if(p.type==="speed"){
+    player.speedBoostTimer=8;
+    toast("⚡ POWERUP: VELOCITÀ ATTIVATA");
+  }else{
+    const biggest=player.cells.reduce((a,b)=>a.r>b.r?a:b);
+    biggest.r=Math.sqrt(biggest.r*biggest.r+30*30);
+    toast("⬢ POWERUP: MASSA OTTENUTA");
+  }
+
+  particleBurst(p.x,p.y,p.type==="speed"?"#ffe66d":"#b875ff",14);
+  vibrate(25);
+}
+
+function drawPowerups(){
+  for(const p of powerups){
+    const s=screen(p.x,p.y);
+    if(s.x<-30||s.x>SW+30||s.y<-30||s.y>SH+30)continue;
+
+    const pulse=1+ext_mathSinWave(performance.now(),1/300,0.12);
+    const color=p.type==="speed"?"#ffe66d":"#b875ff";
+    const r=p.r*camera.zoom*pulse;
+
+    if(settings.shadows)ext_renApplyShadow(ctx,color,14);
+    ext_renDrawStar(ctx,s.x,s.y,5,r,r*0.5,color);
+    if(settings.shadows)ext_renClearShadow(ctx);
+  }
+}
+
+function updatePowerupPanel(){
+  const panel=document.getElementById("powerupPanel");
+  if(!panel)return;
+
+  if(!player||player.speedBoostTimer<=0){
+    panel.innerHTML="";
+    return;
+  }
+
+  const pct=Math.min(100,player.speedBoostTimer/8*100);
+  panel.innerHTML=
+    `<div class="buffChip">
+       <span class="buffIcon">⚡</span>
+       <div class="buffBarWrap"><i class="buffBar" style="width:${pct}%;background:#ffe66d"></i></div>
+     </div>`;
+}
+
+/* =========================================================
+   STATUS BAR LIVE
+========================================================= */
+
+function updateStatusBar(){
+  const online=bots.length+1;
+
+  const conn=document.getElementById("connection");
+  if(conn)conn.textContent=`[SYS] Modalità locale · ${online} entità attive`;
+
+  const chatOnline=document.getElementById("chatOnline");
+  if(chatOnline)chatOnline.textContent=`● ${online} ONLINE`;
 }
 
 /* =========================================================
@@ -1413,7 +1547,7 @@ let boosting=false;
 
 function updateBoost(dt){
   if(!boosting){
-    ext_playerAddEnergyAmount(dt*7);
+    ext_playerAddEnergyAmount(dt*7*modeEnergyRegen);
   }
 }
 
@@ -1479,6 +1613,35 @@ function updateMerge(){
         player.cells.splice(j,1);
       }
     }
+  }
+}
+
+/* =========================================================
+   COMBO STREAK
+========================================================= */
+
+function triggerCombo(){
+  comboCount++;
+  comboTimer=3;
+
+  const badge=document.getElementById("comboBadge");
+  if(!badge)return;
+
+  if(comboCount>=2){
+    badge.textContent="⚡ COMBO x"+comboCount;
+    badge.classList.add("show");
+    if(comboCount>=4)vibrate(35);
+  }
+}
+
+function updateCombo(dt){
+  if(comboTimer<=0)return;
+
+  comboTimer-=dt;
+  if(comboTimer<=0){
+    comboCount=0;
+    const badge=document.getElementById("comboBadge");
+    if(badge)badge.classList.remove("show");
   }
 }
 
@@ -1587,29 +1750,68 @@ function updateBots(dt){
       }
     }
 
-    ext_entMoveTowardsTarget(c, bot.targetX, bot.targetY, cellSpeed(c) * (bot.state==="flee"?0.66:(bot.state==="hunt"?0.59:0.55)), dt);
-    ext_entConstrainToBounds(c, c.r, WORLD-c.r, c.r, WORLD-c.r);
+    const speedMul = bot.state==="flee"?0.66:(bot.state==="hunt"?0.59:0.55);
 
-    for(let i=foods.length-1;i>=0;i--){
-      const f=foods[i];
-      if(ext_entIsColliding(c, f)){
-        c.r=Math.sqrt(c.r*c.r+f.r*f.r*.65);
-        foods.splice(i,1);
-        foods.push(createFood());
+    // FIX: prima veniva mossa/nutrita solo bot.cells[0]; le cellule nate da uno split
+    // restavano ferme e "morte" nel mondo di gioco. Ora il ciclo copre tutte le cellule.
+    for(const bc of bot.cells){
+
+      ext_entMoveTowardsTarget(bc, bot.targetX, bot.targetY, cellSpeed(bc) * speedMul, dt);
+      ext_entConstrainToBounds(bc, bc.r, WORLD-bc.r, bc.r, WORLD-bc.r);
+
+      if(bc.mergeTimer>0)bc.mergeTimer=Math.max(0,bc.mergeTimer-dt);
+
+      for(let i=foods.length-1;i>=0;i--){
+        const f=foods[i];
+        if(ext_entIsColliding(bc, f)){
+          bc.r=Math.sqrt(bc.r*bc.r+f.r*f.r*.65);
+          foods.splice(i,1);
+          foods.push(createFood());
+        }
+      }
+
+      for(let i=ejected.length-1;i>=0;i--){
+        const e=ejected[i];
+        if(ext_entIsColliding(bc, e)){
+          bc.r=Math.sqrt(bc.r*bc.r+e.r*e.r);
+          ejected.splice(i,1);
+        }
       }
     }
 
-    for(let i=ejected.length-1;i>=0;i--){
-      const e=ejected[i];
-      if(ext_entIsColliding(c, e)){
-        c.r=Math.sqrt(c.r*c.r+e.r*e.r);
-        ejected.splice(i,1);
+    updateBotMerge(bot);
+  }
+}
+
+// NUOVO: le cellule di un bot che si sono divise ora possono fondersi di nuovo,
+// esattamente come succede per il player (prima restavano separate per sempre).
+function updateBotMerge(bot){
+  if(bot.cells.length<2)return;
+
+  for(let i=0;i<bot.cells.length;i++){
+    for(let j=bot.cells.length-1;j>i;j--){
+
+      const a=bot.cells[i];
+      const b=bot.cells[j];
+
+      if(a.mergeTimer>0||b.mergeTimer>0)continue;
+
+      if(ext_entCheckMergeCondition(a,b)){
+        const total=a.r*a.r+b.r*b.r;
+
+        a.x=(a.x*a.r*a.r+b.x*b.r*b.r)/total;
+        a.y=(a.y*a.r*a.r+b.y*b.r*b.r)/total;
+        a.r=Math.sqrt(total);
+
+        bot.cells.splice(j,1);
       }
     }
   }
 }
 
 function botSplit(bot,target){
+  if(bot.cells.length>=8)return; // limite ragionevole di frammenti per bot
+
   const c=bot.cells[0];
   let angle = ext_mathAngleBetween(c.x, c.y, target.x, target.y);
   
@@ -1635,7 +1837,8 @@ function playerBotCollisions(){
     for(let bi=bots.length-1;bi>=0;bi--){
       const bot=bots[bi];
 
-      for(const bc of bot.cells){
+      for(let ci=bot.cells.length-1;ci>=0;ci--){
+        const bc=bot.cells[ci];
         const d=dist(pc,bc);
 
         if(canEat(pc,bc,d)){
@@ -1643,17 +1846,23 @@ function playerBotCollisions(){
           kills++;
           ext_playerAddXpAmount(25);
           particleBurst(bc.x,bc.y,bot.color,18);
+          triggerCombo();
 
-          addChat({
-            name:"SYS_ALERT",
-            color:"#0088ff",
-            text:"[KILL] "+player.name+" ha distrutto "+bot.name
-          });
+          // FIX: si rimuove solo la cellula mangiata, non l'intero bot
+          bot.cells.splice(ci,1);
 
-          bots.splice(bi,1);
-          setTimeout(()=>{
-            if(running) bots.push(createBot(ext_mathRandomInt(0,10000)));
-          },900);
+          if(bot.cells.length===0){
+            addChat({
+              name:"SYS_ALERT",
+              color:"#0088ff",
+              text:"[KILL] "+player.name+" ha distrutto "+bot.name
+            });
+
+            bots.splice(bi,1);
+            setTimeout(()=>{
+              if(running) bots.push(createBot(ext_mathRandomInt(0,10000)));
+            },900);
+          }
           break;
         }
 
@@ -1715,7 +1924,10 @@ function virusCollision(){
         if(player.cells.length>=16)break;
 
         const pieces=[];
-        const amount=Math.min(8,player.cells.length?8:1);
+        // FIX: il numero di frammenti ora e' limitato dallo spazio realmente
+        // disponibile fino al tetto di 16 cellule totali (prima poteva sforare il limite)
+        const freeSlots=16-player.cells.length+1;
+        const amount=Math.max(2,Math.min(8,freeSlots));
         const mass=c.r*c.r;
         const pieceMass=mass/amount;
 
@@ -2291,14 +2503,19 @@ function loop(now){
     playerCellCollision();
     playerBotCollisions();
     virusCollision();
+    updatePowerups(dt);
+    updateCombo(dt);
     updateParticles(dt);
     updateCamera(dt);
 
     updateHUD();
     updateLeaderboard();
+    updatePowerupPanel();
+    updateStatusBar();
 
     drawBackground();
     drawFood();
+    drawPowerups();
     drawEjected();
 
     for(const v of viruses){ drawVirus(v); }

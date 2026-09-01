@@ -1,9 +1,11 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const WebSocket = require("ws");
 
 const PORT = process.env.PORT || 3000;
+const SITE_URL = process.env.SITE_URL || `http://localhost:${PORT}`;
 
 const WORLD = 6000;
 const TICK = 30;
@@ -767,13 +769,431 @@ function broadcastState() {
 }
 
 /* ---------------------------
+   ACCOUNT SYSTEM
+   Registrazione/login classica + login social (Google, Facebook,
+   Apple, Discord, X). Le credenziali OAuth di ogni provider vanno
+   messe come variabili d'ambiente (vedi fondo file / README).
+   NB: gli utenti sono salvati in data/users.json (semplice, senza
+   database esterno). Le sessioni sono in memoria: riavviando il
+   server tutti dovranno rifare il login.
+---------------------------- */
+
+const DATA_DIR = path.join(__dirname, "data");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
+
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, "{}");
+
+function loadUsers() {
+  try {
+    return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+// token di sessione -> username. In memoria (semplice e sufficiente
+// per un gioco indie; per produzione seria conviene un JWT o un DB).
+const sessions = new Map();
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const hash = crypto.scryptSync(String(password), salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  const [salt, hash] = String(stored || "").split(":");
+  if (!salt || !hash) return false;
+  const check = crypto.scryptSync(String(password), salt, 64).toString("hex");
+  return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(check));
+}
+
+function createSession(username) {
+  const token = crypto.randomBytes(32).toString("hex");
+  sessions.set(token, username);
+  return token;
+}
+
+function getSessionUser(req) {
+  const auth = req.headers["authorization"] || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!token || !sessions.has(token)) return null;
+  const users = loadUsers();
+  const username = sessions.get(token);
+  return users[username] ? { username, ...users[username] } : null;
+}
+
+function publicUser(u) {
+  return {
+    username: u.username,
+    email: u.email || null,
+    provider: u.provider || "local",
+    level: u.level || 1,
+    xp: u.xp || 0,
+    coins: u.coins || 0,
+    skins: u.skins || ["default"],
+    equippedSkin: u.equippedSkin || "default"
+  };
+}
+
+function readJSONBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    let size = 0;
+    req.on("data", chunk => {
+      size += chunk.length;
+      if (size > 1e6) { req.destroy(); reject(new Error("Payload troppo grande")); return; }
+      body += chunk;
+    });
+    req.on("end", () => {
+      try { resolve(body ? JSON.parse(body) : {}); }
+      catch { reject(new Error("JSON non valido")); }
+    });
+    req.on("error", reject);
+  });
+}
+
+function sendJSON(res, status, data) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(data));
+}
+
+function validUsername(name) {
+  return typeof name === "string" && /^[a-zA-Z0-9_.-]{3,20}$/.test(name);
+}
+
+/* -------- API: registrazione / login classici -------- */
+
+async function handleApiRegister(req, res) {
+  let body;
+  try { body = await readJSONBody(req); } catch (e) { return sendJSON(res, 400, { error: e.message }); }
+
+  const username = String(body.username || "").trim();
+  const email = String(body.email || "").trim();
+  const password = String(body.password || "");
+
+  if (!validUsername(username)) {
+    return sendJSON(res, 400, { error: "Username non valido (3-20 caratteri: lettere, numeri, _ . -)" });
+  }
+  if (password.length < 6) {
+    return sendJSON(res, 400, { error: "La password deve avere almeno 6 caratteri" });
+  }
+
+  const users = loadUsers();
+  if (users[username]) {
+    return sendJSON(res, 409, { error: "Username già registrato" });
+  }
+
+  users[username] = {
+    username,
+    email: email || null,
+    provider: "local",
+    passwordHash: hashPassword(password),
+    level: 1,
+    xp: 0,
+    coins: 0,
+    skins: ["default"],
+    equippedSkin: "default",
+    createdAt: Date.now()
+  };
+  saveUsers(users);
+
+  const token = createSession(username);
+  sendJSON(res, 201, { token, user: publicUser(users[username]) });
+}
+
+async function handleApiLogin(req, res) {
+  let body;
+  try { body = await readJSONBody(req); } catch (e) { return sendJSON(res, 400, { error: e.message }); }
+
+  const username = String(body.username || "").trim();
+  const password = String(body.password || "");
+  const users = loadUsers();
+  const user = users[username];
+
+  if (!user || user.provider !== "local" || !verifyPassword(password, user.passwordHash)) {
+    return sendJSON(res, 401, { error: "Credenziali non valide" });
+  }
+
+  const token = createSession(username);
+  sendJSON(res, 200, { token, user: publicUser(user) });
+}
+
+function handleApiMe(req, res) {
+  const user = getSessionUser(req);
+  if (!user) return sendJSON(res, 401, { error: "Non autenticato" });
+  sendJSON(res, 200, { user: publicUser(user) });
+}
+
+async function handleApiProgress(req, res) {
+  const session = getSessionUser(req);
+  if (!session) return sendJSON(res, 401, { error: "Non autenticato" });
+
+  let body;
+  try { body = await readJSONBody(req); } catch (e) { return sendJSON(res, 400, { error: e.message }); }
+
+  const users = loadUsers();
+  const user = users[session.username];
+  if (!user) return sendJSON(res, 404, { error: "Utente non trovato" });
+
+  if (Number.isFinite(body.level)) user.level = clamp(Math.floor(body.level), 1, 1000);
+  if (Number.isFinite(body.xp)) user.xp = Math.max(0, Math.floor(body.xp));
+  if (Number.isFinite(body.coins)) user.coins = Math.max(0, Math.floor(body.coins));
+  if (Array.isArray(body.skins)) user.skins = [...new Set(["default", ...body.skins.map(String)])];
+  if (typeof body.equippedSkin === "string") user.equippedSkin = body.equippedSkin;
+
+  saveUsers(users);
+  sendJSON(res, 200, { user: publicUser(user) });
+}
+
+function handleApiLogout(req, res) {
+  const auth = req.headers["authorization"] || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (token) sessions.delete(token);
+  sendJSON(res, 200, { ok: true });
+}
+
+/* -------- LOGIN SOCIALE (5 provider) --------
+   Ogni provider richiede un'app registrata sul relativo pannello
+   sviluppatori, da cui ottieni CLIENT_ID e CLIENT_SECRET, da mettere
+   come variabili d'ambiente. Redirect URI da configurare presso il
+   provider: `${SITE_URL}/auth/<provider>/callback`
+*/
+
+const OAUTH_PROVIDERS = {
+  google: {
+    authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenUrl: "https://oauth2.googleapis.com/token",
+    profileUrl: "https://www.googleapis.com/oauth2/v3/userinfo",
+    scope: "openid email profile",
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    extraAuthParams: { response_type: "code", access_type: "online" },
+    mapProfile: p => ({ id: p.sub, name: p.name || p.email, email: p.email })
+  },
+  facebook: {
+    authUrl: "https://www.facebook.com/v19.0/dialog/oauth",
+    tokenUrl: "https://graph.facebook.com/v19.0/oauth/access_token",
+    profileUrl: "https://graph.facebook.com/me?fields=id,name,email",
+    scope: "email public_profile",
+    clientId: process.env.FACEBOOK_CLIENT_ID,
+    clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+    extraAuthParams: { response_type: "code" },
+    mapProfile: p => ({ id: p.id, name: p.name, email: p.email })
+  },
+  discord: {
+    authUrl: "https://discord.com/api/oauth2/authorize",
+    tokenUrl: "https://discord.com/api/oauth2/token",
+    profileUrl: "https://discord.com/api/users/@me",
+    scope: "identify email",
+    clientId: process.env.DISCORD_CLIENT_ID,
+    clientSecret: process.env.DISCORD_CLIENT_SECRET,
+    extraAuthParams: { response_type: "code" },
+    mapProfile: p => ({ id: p.id, name: p.username, email: p.email })
+  },
+  twitter: {
+    authUrl: "https://twitter.com/i/oauth2/authorize",
+    tokenUrl: "https://api.twitter.com/2/oauth2/token",
+    profileUrl: "https://api.twitter.com/2/users/me",
+    scope: "tweet.read users.read offline.access",
+    clientId: process.env.TWITTER_CLIENT_ID,
+    clientSecret: process.env.TWITTER_CLIENT_SECRET,
+    extraAuthParams: { response_type: "code" },
+    pkce: true, // X/Twitter richiede PKCE anche con client confidenziale
+    mapProfile: p => ({ id: p.data.id, name: p.data.name, email: null })
+  }
+  // Apple Sign In non usa un authorization-code flow standard: richiede
+  // un client_secret firmato come JWT con la chiave privata .p8 del tuo
+  // account Apple Developer, e la risposta arriva via POST (form_post),
+  // non redirect GET. Vedi handleAppleAuth più sotto: è predisposto ma
+  // richiede che tu inserisca APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_CLIENT_ID
+  // e la chiave privata APPLE_PRIVATE_KEY per attivarsi davvero.
+};
+
+const oauthState = new Map(); // state -> { provider, verifier, createdAt }
+
+function cleanupOauthState() {
+  const now = Date.now();
+  for (const [state, entry] of oauthState) {
+    if (now - entry.createdAt > 10 * 60 * 1000) oauthState.delete(state);
+  }
+}
+
+function base64url(buf) {
+  return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function findOrCreateSocialUser(provider, profile) {
+  const users = loadUsers();
+  const key = `${provider}:${profile.id}`;
+
+  let username = Object.keys(users).find(u => users[u].socialKey === key);
+  if (!username) {
+    let base = validUsername(profile.name) ? profile.name : `${provider}_${profile.id}`.slice(0, 20);
+    username = base;
+    let i = 1;
+    while (users[username]) username = `${base}_${i++}`.slice(0, 20);
+
+    users[username] = {
+      username,
+      email: profile.email || null,
+      provider,
+      socialKey: key,
+      level: 1,
+      xp: 0,
+      coins: 0,
+      skins: ["default"],
+      equippedSkin: "default",
+      createdAt: Date.now()
+    };
+    saveUsers(users);
+  }
+  return users[username];
+}
+
+function handleAuthStart(req, res, provider) {
+  const cfg = OAUTH_PROVIDERS[provider];
+  if (!cfg || !cfg.clientId || !cfg.clientSecret) {
+    res.writeHead(302, { Location: "/?authError=" + encodeURIComponent(provider + "_not_configured") });
+    return res.end();
+  }
+
+  cleanupOauthState();
+  const state = crypto.randomBytes(16).toString("hex");
+  const entry = { provider, createdAt: Date.now() };
+
+  const params = new URLSearchParams({
+    client_id: cfg.clientId,
+    redirect_uri: `${SITE_URL}/auth/${provider}/callback`,
+    scope: cfg.scope,
+    state,
+    ...cfg.extraAuthParams
+  });
+
+  if (cfg.pkce) {
+    const verifier = base64url(crypto.randomBytes(32));
+    const challenge = base64url(crypto.createHash("sha256").update(verifier).digest());
+    entry.verifier = verifier;
+    params.set("code_challenge", challenge);
+    params.set("code_challenge_method", "S256");
+  }
+
+  oauthState.set(state, entry);
+
+  res.writeHead(302, { Location: `${cfg.authUrl}?${params.toString()}` });
+  res.end();
+}
+
+async function handleAuthCallback(req, res, provider, query) {
+  const cfg = OAUTH_PROVIDERS[provider];
+  const { code, state, error } = query;
+
+  if (error || !cfg) {
+    res.writeHead(302, { Location: "/?authError=" + encodeURIComponent(error || "unknown_provider") });
+    return res.end();
+  }
+
+  const entry = oauthState.get(state);
+  if (!entry || entry.provider !== provider) {
+    res.writeHead(302, { Location: "/?authError=invalid_state" });
+    return res.end();
+  }
+  oauthState.delete(state);
+
+  try {
+    const tokenParams = new URLSearchParams({
+      client_id: cfg.clientId,
+      client_secret: cfg.clientSecret,
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: `${SITE_URL}/auth/${provider}/callback`
+    });
+    if (cfg.pkce) tokenParams.set("code_verifier", entry.verifier);
+
+    const tokenResp = await fetch(cfg.tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: tokenParams.toString()
+    });
+    const tokenData = await tokenResp.json();
+    if (!tokenData.access_token) throw new Error("Nessun access_token ricevuto da " + provider);
+
+    const profileResp = await fetch(cfg.profileUrl, {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+    });
+    const profileRaw = await profileResp.json();
+    const profile = cfg.mapProfile(profileRaw);
+
+    const user = await findOrCreateSocialUser(provider, profile);
+    const sessionToken = createSession(user.username);
+
+    res.writeHead(302, {
+      Location: "/?token=" + encodeURIComponent(sessionToken) + "&welcome=" + encodeURIComponent(user.username)
+    });
+    res.end();
+  } catch (err) {
+    console.error(`Errore login ${provider}:`, err.message);
+    res.writeHead(302, { Location: "/?authError=" + encodeURIComponent(provider + "_failed") });
+    res.end();
+  }
+}
+
+// Apple Sign In: predisposto ma richiede configurazione extra (vedi sopra).
+// Se le variabili non sono impostate risponde semplicemente con l'errore,
+// così il pulsante non si rompe silenziosamente.
+function handleAppleAuthStart(req, res) {
+  if (!process.env.APPLE_CLIENT_ID || !process.env.APPLE_TEAM_ID || !process.env.APPLE_KEY_ID || !process.env.APPLE_PRIVATE_KEY) {
+    res.writeHead(302, { Location: "/?authError=apple_not_configured" });
+    return res.end();
+  }
+  // Implementazione completa richiede firma JWT del client_secret con la
+  // chiave privata Apple (.p8) e gestione della risposta POST form_post.
+  // Struttura pronta: aggiungi qui la generazione del JWT (es. libreria
+  // 'jsonwebtoken') quando avrai le tue credenziali Apple Developer.
+  res.writeHead(302, { Location: "/?authError=apple_not_implemented" });
+  res.end();
+}
+
+/* ---------------------------
    HTTP SERVER
 ---------------------------- */
 
 const publicDir = path.join(__dirname, "public");
 
 const server = http.createServer((req, res) => {
-  let requestPath = req.url.split("?")[0];
+  const fullUrl = new URL(req.url, SITE_URL);
+  let requestPath = fullUrl.pathname;
+  const query = Object.fromEntries(fullUrl.searchParams);
+
+  /* --- API account (registrazione/login/profilo/progressi) --- */
+  if (requestPath === "/api/register" && req.method === "POST") return handleApiRegister(req, res);
+  if (requestPath === "/api/login" && req.method === "POST") return handleApiLogin(req, res);
+  if (requestPath === "/api/logout" && req.method === "POST") return handleApiLogout(req, res);
+  if (requestPath === "/api/me" && req.method === "GET") return handleApiMe(req, res);
+  if (requestPath === "/api/progress" && req.method === "POST") return handleApiProgress(req, res);
+
+  /* --- Login sociale --- */
+  const authMatch = requestPath.match(/^\/auth\/([a-z]+)(\/callback)?$/);
+  if (authMatch) {
+    const provider = authMatch[1];
+    const isCallback = !!authMatch[2];
+
+    if (provider === "apple" && !isCallback) return handleAppleAuthStart(req, res);
+    if (provider === "apple") {
+      res.writeHead(302, { Location: "/?authError=apple_not_configured" });
+      return res.end();
+    }
+    if (OAUTH_PROVIDERS[provider]) {
+      return isCallback
+        ? handleAuthCallback(req, res, provider, query)
+        : handleAuthStart(req, res, provider);
+    }
+  }
+
   if (requestPath === "/") requestPath = "/index.html";
 
   let filename;
@@ -972,6 +1392,6 @@ setInterval(() => {
 }, TICK);
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Cell Arena avviato sulla porta ${PORT}`);
+  console.log(`Zero And Yassine Evolution avviato sulla porta ${PORT}`);
   console.log(`World: ${WORLD}x${WORLD}`);
 });

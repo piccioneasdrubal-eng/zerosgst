@@ -1,12 +1,15 @@
 {
-  "name": "cell-arena",
-  "version": "1.0.0",
-  "description": "Cell Arena - multiplayer .io game",
+  "name": "zero-and-yassine-evolution",
+  "version": "2.0.0",
+  "description": "Zero And Yassine Evolution - multiplayer .io game with accounts, 1000 levels and social login",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

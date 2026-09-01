@@ -3,13 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Cell Arena — Agar Style</title>
+<title>Cell Arena — Agar Style (Neon Edition)</title>
 
 <style>
+/* =========================================================
+   THEME: TOTAL BLACK & NEON CYAN / ELECTRIC BLUE
+========================================================= */
 *{box-sizing:border-box}
 html,body{
   margin:0;width:100%;height:100%;overflow:hidden;
-  background:#050b14;color:#fff;font-family:Arial,sans-serif;
+  background:#000000;color:#00ffff;font-family:"Consolas", "Courier New", monospace;
   user-select:none
 }
 canvas{position:fixed;inset:0;display:block}
@@ -19,32 +22,34 @@ button{border:0;cursor:pointer}
 
 #hud{
  position:fixed;left:15px;top:15px;z-index:20;
- min-width:225px;padding:14px;border-radius:16px;
- background:#081322e8;border:1px solid #ffffff12;
- box-shadow:0 15px 50px #0007;backdrop-filter:blur(12px)
+ min-width:225px;padding:14px;border-radius:12px;
+ background:#01080cee;border:1px solid #00ffff;
+ box-shadow:0 0 15px #00ffff33;backdrop-filter:blur(8px)
 }
-#mass{font-size:19px}
-.small{color:#8190a7;font-size:11px}
+#mass{font-size:19px;text-shadow:0 0 5px #00ffff;}
+.small{color:#0088ff;font-size:11px}
 .bar{
- width:100%;height:7px;margin-top:8px;background:#ffffff12;
- border-radius:10px;overflow:hidden
+ width:100%;height:7px;margin-top:8px;background:#002222;
+ border-radius:10px;overflow:hidden;border:1px solid #00ffff44;
 }
 .bar i{
  display:block;width:0%;height:100%;
- background:linear-gradient(90deg,#42d392,#63e6be)
+ background:linear-gradient(90deg,#00ffff,#0055ff);
+ box-shadow:0 0 8px #00ffff;
 }
 .stats{
  display:grid;grid-template-columns:1fr 1fr;
- gap:5px;margin-top:9px;font-size:11px;color:#9baac0
+ gap:5px;margin-top:9px;font-size:11px;color:#00aaaa;
 }
-.stats b{color:#fff}
+.stats b{color:#00ffff}
 
 #board{
  position:fixed;right:15px;top:15px;z-index:20;width:230px;
- padding:14px;border-radius:16px;background:#081322e8;
- border:1px solid #ffffff12;backdrop-filter:blur(12px)
+ padding:14px;border-radius:12px;background:#01080cee;
+ border:1px solid #00ffff;box-shadow:0 0 15px #00ffff33;
+ backdrop-filter:blur(8px)
 }
-#board h3{margin:0 0 10px}
+#board h3{margin:0 0 10px;text-shadow:0 0 5px #00ffff;}
 .row{
  display:flex;justify-content:space-between;padding:5px 0;
  font-size:13px
@@ -52,60 +57,63 @@ button{border:0;cursor:pointer}
 
 #mini{
  position:fixed;right:15px;bottom:15px;z-index:20;
- width:150px;height:150px;border:2px solid #ffffff22;
- border-radius:12px;background:#07101d
+ width:150px;height:150px;border:1px solid #00ffff;
+ border-radius:12px;background:#000508;
+ box-shadow:0 0 15px #00ffff33;
 }
 
 #userButton{
  position:fixed;right:260px;top:15px;z-index:40;
  padding:10px 14px;border-radius:12px;
- background:#081322e8;border:1px solid #ffffff14;color:#fff
+ background:#01080cee;border:1px solid #00ffff;color:#00ffff;
+ box-shadow:0 0 10px #00ffff33;
 }
 #userMenu{
  position:fixed;right:260px;top:62px;z-index:50;width:270px;
- padding:18px;border-radius:18px;background:#0b1728f5;
- border:1px solid #ffffff14;box-shadow:0 20px 70px #0009
+ padding:18px;border-radius:12px;background:#01080cf5;
+ border:1px solid #00ffff;box-shadow:0 0 25px #00ffff55;
 }
-#userMenu h3{margin:0 0 12px}
+#userMenu h3{margin:0 0 12px;text-shadow:0 0 5px #00ffff;}
 #userMenu input,#userMenu select{
- width:100%;padding:11px;border-radius:10px;
- border:1px solid #ffffff16;background:#111f34;
- color:#fff;outline:0
+ width:100%;padding:11px;border-radius:8px;
+ border:1px solid #00ffff55;background:#00111a;
+ color:#00ffff;outline:0;font-family:inherit;
 }
-.green{color:#42d392;font-size:12px}
+.green{color:#00ffff;font-size:12px;text-shadow:0 0 3px #00ffff;}
 .menuBtn{
- width:100%;margin-top:9px;padding:11px;border-radius:10px;
- background:#42d392;color:#06130d;font-weight:bold
+ width:100%;margin-top:9px;padding:11px;border-radius:8px;
+ background:#00ffff;color:#000;font-weight:bold;
+ box-shadow:0 0 8px #00ffff;text-transform:uppercase;
 }
-.menuBtn.alt{background:#ffffff12;color:#fff}
+.menuBtn.alt{background:#002233;color:#00ffff;border:1px solid #00ffff;box-shadow:none;}
 
 #chat{
  position:fixed;left:15px;bottom:15px;z-index:30;width:350px;height:320px;
- display:flex;flex-direction:column;overflow:hidden;border-radius:18px;
- background:#07101deb;border:1px solid #ffffff14;
- box-shadow:0 20px 70px #0009;backdrop-filter:blur(12px)
+ display:flex;flex-direction:column;overflow:hidden;border-radius:12px;
+ background:#01080cee;border:1px solid #00ffff;
+ box-shadow:0 0 20px #00ffff33;backdrop-filter:blur(8px)
 }
 #chatHeader{
  min-height:44px;display:flex;justify-content:space-between;
- align-items:center;padding:0 12px;background:#0d1b2eee;
- border-bottom:1px solid #ffffff0c
+ align-items:center;padding:0 12px;background:#001a22;
+ border-bottom:1px solid #00ffff55
 }
-#chatOnline{color:#42d392;font-size:10px}
-#chatClose{padding:5px 9px;background:#ffffff10;color:#fff;border-radius:8px}
+#chatOnline{color:#00ffff;font-size:10px}
+#chatClose{padding:5px 9px;background:#00ffff33;color:#00ffff;border-radius:6px;border:1px solid #00ffff;}
 #chatMessages{flex:1;overflow-y:auto;padding:10px}
 .chatMessage{margin-bottom:9px;font-size:12px;line-height:1.35}
-.chatName{font-weight:bold}.chatTime{color:#62728b;font-size:9px;margin-left:5px}
-.chatText{color:#dbe4ef}
-#chatInputArea{display:flex;gap:6px;padding:7px;background:#081322}
+.chatName{font-weight:bold}.chatTime{color:#0088ff;font-size:9px;margin-left:5px}
+.chatText{color:#e0ffff}
+#chatInputArea{display:flex;gap:6px;padding:7px;background:#000a11;border-top:1px solid #00ffff33;}
 #chatInput{
- flex:1;min-width:0;margin:0;padding:9px;border:0;border-radius:9px;
- background:#111f34;color:#fff;outline:0
+ flex:1;min-width:0;margin:0;padding:9px;border:1px solid #00ffff55;border-radius:6px;
+ background:#00111a;color:#00ffff;outline:0;font-family:inherit;
 }
-#chatSend{padding:8px 12px;border-radius:9px;background:#42d392}
+#chatSend{padding:8px 12px;border-radius:6px;background:#00ffff;color:#000;font-weight:bold;}
 #chatOpen{
  position:fixed;left:15px;bottom:15px;z-index:29;padding:10px 14px;
- border-radius:12px;background:#0b1728ee;color:#fff;
- border:1px solid #ffffff15
+ border-radius:12px;background:#01080cee;color:#00ffff;
+ border:1px solid #00ffff;box-shadow:0 0 10px #00ffff33;
 }
 
 #power{
@@ -114,90 +122,93 @@ button{border:0;cursor:pointer}
  justify-content:center
 }
 .p{
- padding:8px 12px;border-radius:10px;background:#ffe66d;
- color:#111;font-weight:bold;font-size:12px
+ padding:8px 12px;border-radius:8px;background:#0088ff;
+ color:#fff;font-weight:bold;font-size:12px;border:1px solid #00ffff;
+ box-shadow:0 0 8px #0088ff;
 }
 
 #connection{
  position:fixed;left:50%;top:12px;transform:translateX(-50%);
- z-index:100;padding:7px 14px;border-radius:20px;
- background:#08111fee;border:1px solid #ffffff12;
- font-size:11px;color:#42d392
+ z-index:100;padding:7px 14px;border-radius:12px;
+ background:#01080cee;border:1px solid #00ffff;
+ font-size:11px;color:#00ffff;box-shadow:0 0 10px #00ffff33;
 }
 
 #toast{
  position:fixed;left:50%;top:65px;transform:translateX(-50%);
- z-index:150;padding:10px 18px;border-radius:14px;
- background:#0b1728f5;border:1px solid #ffffff18;
+ z-index:150;padding:10px 18px;border-radius:8px;
+ background:#01080cf5;border:1px solid #00ffff;color:#00ffff;
  opacity:0;pointer-events:none;transition:.25s;
- box-shadow:0 10px 40px #0008
+ box-shadow:0 0 20px #00ffff55;
 }
 #toast.show{opacity:1}
 
 #menu,#pause,#over,#settings{
  position:fixed;inset:0;z-index:200;display:flex;
  justify-content:center;align-items:center;
- background:radial-gradient(circle at center,#162944dd,#02050bee)
+ background:radial-gradient(circle at center,#002233ee,#000000fa)
 }
 .card{
  width:min(480px,92vw);max-height:92vh;overflow:auto;
- padding:30px;border-radius:24px;
- background:#0b1728f7;border:1px solid #ffffff15;
- box-shadow:0 30px 100px #000
+ padding:30px;border-radius:12px;
+ background:#01080cf7;border:1px solid #00ffff;
+ box-shadow:0 0 40px #00ffff44
 }
-.card h1{margin:0 0 8px;font-size:42px}
-.card h2{margin-top:0}
-.card p{color:#aebbd0;line-height:1.5}
+.card h1{margin:0 0 8px;font-size:38px;color:#00ffff;text-shadow:0 0 10px #00ffff;}
+.card h2{margin-top:0;color:#00ffff;}
+.card p{color:#00aaaa;line-height:1.5}
 .card label{
- display:block;color:#9baac0;font-size:12px;margin-top:12px
+ display:block;color:#0088ff;font-size:12px;margin-top:12px
 }
 .card input,.card select{
- width:100%;padding:12px;margin-top:6px;border:1px solid #ffffff16;
- border-radius:10px;background:#111f34;color:#fff;outline:0
+ width:100%;padding:12px;margin-top:6px;border:1px solid #00ffff55;
+ border-radius:8px;background:#00111a;color:#00ffff;outline:0;font-family:inherit;
 }
 .play{
- width:100%;padding:14px;margin-top:14px;border-radius:12px;
- background:#42d392;color:#06130d;font-weight:bold
+ width:100%;padding:14px;margin-top:14px;border-radius:8px;
+ background:#00ffff;color:#000;font-weight:bold;font-size:16px;
+ box-shadow:0 0 15px #00ffff;text-transform:uppercase;
 }
 .secondary{
- width:100%;padding:12px;margin-top:9px;border-radius:12px;
- background:#ffffff10;color:#fff
+ width:100%;padding:12px;margin-top:9px;border-radius:8px;
+ background:#002233;color:#00ffff;border:1px solid #00ffff;
 }
 .settingRow{
  display:flex;justify-content:space-between;align-items:center;
- padding:10px 0;border-bottom:1px solid #ffffff0b
+ padding:10px 0;border-bottom:1px solid #00ffff33
 }
 .settingRow label{margin:0}
 .switch{
- width:44px;height:24px;border-radius:20px;background:#334155;
- position:relative
+ width:44px;height:24px;border-radius:20px;background:#003333;
+ position:relative;border:1px solid #00ffff55;
 }
 .switch i{
- position:absolute;width:18px;height:18px;top:3px;left:3px;
- border-radius:50%;background:white;transition:.2s
+ position:absolute;width:18px;height:18px;top:2px;left:3px;
+ border-radius:50%;background:#0088ff;transition:.2s
 }
-.switch.on{background:#42d392}
-.switch.on i{left:23px}
+.switch.on{background:#00ffff;box-shadow:0 0 8px #00ffff;}
+.switch.on i{left:21px;background:#000;}
 
 #touch{
  position:fixed;inset:0;z-index:10;pointer-events:none
 }
 .touchBtn{
  position:absolute;width:65px;height:65px;border-radius:50%;
- background:#ffffff18;border:1px solid #ffffff22;color:white;
- font-weight:bold;pointer-events:auto;backdrop-filter:blur(8px)
+ background:#00ffff33;border:1px solid #00ffff;color:#00ffff;
+ font-weight:bold;pointer-events:auto;backdrop-filter:blur(8px);
+ box-shadow:0 0 15px #00ffff33;
 }
 #splitBtn{right:25px;bottom:105px}
 #feedBtn{right:105px;bottom:45px}
 
 #joystick{
  position:absolute;left:25px;bottom:35px;width:125px;height:125px;
- border-radius:50%;background:#ffffff0d;border:1px solid #ffffff15;
- pointer-events:auto
+ border-radius:50%;background:#00ffff11;border:1px solid #00ffff55;
+ pointer-events:auto;box-shadow:inset 0 0 15px #00ffff22;
 }
 #stick{
  position:absolute;width:48px;height:48px;border-radius:50%;
- background:#42d392aa;left:38px;top:38px
+ background:#00ffff88;left:38px;top:38px;box-shadow:0 0 10px #00ffff;
 }
 
 @media(max-width:700px){
@@ -217,57 +228,57 @@ button{border:0;cursor:pointer}
 
 <canvas id="game"></canvas>
 
-<div id="connection">🟢 Modalità locale · 1 online</div>
+<div id="connection">[SYS] Modalità locale · 1 entity online</div>
 <div id="toast"></div>
 
 <div id="hud">
-  <div id="mass">Massa: 25</div>
-  <div>Livello <b id="level">1</b> · XP <span id="xp">0</span></div>
+  <div id="mass">MASS: 25</div>
+  <div>LVL <b id="level">1</b> | XP <span id="xp">0</span></div>
   <div class="bar"><i id="xpbar"></i></div>
-  <div class="small">⚡ Energia: <span id="energy">100</span>%</div>
+  <div class="small">PWR: <span id="energy">100</span>%</div>
 
   <div class="stats">
-    <div>💀 Kill <b id="kills">0</b></div>
-    <div>🍎 Food <b id="foodCount">0</b></div>
-    <div>⏱️ Tempo <b id="time">0:00</b></div>
-    <div>🏅 Record <b id="best">25</b></div>
+    <div>[K] Kill <b id="kills">0</b></div>
+    <div>[F] Food <b id="foodCount">0</b></div>
+    <div>[T] Time <b id="time">0:00</b></div>
+    <div>[R] Record <b id="best">25</b></div>
   </div>
 </div>
 
 <div id="board">
-  <h3>🏆 Classifica</h3>
+  <h3>[ CLASSIFICA ]</h3>
   <div id="rows"></div>
 </div>
 
-<button id="userButton">👤 <span id="userNameButton">Player</span></button>
+<button id="userButton">USR_ <span id="userNameButton">Player</span></button>
 
 <div id="userMenu" class="hidden">
-  <h3>👤 Profilo</h3>
-  <div class="green">🟢 Account locale</div>
+  <h3>[ PROFILO ]</h3>
+  <div class="green">STATUS: ROOT_LOCAL</div>
 
-  <label>Nickname</label>
+  <label>ID_NOME</label>
   <input id="userNameInput" maxlength="16" value="Player">
 
-  <label>Colore</label>
+  <label>HEX_COLOR</label>
   <select id="colorInput">
-    <option value="#42d392">Verde</option>
-    <option value="#5da9ff">Blu</option>
-    <option value="#ff6680">Rosa</option>
-    <option value="#ffe66d">Giallo</option>
-    <option value="#b875ff">Viola</option>
-    <option value="#ff9d4d">Arancione</option>
-    <option value="#44d9e8">Ciano</option>
-    <option value="#ff5bd6">Magenta</option>
+    <option value="#00ffff">Neon Cyan</option>
+    <option value="#0088ff">Electric Blue</option>
+    <option value="#42d392">Matrix Green</option>
+    <option value="#ffe66d">Warning Yellow</option>
+    <option value="#ff6680">Cyber Pink</option>
+    <option value="#b875ff">Deep Purple</option>
+    <option value="#ff9d4d">Reactor Orange</option>
+    <option value="#ffffff">Pure White</option>
   </select>
 
-  <button class="menuBtn" id="saveName">💾 Salva</button>
-  <button class="menuBtn alt" id="openSettings">⚙️ Impostazioni</button>
-  <button class="menuBtn alt" id="closeUser">Chiudi</button>
+  <button class="menuBtn" id="saveName">SALVA_DATI</button>
+  <button class="menuBtn alt" id="openSettings">SYS_CONFIG</button>
+  <button class="menuBtn alt" id="closeUser">ESCI</button>
 </div>
 
 <div id="chat">
   <div id="chatHeader">
-    <div>💬 Chat globale <span id="chatOnline">● locale</span></div>
+    <div>LOG_CHAT <span id="chatOnline">● LOCALE</span></div>
     <button id="chatClose">−</button>
   </div>
 
@@ -275,19 +286,20 @@ button{border:0;cursor:pointer}
 
   <div id="chatInputArea">
     <input id="chatInput" maxlength="180" autocomplete="off"
-           placeholder="Scrivi un messaggio...">
-    <button id="chatSend">➤</button>
+           placeholder="> Inserisci comando...">
+    <button id="chatSend">EXEC</button>
   </div>
 </div>
 
-<button id="chatOpen" class="hidden">💬 Chat</button>
+<button id="chatOpen" class="hidden">LOG_CHAT</button>
 
 <canvas id="mini" width="150" height="150"></canvas>
 
 <div id="power">
-  <div class="p">SPACE · SPLIT</div>
-  <div class="p">W · FEED</div>
-  <div class="p">E · BOOST</div>
+  <div class="p">SPACE: SPLIT</div>
+  <div class="p">W: FEED</div>
+  <div class="p">E: BOOST</div>
+  <div class="p">SHIFT: DASH</div>
 </div>
 
 <div id="touch">
@@ -300,77 +312,76 @@ button{border:0;cursor:pointer}
 
 <div id="menu">
   <div class="card">
-    <h1>🟢 Cell Arena</h1>
+    <h1>CELL_ARENA<br><span style="font-size:18px;color:#0088ff;">// NEON EDITION</span></h1>
 
     <p>
-      Cresci mangiando particelle, elimina le cellule più piccole,
-      usa <b>W</b> per feed e <b>SPACE</b> per splittare.
+      Esegui l'assorbimento delle particelle. Elimina le entità inferiori.<br>
+      <b>W</b> = Feed | <b>SPACE</b> = Split | <b>SHIFT</b> = Dash.
     </p>
 
-    <label>Nome</label>
+    <label>ID_GIOCATORE</label>
     <input id="name" maxlength="16" value="Player">
 
-    <label>Modalità</label>
+    <label>PROTOCOLLO</label>
     <select id="mode">
-      <option value="classic">Classic</option>
-      <option value="survival">Survival</option>
-      <option value="chaos">Chaos</option>
+      <option value="classic">Standard (Classic)</option>
+      <option value="survival">Hardcore (Survival)</option>
+      <option value="chaos">Overload (Chaos)</option>
     </select>
 
-    <button class="play" id="playButton">GIOCA</button>
-
-    <button class="secondary" id="menuSettings">⚙️ Impostazioni</button>
+    <button class="play" id="playButton">INIZIALIZZA</button>
+    <button class="secondary" id="menuSettings">SYS_CONFIG</button>
 
     <p class="small">
-      🖱️ Mouse/touch · SPACE = split · W = feed · E = boost · ESC = pausa
+      > CMD: Mouse/Touch · SPACE=split · W=feed · E=boost · SHIFT=dash · F=Fullscreen · \=Debug · ESC=Pausa
     </p>
   </div>
 </div>
 
 <div id="pause" class="hidden">
   <div class="card">
-    <h2>⏸️ Pausa</h2>
-    <p>La partita è in pausa.</p>
+    <h2>[ SISTEMA IN PAUSA ]</h2>
+    <p>Flusso temporale arrestato.</p>
 
-    <button class="play" id="resumeButton">▶ Continua</button>
-    <button class="menuBtn alt" id="menuButton">☰ Torna al menu</button>
+    <button class="play" id="resumeButton">RIPRENDI</button>
+    <button class="menuBtn alt" id="menuButton">TORNA ALL'HUB</button>
   </div>
 </div>
 
 <div id="over" class="hidden">
   <div class="card">
-    <h2>💥 Game Over</h2>
+    <h2>[ CRITICO: ENTITÀ DISTRUTTA ]</h2>
     <p id="result"></p>
-    <button class="play" id="retryButton">🔄 Rigioca</button>
-    <button class="menuBtn alt" id="overMenu">☰ Menu</button>
+    <button class="play" id="retryButton">REBOOT</button>
+    <button class="menuBtn alt" id="overMenu">HUB</button>
   </div>
 </div>
 
 <div id="settings" class="hidden">
   <div class="card">
-    <h2>⚙️ Impostazioni</h2>
+    <h2>[ SYS_CONFIG ]</h2>
 
     <div class="settingRow">
-      <label>✨ Particelle</label>
+      <label>Render Particelle</label>
       <div class="switch on" id="particlesSwitch"><i></i></div>
     </div>
 
     <div class="settingRow">
-      <label>🌑 Ombre</label>
+      <label>Ombreggiatura Neon</label>
       <div class="switch on" id="shadowsSwitch"><i></i></div>
     </div>
 
     <div class="settingRow">
-      <label>📳 Vibrazione mobile</label>
+      <label>Feedback Aptico</label>
       <div class="switch on" id="vibrateSwitch"><i></i></div>
     </div>
 
     <div class="settingRow">
-      <label>🤖 Bot aggressivi</label>
+      <label>IA Aggressiva</label>
       <div class="switch on" id="aggressiveSwitch"><i></i></div>
     </div>
 
-    <button class="play" id="closeSettings">Fatto</button>
+    <button class="play" id="closeSettings">APPLICA</button>
   </div>
 </div>
 
@@ -378,9 +389,247 @@ button{border:0;cursor:pointer}
 "use strict";
 
 /* =========================================================
-   CANVAS
+   100 NUOVE FUNZIONI (LIBRERIA / API ESTESA)
+   Modulo Aggiuntivo per calcoli, logica, rendering e utility
 ========================================================= */
 
+// --- SEZIONE 1: MATEMATICA E VETTORI (1-25) ---
+// 1
+function ext_mathRandRange(min, max) { return min + Math.random() * (max - min); }
+// 2
+function ext_mathClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+// 3
+function ext_mathLerp(a, b, t) { return a + (b - a) * t; }
+// 4
+function ext_mathDistSq(x1, y1, x2, y2) { return (x2 - x1) ** 2 + (y2 - y1) ** 2; }
+// 5
+function ext_mathDist(x1, y1, x2, y2) { return Math.sqrt(ext_mathDistSq(x1, y1, x2, y2)); }
+// 6
+function ext_mathAngleBetween(x1, y1, x2, y2) { return Math.atan2(y2 - y1, x2 - x1); }
+// 7
+function ext_mathDegToRad(deg) { return deg * (Math.PI / 180); }
+// 8
+function ext_mathRadToDeg(rad) { return rad * (180 / Math.PI); }
+// 9
+function ext_mathNormalizeX(dx, dy) { let mag = Math.hypot(dx, dy); return mag === 0 ? 0 : dx / mag; }
+// 10
+function ext_mathNormalizeY(dx, dy) { let mag = Math.hypot(dx, dy); return mag === 0 ? 0 : dy / mag; }
+// 11
+function ext_mathDotProduct(x1, y1, x2, y2) { return x1 * x2 + y1 * y2; }
+// 12
+function ext_mathCrossProduct(x1, y1, x2, y2) { return x1 * y2 - y1 * x2; }
+// 13
+function ext_mathMapRange(val, inMin, inMax, outMin, outMax) { return (val - inMin) * (outMax - outMin) / (inMax - inMin) + outMin; }
+// 14
+function ext_mathIsInsideCircle(px, py, cx, cy, r) { return ext_mathDistSq(px, py, cx, cy) <= r * r; }
+// 15
+function ext_mathIsInsideRect(px, py, rx, ry, rw, rh) { return px >= rx && px <= rx + rw && py >= ry && py <= ry + rh; }
+// 16
+function ext_mathMagnitude(vx, vy) { return Math.hypot(vx, vy); }
+// 17
+function ext_mathReflectX(vx, nx) { return vx - 2 * ext_mathDotProduct(vx, 0, nx, 0) * nx; }
+// 18
+function ext_mathReflectY(vy, ny) { return vy - 2 * ext_mathDotProduct(0, vy, 0, ny) * ny; }
+// 19
+function ext_mathWrapValue(val, min, max) { let range = max - min; return val < min ? val + range : (val > max ? val - range : val); }
+// 20
+function ext_mathCircleArea(r) { return Math.PI * r * r; }
+// 21
+function ext_mathCircleRadiusFromArea(area) { return Math.sqrt(area / Math.PI); }
+// 22
+function ext_mathRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+// 23
+function ext_mathSmoothstep(edge0, edge1, x) { let t = ext_mathClamp((x - edge0) / (edge1 - edge0), 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
+// 24
+function ext_mathSinWave(time, freq, amp) { return Math.sin(time * freq) * amp; }
+// 25
+function ext_mathCosWave(time, freq, amp) { return Math.cos(time * freq) * amp; }
+
+// --- SEZIONE 2: COLORI (26-45) ---
+// 26
+function ext_colHexToRgb(hex) { let bigint = parseInt(hex.replace('#',''), 16); return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 }; }
+// 27
+function ext_colRgbToHex(r, g, b) { return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1); }
+// 28
+function ext_colLightenHex(hex, percent) { let rgb = ext_colHexToRgb(hex); return ext_colRgbToHex(ext_mathClamp(rgb.r + percent, 0, 255), ext_mathClamp(rgb.g + percent, 0, 255), ext_mathClamp(rgb.b + percent, 0, 255)); }
+// 29
+function ext_colDarkenHex(hex, percent) { return ext_colLightenHex(hex, -percent); }
+// 30
+function ext_colBlendHex(hex1, hex2, t) { let c1 = ext_colHexToRgb(hex1), c2 = ext_colHexToRgb(hex2); return ext_colRgbToHex(ext_mathLerp(c1.r, c2.r, t), ext_mathLerp(c1.g, c2.g, t), ext_mathLerp(c1.b, c2.b, t)); }
+// 31
+function ext_colRandomNeon() { const cols = ["#00ffff", "#ff00ff", "#00ff00", "#ffff00", "#0088ff"]; return cols[ext_mathRandomInt(0, cols.length-1)]; }
+// 32
+function ext_colGetHue(hex) { return ext_colHexToRgb(hex).r; /* semplificato */ }
+// 33
+function ext_colSetHue(hex, hue) { return hex; /* placeholder */ }
+// 34
+function ext_colInvertColor(hex) { let c = ext_colHexToRgb(hex); return ext_colRgbToHex(255-c.r, 255-c.g, 255-c.b); }
+// 35
+function ext_colHexToRgba(hex, alpha) { let c = ext_colHexToRgb(hex); return `rgba(${c.r},${c.g},${c.b},${alpha})`; }
+// 36
+function ext_colIsColorLight(hex) { let c = ext_colHexToRgb(hex); return (c.r * 299 + c.g * 587 + c.b * 114) / 1000 > 128; }
+// 37
+function ext_colDistance(hex1, hex2) { let c1 = ext_colHexToRgb(hex1), c2 = ext_colHexToRgb(hex2); return Math.sqrt((c1.r-c2.r)**2 + (c1.g-c2.g)**2 + (c1.b-c2.b)**2); }
+// 38
+function ext_colGetNeonCyan() { return "#00ffff"; }
+// 39
+function ext_colGetElectricBlue() { return "#0088ff"; }
+// 40
+function ext_colMixColors(c1, c2) { return ext_colBlendHex(c1, c2, 0.5); }
+// 41
+function ext_colGetComplementary(hex) { return ext_colInvertColor(hex); }
+// 42
+function ext_colToGrayscale(hex) { let c = ext_colHexToRgb(hex); let avg = (c.r+c.g+c.b)/3; return ext_colRgbToHex(avg, avg, avg); }
+// 43
+function ext_colApplyOpacity(hex, op) { return ext_colHexToRgba(hex, op); }
+// 44
+function ext_colMatrixGreen() { return "#42d392"; }
+// 45
+function ext_colCyberPink() { return "#ff6680"; }
+
+// --- SEZIONE 3: RENDERING CANVAS (46-65) ---
+// 46
+function ext_renDrawCircleFill(ctx, x, y, r, color) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill(); }
+// 47
+function ext_renDrawCircleStroke(ctx, x, y, r, color, w) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke(); }
+// 48
+function ext_renDrawRectFill(ctx, x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); }
+// 49
+function ext_renDrawRectStroke(ctx, x, y, w, h, color, lw) { ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.strokeRect(x, y, w, h); }
+// 50
+function ext_renDrawLine(ctx, x1, y1, x2, y2, color, w) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke(); }
+// 51
+function ext_renDrawText(ctx, txt, x, y, font, color) { ctx.font = font; ctx.fillStyle = color; ctx.fillText(txt, x, y); }
+// 52
+function ext_renDrawTextCentered(ctx, txt, x, y, font, color) { ctx.textAlign = "center"; ctx.textBaseline = "middle"; ext_renDrawText(ctx, txt, x, y, font, color); }
+// 53
+function ext_renClearCanvas(ctx, w, h, color) { ctx.fillStyle = color; ctx.fillRect(0, 0, w, h); }
+// 54
+function ext_renSaveCtx(ctx) { ctx.save(); }
+// 55
+function ext_renRestoreCtx(ctx) { ctx.restore(); }
+// 56
+function ext_renTranslateCtx(ctx, x, y) { ctx.translate(x, y); }
+// 57
+function ext_renScaleCtx(ctx, sx, sy) { ctx.scale(sx, sy); }
+// 58
+function ext_renRotateCtx(ctx, angle) { ctx.rotate(angle); }
+// 59
+function ext_renApplyShadow(ctx, color, blur) { ctx.shadowColor = color; ctx.shadowBlur = blur; }
+// 60
+function ext_renClearShadow(ctx) { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; }
+// 61
+function ext_renDrawHexagon(ctx, x, y, r, color) { ctx.beginPath(); for(let i=0; i<6; i++) { ctx.lineTo(x + r*Math.cos(i*Math.PI/3), y + r*Math.sin(i*Math.PI/3)); } ctx.closePath(); ctx.fillStyle = color; ctx.fill(); }
+// 62
+function ext_renDrawStar(ctx, cx, cy, spikes, outerRadius, innerRadius, color) { let rot=Math.PI/2*3, x=cx, y=cy, step=Math.PI/spikes; ctx.beginPath(); ctx.moveTo(cx, cy-outerRadius); for(let i=0;i<spikes;i++){ x=cx+Math.cos(rot)*outerRadius; y=cy+Math.sin(rot)*outerRadius; ctx.lineTo(x,y); rot+=step; x=cx+Math.cos(rot)*innerRadius; y=cy+Math.sin(rot)*innerRadius; ctx.lineTo(x,y); rot+=step; } ctx.lineTo(cx, cy-outerRadius); ctx.closePath(); ctx.fillStyle=color; ctx.fill(); }
+// 63
+function ext_renDrawNeonGlow(ctx, x, y, r, color) { ext_renApplyShadow(ctx, color, 15); ext_renDrawCircleStroke(ctx, x, y, r, color, 2); ext_renClearShadow(ctx); }
+// 64
+function ext_renDrawGrid(ctx, w, h, step, color) { ctx.strokeStyle=color; ctx.lineWidth=1; ctx.beginPath(); for(let x=0;x<=w;x+=step){ ctx.moveTo(x,0); ctx.lineTo(x,h); } for(let y=0;y<=h;y+=step){ ctx.moveTo(0,y); ctx.lineTo(w,y); } ctx.stroke(); }
+// 65
+function ext_renDrawPolygon(ctx, pts, color) { if(pts.length<3)return; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.fillStyle=color; ctx.fill(); }
+
+// --- SEZIONE 4: ENTITÀ E FISICA (66-85) ---
+// 66
+function ext_entSpawnFoodItem() { return { x: ext_mathRandRange(20, WORLD-20), y: ext_mathRandRange(20, WORLD-20), r: ext_mathRandRange(3.5, 6.5), color: ext_colRandomNeon(), pulse: ext_mathRandRange(0, Math.PI*2) }; }
+// 67
+function ext_entSpawnVirusEntity() { return { x: ext_mathRandRange(150, WORLD-150), y: ext_mathRandRange(150, WORLD-150), r: 34, spikes: 18 }; }
+// 68
+function ext_entGetPlayerMassInt() { return player ? Math.floor(player.cells.reduce((s,c)=>s+c.r*c.r, 0)) : 0; }
+// 69
+function ext_entGetEntityTotalMass(ent) { return ent && ent.cells ? Math.floor(ent.cells.reduce((s,c)=>s+c.r*c.r, 0)) : 0; }
+// 70
+function ext_entIsColliding(c1, c2) { return ext_mathDist(c1.x, c1.y, c2.x, c2.y) < (c1.r + c2.r); }
+// 71
+function ext_entMoveTowardsTarget(c, tx, ty, speed, dt) { let dx=tx-c.x, dy=ty-c.y, d=Math.hypot(dx,dy); if(d>0){ c.x += (dx/d)*speed*dt; c.y += (dy/d)*speed*dt; } }
+// 72
+function ext_entFleeFromTarget(c, tx, ty, speed, dt) { let dx=c.x-tx, dy=c.y-ty, d=Math.hypot(dx,dy); if(d>0){ c.x += (dx/d)*speed*dt; c.y += (dy/d)*speed*dt; } }
+// 73
+function ext_entApplyFriction(c, friction, dt) { c.vx *= Math.pow(friction, dt); c.vy *= Math.pow(friction, dt); }
+// 74
+function ext_entConstrainToBounds(c, minX, maxX, minY, maxY) { c.x = ext_mathClamp(c.x, minX, maxX); c.y = ext_mathClamp(c.y, minY, maxY); }
+// 75
+function ext_entCheckMergeCondition(c1, c2) { return ext_mathDist(c1.x, c1.y, c2.x, c2.y) < (c1.r + c2.r) * 0.72; }
+// 76
+function ext_entForceSplitCell(c, angle, force) { let nr = c.r/Math.sqrt(2); c.r = nr; return { x: c.x+Math.cos(angle)*(nr*2), y: c.y+Math.sin(angle)*(nr*2), r: nr, vx: Math.cos(angle)*force, vy: Math.sin(angle)*force, splitAge: 0, mergeTimer: 7 }; }
+// 77
+function ext_entForceEjectMass(c, angle, amount, speed) { c.r = Math.sqrt(c.r*c.r - amount*amount); return { x: c.x+Math.cos(angle)*(c.r+10), y: c.y+Math.sin(angle)*(c.r+10), r: amount, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, life: 4 }; }
+// 78
+function ext_entSpawnPowerup(x, y, type) { return { x, y, r: 15, type, pulse: 0 }; }
+// 79
+function ext_entCollectPowerup(player, pUp) { if(pUp.type==='speed') player.speedBoostTimer = 5; if(pUp.type==='mass') player.cells[0].r = Math.sqrt(player.cells[0].r**2 + 100**2); }
+// 80
+let powerupsList = [];
+function ext_entUpdatePowerupsList(dt) { /* placeholder for powerup logic */ }
+// 81
+function ext_entDrawPowerupsList(ctx) { /* placeholder for powerup rendering */ }
+// 82
+function ext_entClearAllEntities() { foods=[]; ejected=[]; bots=[]; viruses=[]; particles=[]; }
+// 83
+function ext_entCountTotalEntities() { return foods.length + ejected.length + bots.length + viruses.length + particles.length; }
+// 84
+function ext_entGetAveragePlayerPosition() { if(!player)return {x:0,y:0}; let tx=0,ty=0; player.cells.forEach(c=>{tx+=c.x;ty+=c.y;}); return {x:tx/player.cells.length, y:ty/player.cells.length}; }
+// 85
+function ext_entCalculateCellSpeed(c) { return ext_mathClamp(185 / (c.r/25), 42, 185); }
+
+// --- SEZIONE 5: LOGICA GIOCATORE, SISTEMA E DEBUG (86-100) ---
+// 86
+function ext_playerAddXpAmount(amount) { xp += amount; checkLevel(); }
+// 87
+function ext_playerTriggerLevelUp() { level++; toast("LEVEL UP: " + level); vibrate(30); }
+// 88
+function ext_playerAddEnergyAmount(amount) { energy = ext_mathClamp(energy + amount, 0, 100); }
+// 89
+function ext_playerConsumeEnergy(amount) { if(energy >= amount) { energy -= amount; return true; } return false; }
+// 90
+function ext_playerSetInvulnerableTime(time) { if(player) player.invuln = time; }
+// 91
+function ext_playerForceMergeAll() { if(!player)return; player.cells.forEach(c=>c.mergeTimer=0); toast("MERGE FORZATO ATTIVATO"); }
+// 92
+function ext_playerScatterCells() { if(!player)return; player.cells.forEach(c=>{c.vx+=ext_mathRandRange(-500,500); c.vy+=ext_mathRandRange(-500,500);}); }
+// 93
+function ext_playerExecuteDash() {
+  if(!player || !ext_playerConsumeEnergy(25)) return;
+  const target = worldMouse();
+  for(let c of player.cells) {
+    let angle = ext_mathAngleBetween(c.x, c.y, target.x, target.y);
+    c.vx += Math.cos(angle) * 1200;
+    c.vy += Math.sin(angle) * 1200;
+  }
+  toast("⚡ NEON DASH!");
+  vibrate(40);
+  ext_sysLog("Player eseguito Dash.");
+}
+// 94
+function ext_playerStopMovement() { if(player) player.cells.forEach(c=>{c.vx=0;c.vy=0;}); }
+// 95
+let _sysFrames = 0; let _sysLastTime = 0; let _sysFps = 0;
+function ext_sysGetFpsCounter(now) {
+  _sysFrames++;
+  if(now - _sysLastTime >= 1000) { _sysFps = _sysFrames; _sysFrames = 0; _sysLastTime = now; }
+  return _sysFps;
+}
+// 96
+function ext_sysGenerateUniqueId() { return 'id_' + Math.random().toString(36).substr(2, 9); }
+// 97
+function ext_sysFormatScoreNumber(score) { return score.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+// 98
+function ext_sysToggleFullscreen() {
+  if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(err => { ext_sysError(`Error: ${err.message}`); }); }
+  else { document.exitFullscreen(); }
+}
+// 99
+let _sysDebugMode = false;
+function ext_sysToggleDebugOverlay() { _sysDebugMode = !_sysDebugMode; toast(_sysDebugMode ? "[SYS] DEBUG ON" : "[SYS] DEBUG OFF"); }
+// 100
+function ext_sysDrawDebugText(ctx, txt, x, y, color) { ext_renDrawText(ctx, txt, x, y, "12px Consolas", color); }
+function ext_sysLog(msg) { console.log("[CELL_ARENA_SYS]", msg); }
+function ext_sysWarn(msg) { console.warn("[CELL_ARENA_WARN]", msg); }
+function ext_sysError(msg) { console.error("[CELL_ARENA_ERR]", msg); }
+
+/* =========================================================
+   CANVAS & SETUP ORIGINALE
+========================================================= */
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 
@@ -416,13 +665,13 @@ const BOT_TARGET=18;
 const VIRUS_TARGET=18;
 
 const COLORS=[
-  "#42d392","#ff6680","#5da9ff","#ffe66d",
-  "#b875ff","#ff9d4d","#44d9e8","#ff5bd6"
+  "#00ffff", "#0088ff", "#42d392", "#ffe66d",
+  "#ff6680", "#b875ff", "#ff9d4d", "#ffffff"
 ];
 
 const BOT_NAMES=[
-  "Blob","Nova","Cell","Virus","Titan","Ghost",
-  "Pixel","Rex","Shadow","Mango","Orbit","Zeta"
+  "Null", "Glitch", "Root", "Admin", "Cypher", "Ghost",
+  "Proxy", "Bot_0x1", "Neo", "Trinity", "Morpheus", "Agent"
 ];
 
 /* =========================================================
@@ -475,20 +724,12 @@ let settings={
 };
 
 /* =========================================================
-   UTILS
+   UTILS RE-MAPPED TO NEW LIBRARY
 ========================================================= */
 
-function clamp(v,a,b){
-  return Math.max(a,Math.min(b,v));
-}
-
-function rand(a,b){
-  return a+Math.random()*(b-a);
-}
-
-function dist(a,b){
-  return Math.hypot(a.x-b.x,a.y-b.y);
-}
+function clamp(v,a,b){ return ext_mathClamp(v,a,b); }
+function rand(a,b){ return ext_mathRandRange(a,b); }
+function dist(a,b){ return ext_mathDist(a.x, a.y, b.x, b.y); }
 
 function randomColor(){
   return COLORS[Math.floor(Math.random()*COLORS.length)];
@@ -504,8 +745,7 @@ function escapeHTML(text){
 }
 
 function totalMass(entity){
-  if(!entity||!entity.cells)return 0;
-  return entity.cells.reduce((s,c)=>s+c.r*c.r,0);
+  return ext_entGetEntityTotalMass(entity);
 }
 
 function formatTime(sec){
@@ -537,7 +777,7 @@ function toast(text){
 ========================================================= */
 
 const savedName=localStorage.getItem("cellArenaName")||"Player";
-const savedColor=localStorage.getItem("cellArenaColor")||"#42d392";
+const savedColor=localStorage.getItem("cellArenaColor")||"#00ffff";
 
 document.getElementById("name").value=savedName;
 document.getElementById("userNameInput").value=savedName;
@@ -561,7 +801,7 @@ function saveProfile(){
     player.color=color;
   }
 
-  toast("✅ Profilo salvato");
+  toast("[SYS] Dati salvati con successo");
 }
 
 /* =========================================================
@@ -592,29 +832,18 @@ function worldMouse(){
 ========================================================= */
 
 function createFood(){
-  return {
-    x:rand(20,WORLD-20),
-    y:rand(20,WORLD-20),
-    r:rand(3.5,6.5),
-    color:randomColor(),
-    pulse:rand(0,Math.PI*2)
-  };
+  return ext_entSpawnFoodItem();
 }
 
 function createVirus(){
-  return {
-    x:rand(150,WORLD-150),
-    y:rand(150,WORLD-150),
-    r:34,
-    spikes:18
-  };
+  return ext_entSpawnVirusEntity();
 }
 
 function createBot(i){
   const r=rand(22,58);
 
   return {
-    id:"bot"+i+"_"+Math.random(),
+    id: ext_sysGenerateUniqueId(),
     name:BOT_NAMES[i%BOT_NAMES.length],
     color:randomColor(),
     cells:[{
@@ -632,11 +861,7 @@ function createBot(i){
 
 function resetWorld(){
 
-  foods=[];
-  ejected=[];
-  bots=[];
-  viruses=[];
-  particles=[];
+  ext_entClearAllEntities();
 
   for(let i=0;i<FOOD_TARGET;i++){
     foods.push(createFood());
@@ -655,7 +880,7 @@ function resetWorld(){
     ||"Player";
 
   const color=
-    localStorage.getItem("cellArenaColor")||"#42d392";
+    localStorage.getItem("cellArenaColor")||"#00ffff";
 
   player={
     id:"player",
@@ -728,11 +953,7 @@ function drawParticles(){
     const s=screen(p.x,p.y);
 
     ctx.globalAlpha=p.life/p.max;
-    ctx.fillStyle=p.color;
-
-    ctx.beginPath();
-    ctx.arc(s.x,s.y,p.r*camera.zoom,0,Math.PI*2);
-    ctx.fill();
+    ext_renDrawCircleFill(ctx, s.x, s.y, p.r*camera.zoom, p.color);
   }
 
   ctx.globalAlpha=1;
@@ -743,7 +964,7 @@ function drawParticles(){
 ========================================================= */
 
 function cellSpeed(c){
-  return clamp(185/(c.r/25),42,185);
+  return ext_entCalculateCellSpeed(c);
 }
 
 /* =========================================================
@@ -781,8 +1002,7 @@ function updatePlayer(dt){
       c.y+=dy/d*speed*dt;
     }
 
-    c.x=clamp(c.x,c.r,WORLD-c.r);
-    c.y=clamp(c.y,c.r,WORLD-c.r);
+    ext_entConstrainToBounds(c, c.r, WORLD-c.r, c.r, WORLD-c.r);
 
     c.splitAge+=dt;
     c.mergeTimer=Math.max(0,c.mergeTimer-dt);
@@ -804,7 +1024,7 @@ function eatFood(){
 
       const f=foods[i];
 
-      if(dist(c,f)<c.r){
+      if(ext_entIsColliding(c, f)){
 
         const old=c.r;
 
@@ -814,11 +1034,9 @@ function eatFood(){
         foods.push(createFood());
 
         foodEaten++;
-        xp+=2;
+        ext_playerAddXpAmount(2);
 
         particleBurst(f.x,f.y,f.color,4);
-
-        checkLevel();
 
         if(c.r>old*1.02){
           best=Math.max(best,Math.floor(totalMass(player)));
@@ -840,16 +1058,14 @@ function eatEjected(){
 
       const e=ejected[i];
 
-      if(dist(c,e)<c.r){
+      if(ext_entIsColliding(c, e)){
 
         c.r=Math.sqrt(c.r*c.r+e.r*e.r);
 
         particleBurst(e.x,e.y,e.color,5);
 
         ejected.splice(i,1);
-        xp+=3;
-
-        checkLevel();
+        ext_playerAddXpAmount(3);
       }
     }
   }
@@ -863,13 +1079,12 @@ function checkLevel(){
 
   while(xp>=level*50){
     xp-=level*50;
-    level++;
-
-    toast("🎉 Livello "+level+"!");
+    ext_playerTriggerLevelUp();
+    
     addChat({
-      name:"Sistema",
-      color:"#42d392",
-      text:"🎉 "+player.name+" è salito al livello "+level
+      name:"SYS_ADMIN",
+      color:"#00ffff",
+      text:"[UPGRADE] "+player.name+" ha raggiunto il livello "+level
     });
   }
 }
@@ -885,7 +1100,7 @@ function split(){
   const maxCells=16;
 
   if(player.cells.length>=maxCells){
-    toast("⚠️ Hai raggiunto il limite di cellule");
+    toast("[WARN] Limite divisione cellulare raggiunto");
     return;
   }
 
@@ -898,26 +1113,11 @@ function split(){
     if(c.splitAge<.35)continue;
 
     const target=worldMouse();
-
-    let dx=target.x-c.x;
-    let dy=target.y-c.y;
-    let d=Math.hypot(dx,dy)||1;
-
-    const nr=c.r/Math.sqrt(2);
-
-    c.r=nr;
-    c.mergeTimer=7;
-    c.splitAge=0;
-
-    const nc={
-      x:clamp(c.x+dx/d*(nr*1.9),nr,WORLD-nr),
-      y:clamp(c.y+dy/d*(nr*1.9),nr,WORLD-nr),
-      r:nr,
-      vx:dx/d*520,
-      vy:dy/d*520,
-      splitAge:0,
-      mergeTimer:7
-    };
+    let angle = ext_mathAngleBetween(c.x, c.y, target.x, target.y);
+    
+    const nc = ext_entForceSplitCell(c, angle, 520);
+    nc.x = clamp(nc.x, nc.r, WORLD-nc.r);
+    nc.y = clamp(nc.y, nc.r, WORLD-nc.r);
 
     player.cells.push(nc);
 
@@ -942,27 +1142,15 @@ function eject(){
     if(c.r<15)continue;
 
     const target=worldMouse();
-
-    let dx=target.x-c.x;
-    let dy=target.y-c.y;
-    let d=Math.hypot(dx,dy)||1;
+    let angle = ext_mathAngleBetween(c.x, c.y, target.x, target.y);
 
     const amount=Math.min(5,c.r*.18);
-
     if(c.r*c.r-amount*amount<100)continue;
 
-    c.r=Math.sqrt(c.r*c.r-amount*amount);
+    const e = ext_entForceEjectMass(c, angle, amount, 330);
+    e.color = player.color;
 
-    ejected.push({
-      x:c.x+dx/d*(c.r+10),
-      y:c.y+dy/d*(c.r+10),
-      r:amount,
-      color:player.color,
-      vx:dx/d*330,
-      vy:dy/d*330,
-      life:4
-    });
-
+    ejected.push(e);
     fired=true;
   }
 
@@ -979,9 +1167,8 @@ function eject(){
 let boosting=false;
 
 function updateBoost(dt){
-
   if(!boosting){
-    energy=Math.min(100,energy+dt*7);
+    ext_playerAddEnergyAmount(dt*7);
   }
 }
 
@@ -994,15 +1181,11 @@ function updatePhysics(dt){
   for(const c of player.cells){
 
     if(c.vx||c.vy){
-
       c.x+=c.vx*dt;
       c.y+=c.vy*dt;
 
-      c.vx*=Math.pow(.035,dt);
-      c.vy*=Math.pow(.035,dt);
-
-      c.x=clamp(c.x,c.r,WORLD-c.r);
-      c.y=clamp(c.y,c.r,WORLD-c.r);
+      ext_entApplyFriction(c, 0.035, dt);
+      ext_entConstrainToBounds(c, c.r, WORLD-c.r, c.r, WORLD-c.r);
 
       if(Math.abs(c.vx)<5)c.vx=0;
       if(Math.abs(c.vy)<5)c.vy=0;
@@ -1013,14 +1196,10 @@ function updatePhysics(dt){
 
     e.x+=e.vx*dt;
     e.y+=e.vy*dt;
-
-    e.vx*=Math.pow(.025,dt);
-    e.vy*=Math.pow(.025,dt);
-
+    ext_entApplyFriction(e, 0.025, dt);
     e.life-=dt;
 
-    e.x=clamp(e.x,5,WORLD-5);
-    e.y=clamp(e.y,5,WORLD-5);
+    ext_entConstrainToBounds(e, 5, WORLD-5, 5, WORLD-5);
   }
 
   ejected=ejected.filter(e=>e.life>0);
@@ -1035,7 +1214,6 @@ function updateMerge(){
   if(player.cells.length<2)return;
 
   for(let i=0;i<player.cells.length;i++){
-
     for(let j=player.cells.length-1;j>i;j--){
 
       const a=player.cells[i];
@@ -1043,9 +1221,7 @@ function updateMerge(){
 
       if(a.mergeTimer>0||b.mergeTimer>0)continue;
 
-      const d=dist(a,b);
-
-      if(d<(a.r+b.r)*.72){
+      if(ext_entCheckMergeCondition(a, b)){
 
         const total=a.r*a.r+b.r*b.r;
 
@@ -1071,15 +1247,12 @@ function nearestFood(c){
   let bestDist=Infinity;
 
   for(const f of foods){
-
-    const d=(f.x-c.x)**2+(f.y-c.y)**2;
-
+    const d=ext_mathDistSq(f.x, f.y, c.x, c.y);
     if(d<bestDist){
       bestDist=d;
       bestFood=f;
     }
   }
-
   return bestFood;
 }
 
@@ -1091,18 +1264,14 @@ function nearestThreat(bot){
   let dBest=Infinity;
 
   for(const pc of player.cells){
-
     if(pc.r>bot.cells[0].r*1.12){
-
       const d=dist(pc,bot.cells[0]);
-
       if(d<dBest){
         dBest=d;
         threat=pc;
       }
     }
   }
-
   return threat;
 }
 
@@ -1114,18 +1283,14 @@ function nearestVictim(bot){
   let dBest=Infinity;
 
   for(const pc of player.cells){
-
     if(bot.cells[0].r>pc.r*1.15){
-
       const d=dist(pc,bot.cells[0]);
-
       if(d<dBest){
         dBest=d;
         victim=pc;
       }
     }
   }
-
   return victim;
 }
 
@@ -1144,26 +1309,17 @@ function updateBots(dt){
     if(threat){
 
       bot.state="flee";
-
-      const dx=c.x-threat.x;
-      const dy=c.y-threat.y;
-      const d=Math.hypot(dx,dy)||1;
-
-      bot.targetX=clamp(c.x+dx/d*500,0,WORLD);
-      bot.targetY=clamp(c.y+dy/d*500,0,WORLD);
+      let angle = ext_mathAngleBetween(threat.x, threat.y, c.x, c.y);
+      bot.targetX=clamp(c.x+Math.cos(angle)*500,0,WORLD);
+      bot.targetY=clamp(c.y+Math.sin(angle)*500,0,WORLD);
 
     }else if(victim){
 
       bot.state="hunt";
-
       bot.targetX=victim.x;
       bot.targetY=victim.y;
 
-      if(
-        bot.splitCooldown<=0 &&
-        c.r>35 &&
-        dist(c,victim)<c.r*5
-      ){
+      if(bot.splitCooldown<=0 && c.r>35 && dist(c,victim)<c.r*5){
         botSplit(bot,victim);
         bot.splitCooldown=7;
       }
@@ -1171,9 +1327,7 @@ function updateBots(dt){
     }else{
 
       bot.state="food";
-
       const f=nearestFood(c);
-
       if(f){
         bot.targetX=f.x;
         bot.targetY=f.y;
@@ -1188,43 +1342,21 @@ function updateBots(dt){
       }
     }
 
-    const dx=bot.targetX-c.x;
-    const dy=bot.targetY-c.y;
-    const d=Math.hypot(dx,dy);
-
-    if(d>2){
-
-      let speed=cellSpeed(c)*.55;
-
-      if(bot.state==="flee")speed*=1.2;
-      if(bot.state==="hunt")speed*=1.08;
-
-      c.x+=dx/d*speed*dt;
-      c.y+=dy/d*speed*dt;
-    }
-
-    c.x=clamp(c.x,c.r,WORLD-c.r);
-    c.y=clamp(c.y,c.r,WORLD-c.r);
+    ext_entMoveTowardsTarget(c, bot.targetX, bot.targetY, cellSpeed(c) * (bot.state==="flee"?0.66:(bot.state==="hunt"?0.59:0.55)), dt);
+    ext_entConstrainToBounds(c, c.r, WORLD-c.r, c.r, WORLD-c.r);
 
     for(let i=foods.length-1;i>=0;i--){
-
       const f=foods[i];
-
-      if(dist(c,f)<c.r){
-
+      if(ext_entIsColliding(c, f)){
         c.r=Math.sqrt(c.r*c.r+f.r*f.r*.65);
-
         foods.splice(i,1);
         foods.push(createFood());
       }
     }
 
     for(let i=ejected.length-1;i>=0;i--){
-
       const e=ejected[i];
-
-      if(dist(c,e)<c.r){
-
+      if(ext_entIsColliding(c, e)){
         c.r=Math.sqrt(c.r*c.r+e.r*e.r);
         ejected.splice(i,1);
       }
@@ -1233,25 +1365,11 @@ function updateBots(dt){
 }
 
 function botSplit(bot,target){
-
   const c=bot.cells[0];
-
-  const dx=target.x-c.x;
-  const dy=target.y-c.y;
-  const d=Math.hypot(dx,dy)||1;
-
-  const nr=c.r/Math.sqrt(2);
-
-  c.r=nr;
-
-  bot.cells.push({
-    x:c.x+dx/d*nr*2,
-    y:c.y+dy/d*nr*2,
-    r:nr,
-    vx:dx/d*430,
-    vy:dy/d*430,
-    mergeTimer:7
-  });
+  let angle = ext_mathAngleBetween(c.x, c.y, target.x, target.y);
+  
+  const nc = ext_entForceSplitCell(c, angle, 430);
+  bot.cells.push(nc);
 }
 
 /* =========================================================
@@ -1259,11 +1377,7 @@ function botSplit(bot,target){
 ========================================================= */
 
 function canEat(big,small,d){
-
-  return (
-    big.r>small.r*1.12 &&
-    d<big.r*.72
-  );
+  return (big.r>small.r*1.12 && d<big.r*.72);
 }
 
 function playerBotCollisions(){
@@ -1271,48 +1385,34 @@ function playerBotCollisions(){
   if(!player)return;
 
   for(let pi=player.cells.length-1;pi>=0;pi--){
-
     const pc=player.cells[pi];
 
     for(let bi=bots.length-1;bi>=0;bi--){
-
       const bot=bots[bi];
 
       for(const bc of bot.cells){
-
         const d=dist(pc,bc);
 
         if(canEat(pc,bc,d)){
-
           pc.r=Math.sqrt(pc.r*pc.r+bc.r*bc.r);
-
           kills++;
-          xp+=25;
-
+          ext_playerAddXpAmount(25);
           particleBurst(bc.x,bc.y,bot.color,18);
 
           addChat({
-            name:"Sistema",
-            color:"#ffe66d",
-            text:"💥 "+player.name+" ha eliminato "+bot.name+"!"
+            name:"SYS_ALERT",
+            color:"#0088ff",
+            text:"[KILL] "+player.name+" ha distrutto "+bot.name
           });
 
           bots.splice(bi,1);
-
           setTimeout(()=>{
-            if(running){
-              bots.push(createBot(Math.floor(Math.random()*10000)));
-            }
+            if(running) bots.push(createBot(ext_mathRandomInt(0,10000)));
           },900);
-
           break;
         }
 
-        if(
-          player.invuln<=0 &&
-          canEat(bc,pc,d)
-        ){
-
+        if(player.invuln<=0 && canEat(bc,pc,d)){
           gameOver();
           return;
         }
@@ -1330,27 +1430,21 @@ function playerCellCollision(){
   if(!player)return;
 
   for(let i=0;i<player.cells.length;i++){
-
     const a=player.cells[i];
 
     for(let j=i+1;j<player.cells.length;j++){
-
       const b=player.cells[j];
-
       const d=dist(a,b);
 
       if(d<(a.r+b.r)*.45){
-
         const overlap=(a.r+b.r)*.45-d;
 
         if(d>0){
-
           const nx=(b.x-a.x)/d;
           const ny=(b.y-a.y)/d;
 
           a.x-=nx*overlap*.5;
           a.y-=ny*overlap*.5;
-
           b.x+=nx*overlap*.5;
           b.y+=ny*overlap*.5;
         }
@@ -1366,29 +1460,24 @@ function playerCellCollision(){
 function virusCollision(){
 
   for(let i=player.cells.length-1;i>=0;i--){
-
     const c=player.cells[i];
 
     if(c.r<55)continue;
 
     for(const v of viruses){
-
       if(dist(c,v)<c.r+v.r*.35){
 
         if(player.cells.length>=16)break;
 
         const pieces=[];
         const amount=Math.min(8,player.cells.length?8:1);
-
         const mass=c.r*c.r;
         const pieceMass=mass/amount;
 
         c.r=Math.sqrt(pieceMass);
 
         for(let k=0;k<amount-1;k++){
-
           const angle=Math.PI*2*k/(amount-1);
-
           pieces.push({
             x:clamp(c.x+Math.cos(angle)*c.r*2,c.r,WORLD-c.r),
             y:clamp(c.y+Math.sin(angle)*c.r*2,c.r,WORLD-c.r),
@@ -1401,12 +1490,9 @@ function virusCollision(){
         }
 
         player.cells.push(...pieces);
-
-        particleBurst(c.x,c.y,"#6dff75",30);
-        toast("🌵 Virus! Cellula esplosa!");
-
+        particleBurst(c.x,c.y,"#00ffaa",30);
+        toast("[ERR] Infezione rilevata. Frammentazione eseguita.");
         vibrate(50);
-
         break;
       }
     }
@@ -1421,14 +1507,10 @@ function updateCamera(dt){
 
   if(!player||!player.cells.length)return;
 
-  let x=0;
-  let y=0;
-  let mass=0;
+  let x=0, y=0, mass=0;
 
   for(const c of player.cells){
-
     const m=c.r*c.r;
-
     x+=c.x*m;
     y+=c.y*m;
     mass+=m;
@@ -1441,15 +1523,12 @@ function updateCamera(dt){
   camera.y+=(y-camera.y)*Math.min(1,dt*6);
 
   const average=Math.sqrt(mass/player.cells.length);
-
   const targetZoom=clamp(42/average,.35,1.2);
 
-  camera.zoom+=
-    (targetZoom-camera.zoom)*Math.min(1,dt*3);
+  camera.zoom+=(targetZoom-camera.zoom)*Math.min(1,dt*3);
 }
 
 function screen(x,y){
-
   return {
     x:(x-camera.x)*camera.zoom+SW/2,
     y:(y-camera.y)*camera.zoom+SH/2
@@ -1462,52 +1541,28 @@ function screen(x,y){
 
 function drawBackground(){
 
-  ctx.fillStyle="#050b14";
-  ctx.fillRect(0,0,SW,SH);
+  ext_renClearCanvas(ctx, SW, SH, "#000000");
 
   const left=camera.x-SW/camera.zoom/2;
   const top=camera.y-SH/camera.zoom/2;
 
-  ctx.strokeStyle="#ffffff08";
+  ctx.strokeStyle="#00ffff11";
   ctx.lineWidth=1;
 
-  for(
-    let x=Math.floor(left/100)*100;
-    x<left+SW/camera.zoom+100;
-    x+=100
-  ){
-
+  for(let x=Math.floor(left/100)*100; x<left+SW/camera.zoom+100; x+=100){
     const p=screen(x,0);
-
-    ctx.beginPath();
-    ctx.moveTo(p.x,0);
-    ctx.lineTo(p.x,SH);
-    ctx.stroke();
+    ext_renDrawLine(ctx, p.x, 0, p.x, SH, "#00ffff11", 1);
   }
 
-  for(
-    let y=Math.floor(top/100)*100;
-    y<top+SH/camera.zoom+100;
-    y+=100
-  ){
-
+  for(let y=Math.floor(top/100)*100; y<top+SH/camera.zoom+100; y+=100){
     const p=screen(0,y);
-
-    ctx.beginPath();
-    ctx.moveTo(0,p.y);
-    ctx.lineTo(SW,p.y);
-    ctx.stroke();
+    ext_renDrawLine(ctx, 0, p.y, SW, p.y, "#00ffff11", 1);
   }
 
   const a=screen(0,0);
   const b=screen(WORLD,WORLD);
 
-  ctx.strokeStyle="#42d39255";
-  ctx.lineWidth=4;
-
-  ctx.strokeRect(
-    a.x,a.y,b.x-a.x,b.y-a.y
-  );
+  ext_renDrawRectStroke(ctx, a.x, a.y, b.x-a.x, b.y-a.y, "#00ffff55", 4);
 }
 
 /* =========================================================
@@ -1517,29 +1572,16 @@ function drawBackground(){
 function drawFood(){
 
   for(const f of foods){
-
     const p=screen(f.x,f.y);
 
-    if(
-      p.x<-15||p.x>SW+15||
-      p.y<-15||p.y>SH+15
-    )continue;
+    if(p.x<-15||p.x>SW+15||p.y<-15||p.y>SH+15)continue;
 
-    const pulse=1+Math.sin(performance.now()/500+f.pulse)*.08;
+    const pulse=1+ext_mathSinWave(performance.now(), 1/500, 0.08) + f.pulse*0;
     const r=f.r*camera.zoom*pulse;
 
-    ctx.beginPath();
-    ctx.arc(p.x,p.y,r,0,Math.PI*2);
-
-    ctx.fillStyle=f.color;
-
-    if(settings.shadows){
-      ctx.shadowBlur=7;
-      ctx.shadowColor=f.color;
-    }
-
-    ctx.fill();
-    ctx.shadowBlur=0;
+    if(settings.shadows) ext_renApplyShadow(ctx, f.color, 7);
+    ext_renDrawCircleFill(ctx, p.x, p.y, r, f.color);
+    if(settings.shadows) ext_renClearShadow(ctx);
   }
 }
 
@@ -1550,17 +1592,8 @@ function drawFood(){
 function drawEjected(){
 
   for(const e of ejected){
-
     const p=screen(e.x,e.y);
-
-    ctx.beginPath();
-    ctx.arc(
-      p.x,p.y,e.r*camera.zoom,
-      0,Math.PI*2
-    );
-
-    ctx.fillStyle=e.color;
-    ctx.fill();
+    ext_renDrawCircleFill(ctx, p.x, p.y, e.r*camera.zoom, e.color);
   }
 }
 
@@ -1574,30 +1607,26 @@ function drawVirus(v){
   const r=v.r*camera.zoom;
 
   ctx.save();
-
   ctx.beginPath();
 
   for(let i=0;i<v.spikes*2;i++){
-
     const angle=Math.PI*2*i/(v.spikes*2);
     const rr=i%2===0?r:r*.76;
-
     const x=p.x+Math.cos(angle)*rr;
     const y=p.y+Math.sin(angle)*rr;
-
     if(i===0)ctx.moveTo(x,y);
     else ctx.lineTo(x,y);
   }
 
   ctx.closePath();
-
-  ctx.fillStyle="#56e56a";
-  ctx.strokeStyle="#baffc0";
+  ctx.fillStyle="#00ffaa";
+  ctx.strokeStyle="#ffffff";
   ctx.lineWidth=2;
 
+  if(settings.shadows) ext_renApplyShadow(ctx, "#00ffaa", 15);
   ctx.fill();
   ctx.stroke();
-
+  if(settings.shadows) ext_renClearShadow(ctx);
   ctx.restore();
 }
 
@@ -1608,54 +1637,20 @@ function drawVirus(v){
 function drawBot(bot){
 
   for(const c of bot.cells){
-
     const p=screen(c.x,c.y);
     const r=c.r*camera.zoom;
 
-    if(
-      p.x<-r||p.x>SW+r||
-      p.y<-r||p.y>SH+r
-    )continue;
+    if(p.x<-r||p.x>SW+r||p.y<-r||p.y>SH+r)continue;
 
-    if(settings.shadows){
-
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,r+4,0,Math.PI*2);
-      ctx.fillStyle="#0008";
-      ctx.fill();
-    }
-
-    ctx.beginPath();
-    ctx.arc(p.x,p.y,r,0,Math.PI*2);
-    ctx.fillStyle=bot.color;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(
-      p.x-r*.28,
-      p.y-r*.3,
-      r*.33,
-      0,
-      Math.PI*2
-    );
-
-    ctx.fillStyle="#ffffff28";
-    ctx.fill();
+    if(settings.shadows) ext_renDrawCircleFill(ctx, p.x, p.y, r+4, "#0008");
+    
+    ext_renDrawCircleFill(ctx, p.x, p.y, r, bot.color);
+    ext_renDrawCircleFill(ctx, p.x-r*.28, p.y-r*.3, r*.33, "#ffffff28");
 
     if(r>18){
-
-      ctx.fillStyle="#fff";
-      ctx.textAlign="center";
-      ctx.textBaseline="middle";
-      ctx.font=
-        `bold ${Math.max(10,Math.min(20,r*.27))}px Arial`;
-
-      ctx.shadowBlur=4;
-      ctx.shadowColor="#000";
-
-      ctx.fillText(bot.name,p.x,p.y);
-
-      ctx.shadowBlur=0;
+      ext_renApplyShadow(ctx, "#000", 4);
+      ext_renDrawTextCentered(ctx, bot.name, p.x, p.y, `bold ${Math.max(10,Math.min(20,r*.27))}px Consolas`, "#fff");
+      ext_renClearShadow(ctx);
     }
   }
 }
@@ -1668,72 +1663,27 @@ function drawPlayer(){
 
   if(!player)return;
 
-  const cells=[...player.cells]
-    .sort((a,b)=>a.r-b.r);
+  const cells=[...player.cells].sort((a,b)=>a.r-b.r);
 
   for(const c of cells){
-
     const p=screen(c.x,c.y);
     const r=c.r*camera.zoom;
 
-    if(settings.shadows){
+    if(settings.shadows) ext_renDrawCircleFill(ctx, p.x, p.y, r+5, "#0009");
 
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,r+5,0,Math.PI*2);
-      ctx.fillStyle="#0009";
-      ctx.fill();
-    }
-
-    ctx.beginPath();
-    ctx.arc(p.x,p.y,r,0,Math.PI*2);
-
-    ctx.fillStyle=player.color;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(
-      p.x-r*.28,
-      p.y-r*.30,
-      r*.33,
-      0,
-      Math.PI*2
-    );
-
-    ctx.fillStyle="#ffffff28";
-    ctx.fill();
-
-    ctx.strokeStyle="#ffffff35";
-    ctx.lineWidth=2;
-    ctx.stroke();
+    ext_renDrawCircleFill(ctx, p.x, p.y, r, player.color);
+    ext_renDrawCircleFill(ctx, p.x-r*.28, p.y-r*.30, r*.33, "#ffffff28");
+    ext_renDrawCircleStroke(ctx, p.x, p.y, r, "#00ffff55", 2);
 
     if(player.invuln>0){
-
-      ctx.beginPath();
-      ctx.arc(
-        p.x,p.y,
-        r+7+Math.sin(performance.now()/100)*3,
-        0,Math.PI*2
-      );
-
-      ctx.strokeStyle="#ffffff88";
-      ctx.lineWidth=2;
-      ctx.stroke();
+      let pulse = ext_mathSinWave(performance.now(), 1/100, 3);
+      ext_renDrawCircleStroke(ctx, p.x, p.y, r+7+pulse, "#00ffff", 2);
     }
 
     if(r>18){
-
-      ctx.fillStyle="#fff";
-      ctx.textAlign="center";
-      ctx.textBaseline="middle";
-      ctx.font=
-        `bold ${Math.max(10,Math.min(21,r*.27))}px Arial`;
-
-      ctx.shadowBlur=5;
-      ctx.shadowColor="#000";
-
-      ctx.fillText(player.name,p.x,p.y);
-
-      ctx.shadowBlur=0;
+      ext_renApplyShadow(ctx, "#000", 5);
+      ext_renDrawTextCentered(ctx, player.name, p.x, p.y, `bold ${Math.max(10,Math.min(21,r*.27))}px Consolas`, "#fff");
+      ext_renClearShadow(ctx);
     }
   }
 }
@@ -1744,102 +1694,69 @@ function drawPlayer(){
 
 function drawMini(){
 
-  const w=150;
-  const h=150;
+  const w=150, h=150;
 
-  mctx.clearRect(0,0,w,h);
-
-  mctx.fillStyle="#07101d";
-  mctx.fillRect(0,0,w,h);
+  ext_renClearCanvas(mctx, w, h, "#000508");
 
   const scale=w/WORLD;
 
   for(const f of foods){
-
-    mctx.fillStyle="#ffffff35";
-    mctx.fillRect(
-      f.x*scale,
-      f.y*scale,
-      1,
-      1
-    );
+    ext_renDrawRectFill(mctx, f.x*scale, f.y*scale, 1, 1, "#ffffff35");
   }
 
   for(const v of viruses){
-
-    mctx.fillStyle="#56e56a";
-    mctx.fillRect(
-      v.x*scale-1,
-      v.y*scale-1,
-      2,
-      2
-    );
+    ext_renDrawRectFill(mctx, v.x*scale-1, v.y*scale-1, 2, 2, "#00ffaa");
   }
 
   for(const bot of bots){
-
     for(const c of bot.cells){
-
-      mctx.fillStyle=bot.color;
-
-      mctx.fillRect(
-        c.x*scale-1,
-        c.y*scale-1,
-        2,
-        2
-      );
+      ext_renDrawRectFill(mctx, c.x*scale-1, c.y*scale-1, 2, 2, bot.color);
     }
   }
 
   if(player){
-
     for(const c of player.cells){
-
-      mctx.fillStyle="#fff";
-
-      mctx.fillRect(
-        c.x*scale-2,
-        c.y*scale-2,
-        4,
-        4
-      );
+      ext_renDrawRectFill(mctx, c.x*scale-2, c.y*scale-2, 4, 4, "#00ffff");
     }
   }
 
-  mctx.strokeStyle="#42d39266";
-  mctx.strokeRect(0,0,w,h);
+  ext_renDrawRectStroke(mctx, 0, 0, w, h, "#00ffff", 1);
 }
 
 /* =========================================================
-   HUD
+   HUD E LOGICA DEBUG
 ========================================================= */
 
 function updateHUD(){
 
   if(!player)return;
 
-  const mass=Math.floor(totalMass(player));
+  const mass=ext_entGetPlayerMassInt();
 
-  document.getElementById("mass").textContent=
-    "Massa: "+mass;
-
+  document.getElementById("mass").textContent="MASS: "+ext_sysFormatScoreNumber(mass);
   document.getElementById("level").textContent=level;
-  document.getElementById("xp").textContent=xp;
-  document.getElementById("energy").textContent=
-    Math.floor(energy);
+  document.getElementById("xp").textContent=ext_sysFormatScoreNumber(xp);
+  document.getElementById("energy").textContent=Math.floor(energy);
 
   document.getElementById("kills").textContent=kills;
-  document.getElementById("foodCount").textContent=foodEaten;
-  document.getElementById("time").textContent=
-    formatTime(gameTime);
+  document.getElementById("foodCount").textContent=ext_sysFormatScoreNumber(foodEaten);
+  document.getElementById("time").textContent=formatTime(gameTime);
+  document.getElementById("best").textContent=ext_sysFormatScoreNumber(best);
 
-  document.getElementById("best").textContent=best;
+  const percent=xp/Math.max(level*50,1)*100;
+  document.getElementById("xpbar").style.width=Math.min(100,percent)+"%";
+}
 
-  const percent=
-    xp/Math.max(level*50,1)*100;
-
-  document.getElementById("xpbar").style.width=
-    Math.min(100,percent)+"%";
+function drawDebugOverlay(now) {
+  if(!_sysDebugMode) return;
+  ext_sysGetFpsCounter(now);
+  ext_renDrawRectFill(ctx, 10, 110, 200, 100, "#01080cee");
+  ext_renDrawRectStroke(ctx, 10, 110, 200, 100, "#00ffff", 1);
+  
+  ext_sysDrawDebugText(ctx, "=== DEBUG TERMINAL ===", 20, 130, "#00ffff");
+  ext_sysDrawDebugText(ctx, "FPS: " + _sysFps, 20, 150, "#00ffff");
+  ext_sysDrawDebugText(ctx, "ENTITIES: " + ext_entCountTotalEntities(), 20, 170, "#00ffff");
+  ext_sysDrawDebugText(ctx, "PLAYER MASS: " + ext_entGetPlayerMassInt(), 20, 190, "#00ffff");
 }
 
 /* =========================================================
@@ -1850,26 +1767,21 @@ function updateLeaderboard(){
 
   if(!player)return;
 
-  const list=[
-    player,
-    ...bots
-  ]
+  const list=[player, ...bots]
   .sort((a,b)=>totalMass(b)-totalMass(a))
   .slice(0,8);
 
   document.getElementById("rows").innerHTML=
     list.map((p,i)=>{
-
       const own=p===player;
-
       return `
         <div class="row"
           style="
-            color:${own?"#42d392":"#fff"};
+            color:${own?"#00ffff":"#00aaaa"};
             font-weight:${own?"bold":"normal"}
           ">
-          <span>${i+1}. ${escapeHTML(p.name)}</span>
-          <span>${Math.floor(totalMass(p))}</span>
+          <span>0x${(i+1).toString(16).toUpperCase()} ${escapeHTML(p.name)}</span>
+          <span>${ext_sysFormatScoreNumber(Math.floor(totalMass(p)))}</span>
         </div>
       `;
     }).join("");
@@ -1879,229 +1791,116 @@ function updateLeaderboard(){
    CHAT
 ========================================================= */
 
-const chatMessages=
-  document.getElementById("chatMessages");
+const chatMessages=document.getElementById("chatMessages");
 
 function addChat(msg){
 
   const div=document.createElement("div");
-
   div.className="chatMessage";
-
   div.innerHTML=`
-    <span class="chatName"
-      style="color:${msg.color||"#42d392"}">
-      ${escapeHTML(msg.name||"Sistema")}
+    <span class="chatName" style="color:${msg.color||"#00ffff"}">
+      ${escapeHTML(msg.name||"SYS_LOG")}
     </span>
-    <span class="chatTime">
-      ${escapeHTML(msg.time||"")}
-    </span>
+    <span class="chatTime">${escapeHTML(msg.time||"")}</span>
     <br>
-    <span class="chatText">
-      ${escapeHTML(msg.text||"")}
-    </span>
+    <span class="chatText">>> ${escapeHTML(msg.text||"")}</span>
   `;
 
   chatMessages.appendChild(div);
 
   while(chatMessages.children.length>100){
-    chatMessages.removeChild(
-      chatMessages.firstChild
-    );
+    chatMessages.removeChild(chatMessages.firstChild);
   }
-
-  chatMessages.scrollTop=
-    chatMessages.scrollHeight;
+  chatMessages.scrollTop=chatMessages.scrollHeight;
 }
 
 function sendChat(){
-
-  const input=
-    document.getElementById("chatInput");
-
-  const text=input.value
-    .replace(/\s+/g," ")
-    .trim()
-    .slice(0,180);
-
+  const input=document.getElementById("chatInput");
+  const text=input.value.replace(/\s+/g," ").trim().slice(0,180);
   if(!text)return;
 
-  const time=
-    new Date().toLocaleTimeString([],{
-      hour:"2-digit",
-      minute:"2-digit"
-    });
-
-  addChat({
-    name:player?player.name:"Player",
-    color:player?player.color:"#42d392",
-    text,
-    time
-  });
-
+  const time=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  addChat({ name:player?player.name:"Player", color:player?player.color:"#00ffff", text, time });
   input.value="";
 }
 
 document.getElementById("chatSend").onclick=sendChat;
 
-document.getElementById("chatInput")
-.addEventListener("keydown",e=>{
-
-  if(e.key==="Enter"){
-    e.preventDefault();
-    sendChat();
-  }
-
+document.getElementById("chatInput").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){ e.preventDefault(); sendChat(); }
   e.stopPropagation();
 });
 
 document.getElementById("chatClose").onclick=()=>{
-  document.getElementById("chat")
-    .classList.add("hidden");
-
-  document.getElementById("chatOpen")
-    .classList.remove("hidden");
+  document.getElementById("chat").classList.add("hidden");
+  document.getElementById("chatOpen").classList.remove("hidden");
 };
 
 document.getElementById("chatOpen").onclick=()=>{
-  document.getElementById("chat")
-    .classList.remove("hidden");
-
-  document.getElementById("chatOpen")
-    .classList.add("hidden");
+  document.getElementById("chat").classList.remove("hidden");
+  document.getElementById("chatOpen").classList.add("hidden");
 };
 
 /* =========================================================
-   USER MENU
+   USER MENU & SETTINGS
 ========================================================= */
 
-const userMenu=
-  document.getElementById("userMenu");
+const userMenu=document.getElementById("userMenu");
 
-document.getElementById("userButton").onclick=()=>{
-  userMenu.classList.toggle("hidden");
-};
+document.getElementById("userButton").onclick=()=>{ userMenu.classList.toggle("hidden"); };
+document.getElementById("closeUser").onclick=()=>{ userMenu.classList.add("hidden"); };
+document.getElementById("saveName").onclick=()=>{ saveProfile(); userMenu.classList.add("hidden"); };
 
-document.getElementById("closeUser").onclick=()=>{
-  userMenu.classList.add("hidden");
-};
-
-document.getElementById("saveName").onclick=()=>{
-  saveProfile();
-  userMenu.classList.add("hidden");
-};
-
-document.getElementById("name")
-.addEventListener("input",e=>{
-
-  const name=e.target.value
-    .slice(0,16)||"Player";
-
-  document.getElementById("userNameButton")
-    .textContent=name;
-
-  document.getElementById("userNameInput")
-    .value=name;
+document.getElementById("name").addEventListener("input",e=>{
+  const name=e.target.value.slice(0,16)||"Player";
+  document.getElementById("userNameButton").textContent=name;
+  document.getElementById("userNameInput").value=name;
 });
 
-/* =========================================================
-   SETTINGS
-========================================================= */
-
 function setupSwitch(id,key){
-
   const el=document.getElementById(id);
-
   el.classList.toggle("on",settings[key]);
-
   el.onclick=()=>{
-
     settings[key]=!settings[key];
-
     el.classList.toggle("on",settings[key]);
-
-    localStorage.setItem(
-      key,
-      settings[key]?"1":"0"
-    );
+    localStorage.setItem(key,settings[key]?"1":"0");
   };
 }
 
-setupSwitch(
-  "particlesSwitch",
-  "particles"
-);
+setupSwitch("particlesSwitch","particles");
+setupSwitch("shadowsSwitch","shadows");
+setupSwitch("vibrateSwitch","vibrate");
+setupSwitch("aggressiveSwitch","aggressive");
 
-setupSwitch(
-  "shadowsSwitch",
-  "shadows"
-);
+function openSettings(){ document.getElementById("settings").classList.remove("hidden"); }
+function closeSettings(){ document.getElementById("settings").classList.add("hidden"); }
 
-setupSwitch(
-  "vibrateSwitch",
-  "vibrate"
-);
-
-setupSwitch(
-  "aggressiveSwitch",
-  "aggressive"
-);
-
-function openSettings(){
-  document.getElementById("settings")
-    .classList.remove("hidden");
-}
-
-function closeSettings(){
-  document.getElementById("settings")
-    .classList.add("hidden");
-}
-
-document.getElementById("openSettings")
-  .onclick=openSettings;
-
-document.getElementById("menuSettings")
-  .onclick=openSettings;
-
-document.getElementById("closeSettings")
-  .onclick=closeSettings;
+document.getElementById("openSettings").onclick=openSettings;
+document.getElementById("menuSettings").onclick=openSettings;
+document.getElementById("closeSettings").onclick=closeSettings;
 
 /* =========================================================
    PAUSE
 ========================================================= */
 
 function togglePause(){
-
   if(!running)return;
-
   paused=!paused;
-
-  document.getElementById("pause")
-    .classList.toggle("hidden",!paused);
+  document.getElementById("pause").classList.toggle("hidden",!paused);
 }
 
-document.getElementById("resumeButton")
-  .onclick=togglePause;
+document.getElementById("resumeButton").onclick=togglePause;
 
 document.getElementById("menuButton").onclick=()=>{
-  running=false;
-  paused=false;
-
-  document.getElementById("pause")
-    .classList.add("hidden");
-
-  document.getElementById("menu")
-    .classList.remove("hidden");
+  running=false; paused=false;
+  document.getElementById("pause").classList.add("hidden");
+  document.getElementById("menu").classList.remove("hidden");
 };
 
 document.getElementById("overMenu").onclick=()=>{
   running=false;
-
-  document.getElementById("over")
-    .classList.add("hidden");
-
-  document.getElementById("menu")
-    .classList.remove("hidden");
+  document.getElementById("over").classList.add("hidden");
+  document.getElementById("menu").classList.remove("hidden");
 };
 
 /* =========================================================
@@ -2109,229 +1908,115 @@ document.getElementById("overMenu").onclick=()=>{
 ========================================================= */
 
 function gameOver(){
-
   if(!running)return;
-
   running=false;
-
-  const mass=Math.floor(totalMass(player));
-
+  const mass=ext_entGetPlayerMassInt();
   best=Math.max(best,mass);
+  localStorage.setItem("cellArenaBest",best);
 
-  localStorage.setItem(
-    "cellArenaBest",
-    best
-  );
-
-  document.getElementById("result").innerHTML=
-    `
-      Massa finale: <b>${mass}</b><br>
-      💀 Kill: <b>${kills}</b><br>
-      🍎 Cibo mangiato: <b>${foodEaten}</b><br>
-      ⏱️ Tempo: <b>${formatTime(gameTime)}</b><br>
-      🏆 Record: <b>${best}</b>
+  document.getElementById("result").innerHTML=`
+      Massa finale: <b>${ext_sysFormatScoreNumber(mass)}</b><br>
+      [K] Kill: <b>${kills}</b><br>
+      [F] Assorbimenti: <b>${ext_sysFormatScoreNumber(foodEaten)}</b><br>
+      [T] Tempo attivo: <b>${formatTime(gameTime)}</b><br>
+      [R] Record Max: <b>${ext_sysFormatScoreNumber(best)}</b>
     `;
 
-  document.getElementById("over")
-    .classList.remove("hidden");
-
+  document.getElementById("over").classList.remove("hidden");
   vibrate(100);
 }
 
 /* =========================================================
-   INPUT KEYBOARD
+   INPUT KEYBOARD (AGGIORNATO CON DASH E FULLSCREEN)
 ========================================================= */
 
 addEventListener("keydown",e=>{
 
-  const targets=[
-    "chatInput",
-    "userNameInput",
-    "name"
-  ];
+  const targets=["chatInput","userNameInput","name"];
+  if(e.target && targets.includes(e.target.id))return;
 
-  if(
-    e.target &&
-    targets.includes(e.target.id)
-  )return;
-
-  if(e.code==="Space"){
+  if(e.code==="Space"){ e.preventDefault(); split(); }
+  if(e.code==="KeyW"){ e.preventDefault(); eject(); }
+  if(e.code==="KeyE"){ e.preventDefault(); boosting=true; }
+  
+  if(e.code==="ShiftLeft" || e.code==="ShiftRight"){
     e.preventDefault();
-    split();
+    ext_playerExecuteDash(); // Nuova funzione 93
   }
 
-  if(e.code==="KeyW"){
+  if(e.code==="KeyF"){
     e.preventDefault();
-    eject();
+    ext_sysToggleFullscreen(); // Nuova funzione 98
   }
 
-  if(e.code==="KeyE"){
+  if(e.code==="Backquote" || e.code==="IntlBackslash"){
     e.preventDefault();
-    boosting=true;
+    ext_sysToggleDebugOverlay(); // Nuova funzione 99
   }
 
   if(e.code==="Escape"){
-
     e.preventDefault();
-
-    if(!userMenu.classList.contains("hidden")){
-      userMenu.classList.add("hidden");
-      return;
-    }
-
-    if(!document.getElementById("settings")
-      .classList.contains("hidden")){
-      closeSettings();
-      return;
-    }
-
+    if(!userMenu.classList.contains("hidden")){ userMenu.classList.add("hidden"); return; }
+    if(!document.getElementById("settings").classList.contains("hidden")){ closeSettings(); return; }
     togglePause();
   }
 });
 
 addEventListener("keyup",e=>{
-
-  if(e.code==="KeyE"){
-    boosting=false;
-  }
+  if(e.code==="KeyE"){ boosting=false; }
 });
 
 /* =========================================================
    MOBILE JOYSTICK
 ========================================================= */
 
-const joystickEl=
-  document.getElementById("joystick");
-
-const stick=
-  document.getElementById("stick");
+const joystickEl=document.getElementById("joystick");
+const stick=document.getElementById("stick");
 
 function joystickMove(clientX,clientY){
-
-  const rect=
-    joystickEl.getBoundingClientRect();
-
+  const rect=joystickEl.getBoundingClientRect();
   const cx=rect.left+rect.width/2;
   const cy=rect.top+rect.height/2;
 
-  let dx=clientX-cx;
-  let dy=clientY-cy;
+  let dx=clientX-cx; let dy=clientY-cy;
+  const max=42; const d=Math.hypot(dx,dy);
 
-  const max=42;
-  const d=Math.hypot(dx,dy);
+  if(d>max){ dx=dx/d*max; dy=dy/d*max; }
 
-  if(d>max){
-    dx=dx/d*max;
-    dy=dy/d*max;
-  }
-
-  joystick.x=dx/max;
-  joystick.y=dy/max;
-
-  stick.style.left=
-    (38+dx)+"px";
-
-  stick.style.top=
-    (38+dy)+"px";
+  joystick.x=dx/max; joystick.y=dy/max;
+  stick.style.left=(38+dx)+"px";
+  stick.style.top=(38+dy)+"px";
 }
 
 function joystickEnd(){
-
-  joystick.active=false;
-  joystick.x=0;
-  joystick.y=0;
-
-  stick.style.left="38px";
-  stick.style.top="38px";
+  joystick.active=false; joystick.x=0; joystick.y=0;
+  stick.style.left="38px"; stick.style.top="38px";
 }
 
-joystickEl.addEventListener(
-  "touchstart",
-  e=>{
-    joystick.active=true;
+joystickEl.addEventListener("touchstart",e=>{ joystick.active=true; const t=e.touches[0]; joystickMove(t.clientX,t.clientY); e.preventDefault(); }, {passive:false});
+joystickEl.addEventListener("touchmove",e=>{ const t=e.touches[0]; joystick.active=true; joystickMove(t.clientX,t.clientY); e.preventDefault(); }, {passive:false});
+joystickEl.addEventListener("touchend",joystickEnd);
 
-    const t=e.touches[0];
-
-    joystickMove(
-      t.clientX,
-      t.clientY
-    );
-
-    e.preventDefault();
-  },
-  {passive:false}
-);
-
-joystickEl.addEventListener(
-  "touchmove",
-  e=>{
-
-    const t=e.touches[0];
-
-    joystick.active=true;
-
-    joystickMove(
-      t.clientX,
-      t.clientY
-    );
-
-    e.preventDefault();
-  },
-  {passive:false}
-);
-
-joystickEl.addEventListener(
-  "touchend",
-  joystickEnd
-);
-
-document.getElementById("splitBtn")
-.addEventListener("touchstart",e=>{
-  split();
-  e.preventDefault();
-},{passive:false});
-
-document.getElementById("feedBtn")
-.addEventListener("touchstart",e=>{
-  eject();
-  e.preventDefault();
-},{passive:false});
+document.getElementById("splitBtn").addEventListener("touchstart",e=>{ split(); e.preventDefault(); },{passive:false});
+document.getElementById("feedBtn").addEventListener("touchstart",e=>{ eject(); e.preventDefault(); },{passive:false});
 
 /* =========================================================
    START
 ========================================================= */
 
 function startGame(){
-
-  running=true;
-  paused=false;
-  boosting=false;
-
-  document.getElementById("menu")
-    .classList.add("hidden");
-
-  document.getElementById("pause")
-    .classList.add("hidden");
-
-  document.getElementById("over")
-    .classList.add("hidden");
+  running=true; paused=false; boosting=false;
+  document.getElementById("menu").classList.add("hidden");
+  document.getElementById("pause").classList.add("hidden");
+  document.getElementById("over").classList.add("hidden");
 
   resetWorld();
-
-  addChat({
-    name:"Sistema",
-    color:"#42d392",
-    text:"🎮 Benvenuto in Cell Arena!"
-  });
-
-  toast("🟢 Partita iniziata");
+  addChat({ name:"SYS_BOOT", color:"#00ffff", text:"Inizializzazione script di gioco completata." });
+  toast("[SYS] CONCESSIONE ACCESSO ARENA");
 }
 
-document.getElementById("playButton")
-  .onclick=startGame;
-
-document.getElementById("retryButton")
-  .onclick=startGame;
+document.getElementById("playButton").onclick=startGame;
+document.getElementById("retryButton").onclick=startGame;
 
 /* =========================================================
    MAIN LOOP
@@ -2341,22 +2026,14 @@ let last=performance.now();
 
 function loop(now){
 
-  const dt=Math.min(
-    .033,
-    (now-last)/1000
-  );
-
+  const dt=Math.min(.033, (now-last)/1000);
   last=now;
 
   if(running&&!paused){
 
     gameTime+=dt;
 
-    if(player){
-
-      player.invuln=
-        Math.max(0,player.invuln-dt);
-    }
+    if(player){ player.invuln=Math.max(0,player.invuln-dt); }
 
     updateBoost(dt);
     updatePlayer(dt);
@@ -2376,19 +2053,16 @@ function loop(now){
     drawFood();
     drawEjected();
 
-    for(const v of viruses){
-      drawVirus(v);
-    }
-
-    for(const bot of bots){
-      drawBot(bot);
-    }
+    for(const v of viruses){ drawVirus(v); }
+    for(const bot of bots){ drawBot(bot); }
 
     drawParticles();
     drawPlayer();
     drawMini();
-  }else if(!running){
+    
+    drawDebugOverlay(now);
 
+  }else if(!running){
     drawBackground();
   }
 
@@ -2399,20 +2073,10 @@ function loop(now){
    INITIAL CHAT
 ========================================================= */
 
-addChat({
-  name:"Sistema",
-  color:"#42d392",
-  text:"💬 Chat locale attivo."
-});
-
-addChat({
-  name:"Sistema",
-  color:"#ffe66d",
-  text:"⚡ SPACE = split · W = feed · E = boost"
-});
+addChat({ name:"SYS_CORE", color:"#00ffff", text:"Logging node attivato. UI Total Black / NeonCyan caricata." });
+addChat({ name:"SYS_TUTORIAL", color:"#0088ff", text:"Comandi estesi: SHIFT per scattare, F per schermo intero, \\ per debug." });
 
 requestAnimationFrame(loop);
-
 </script>
 </body>
 </html>

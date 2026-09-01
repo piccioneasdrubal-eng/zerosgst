@@ -89,6 +89,11 @@ button{border:0;cursor:pointer}
  animation:skinspin 3s linear infinite;
 }
 @keyframes skinspin{to{transform:rotate(360deg)}}
+.skinCell.premiumLocked{opacity:.55;filter:none;cursor:pointer}
+.skinCell .priceTag{
+ position:absolute;bottom:0;left:0;right:0;background:#000c;color:#ffd24d;
+ font-size:9px;font-weight:bold;text-align:center;padding:2px 0;
+}
 
 #chat{
  position:fixed;left:15px;bottom:15px;z-index:30;width:350px;height:320px;
@@ -373,6 +378,11 @@ button{border:0;cursor:pointer}
   <div style="margin-top:14px;border-top:1px solid #00ffff33;padding-top:12px;">
     <h3 style="font-size:14px;"><span data-i18n="lbl_coins">Monete</span>: <span id="menuCoins">0</span> · <span data-i18n="lbl_skins">Skin</span>: <span id="menuSkinCount">1</span>/<span id="menuSkinTotal">100</span></h3>
     <div id="skinGallery" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;max-height:160px;overflow-y:auto;"></div>
+  </div>
+
+  <div style="margin-top:14px;border-top:1px solid #00ffff33;padding-top:12px;">
+    <h3 style="font-size:14px;" data-i18n="lbl_premium_shop">🌟 Skin Premium</h3>
+    <div id="premiumSkinGallery" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;max-height:200px;overflow-y:auto;"></div>
   </div>
 
   <button class="menuBtn alt" id="openSettings" data-i18n="btn_config" style="width:100%;margin-top:10px;">SYS_CONFIG</button>
@@ -1101,6 +1111,26 @@ for(let lv=SKIN_EVERY; lv<=MAX_LEVEL; lv+=SKIN_EVERY){
   SKIN_CATALOG.push({ id:"skin_"+lv, level:lv, gif:"skins/skin_"+lv+".gif", label:"Skin Lv."+lv });
 }
 
+// Monete guadagnate per ogni eliminazione (alimentano lo shop skin premium)
+const COINS_PER_KILL=5;
+
+// Skin premium: GIF animate acquistabili con le monete, indipendenti dal livello.
+// I file .gif non sono inclusi: mettili in public/skins/premium_<id>.gif
+const PREMIUM_SKIN_CATALOG=[
+  { id:"premium_inferno",   gif:"skins/premium_inferno.gif",   label:"Inferno",    price:150  },
+  { id:"premium_glacier",   gif:"skins/premium_glacier.gif",   label:"Glacier",    price:150  },
+  { id:"premium_toxic",     gif:"skins/premium_toxic.gif",     label:"Toxic",      price:200  },
+  { id:"premium_galaxy",    gif:"skins/premium_galaxy.gif",    label:"Galaxy",     price:250  },
+  { id:"premium_gold",      gif:"skins/premium_gold.gif",      label:"Gold Rush",  price:300  },
+  { id:"premium_neonwave",  gif:"skins/premium_neonwave.gif",  label:"Neon Wave",  price:300  },
+  { id:"premium_phantom",   gif:"skins/premium_phantom.gif",   label:"Phantom",    price:350  },
+  { id:"premium_dragon",    gif:"skins/premium_dragon.gif",    label:"Dragon",     price:400  },
+  { id:"premium_matrix",    gif:"skins/premium_matrix.gif",    label:"Matrix",     price:400  },
+  { id:"premium_royal",     gif:"skins/premium_royal.gif",     label:"Royal",      price:500  },
+  { id:"premium_void",      gif:"skins/premium_void.gif",      label:"Void",       price:600  },
+  { id:"premium_legend",    gif:"skins/premium_legend.gif",    label:"Legend",     price:800  }
+];
+
 function saveProgressLocal(){
   localStorage.setItem("cellArenaCoins",coins);
   localStorage.setItem("cellArenaSkins",JSON.stringify(unlockedSkins));
@@ -1373,6 +1403,8 @@ function handleServerMessage(msg){
 
   else if(msg.type==="kill"){
     kills++;
+    coins+=COINS_PER_KILL;
+    saveProgressLocal();
     triggerCombo(msg.combo);
     if(player&&player.cells.length){
       const c=player.cells[0];
@@ -2432,6 +2464,57 @@ function renderSkinGallery(){
         renderSkinGallery();
       };
     }
+    grid.appendChild(cell);
+  });
+
+  renderPremiumShop();
+}
+
+function renderPremiumShop(){
+  const grid=document.getElementById("premiumSkinGallery");
+  if(!grid)return;
+  grid.innerHTML="";
+
+  PREMIUM_SKIN_CATALOG.forEach(skin=>{
+    const owned=unlockedSkins.includes(skin.id);
+    const cell=document.createElement("div");
+    cell.className="skinCell"+(owned?"":" locked premiumLocked")+(equippedSkin===skin.id?" equipped":"");
+    cell.title=owned ? skin.label : skin.label+" — "+skin.price+" monete";
+
+    const img=document.createElement("img");
+    img.src=skin.gif;
+    img.alt=skin.label;
+    img.onerror=()=>{ img.remove(); const f=document.createElement("div"); f.className="fallback"; cell.appendChild(f); };
+    cell.appendChild(img);
+
+    if(!owned){
+      const tag=document.createElement("div");
+      tag.className="priceTag";
+      tag.textContent="💰"+skin.price;
+      cell.appendChild(tag);
+    }
+
+    cell.onclick=()=>{
+      if(owned){
+        equippedSkin=skin.id;
+        saveProgressLocal();
+        syncProgressToServer();
+        renderSkinGallery();
+        return;
+      }
+      if(coins<skin.price){
+        toast("❌ Monete insufficienti: ti servono "+skin.price+" 💰");
+        return;
+      }
+      coins-=skin.price;
+      unlockedSkins.push(skin.id);
+      equippedSkin=skin.id;
+      saveProgressLocal();
+      syncProgressToServer();
+      toast("✨ Skin premium sbloccata: "+skin.label);
+      renderSkinGallery();
+    };
+
     grid.appendChild(cell);
   });
 }

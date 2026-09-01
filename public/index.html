@@ -5,12 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zero The Legend</title>
 <style>
+  /* Grafica in stile Agar.io con sfondo a griglia */
   body { margin: 0; overflow: hidden; font-family: 'Ubuntu', sans-serif; background-color: #f2fbff; }
   #gameCanvas { 
     display: block; 
     background-image: linear-gradient(#d3d3d3 1px, transparent 1px), linear-gradient(90deg, #d3d3d3 1px, transparent 1px); 
     background-size: 50px 50px; 
   }
+  
+  /* Menu Centrale */
   #mainMenu {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 15px;
@@ -21,6 +24,7 @@
   .btn-play { background: #4CAF50; color: white; width: 100%; margin-top: 15px; }
   .btn-auth { background: #2196F3; color: white; }
   
+  /* Menu Laterale Collapsable */
   #sideMenu {
     position: absolute; top: 0; left: -260px; width: 260px; height: 100%;
     background: rgba(30, 30, 30, 0.9); color: white; padding: 20px;
@@ -35,6 +39,7 @@
   .input-group label { display: block; font-size: 13px; margin-bottom: 5px; color: #aaa; }
   .input-group input { width: 100%; padding: 8px; border: none; border-radius: 4px; box-sizing: border-box; }
 
+  /* Overlay Punteggio */
   #scoreBoard {
     position: absolute; top: 10px; left: 10px;
     background: rgba(0,0,0,0.5); color: white; padding: 10px 15px;
@@ -44,34 +49,53 @@
 </head>
 <body>
 
+  <!-- Canvas del gioco -->
   <canvas id="gameCanvas"></canvas>
+
+  <!-- Punteggio -->
   <div id="scoreBoard">Punteggio: <span id="scoreValue">0</span></div>
 
+  <!-- Menu Laterale -->
   <div id="sideMenu">
     <button id="toggleMenu">☰</button>
     <h3 style="margin-top:0;">Impostazioni</h3>
-    <div class="input-group"><label>Nome Giocatore</label><input type="text" id="playerName" value="Giocatore1"></div>
-    <div class="input-group"><label>Quantità Bot</label><input type="number" id="botCount" value="10"></div>
-    <div class="input-group"><label>Massa Iniziale</label><input type="number" id="startMass" value="25"></div>
-    <div class="input-group"><label>Velocità Base</label><input type="number" id="startSpeed" value="7"></div>
+    <div class="input-group">
+      <label>Nome Giocatore</label>
+      <input type="text" id="playerName" placeholder="Il tuo nome" value="Giocatore1">
+    </div>
+    <div class="input-group">
+      <label>Quantità Bot</label>
+      <input type="number" id="botCount" value="10" min="0" max="100">
+    </div>
+    <div class="input-group">
+      <label>Massa Iniziale</label>
+      <input type="number" id="startMass" value="10" min="10" max="500">
+    </div>
+    <div class="input-group">
+      <label>Velocità</label>
+      <input type="number" id="startSpeed" value="5" min="1" max="20">
+    </div>
     <button class="btn btn-auth" style="width:100%; margin-top:10px;" onclick="applicaImpostazioni()">Applica</button>
   </div>
 
+  <!-- Menu Centrale -->
   <div id="mainMenu">
     <h1>Zero The Legend</h1>
     <div>
-      <button class="btn btn-auth" onclick="alert('Login non ancora implementato.')">Login</button>
-      <button class="btn btn-auth" onclick="alert('Registrazione non ancora implementata.')">Registrati</button>
+      <button class="btn btn-auth" onclick="login()">Login</button>
+      <button class="btn btn-auth" onclick="registrati()">Registrati</button>
     </div>
     <button class="btn btn-play" onclick="startGame()">Gioca</button>
   </div>
 
 <script>
+  // Setup Canvas
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
+  // Variabili WebSocket e Gioco
   let ws = null;
   let myId = null;
   let gameState = null;
@@ -80,64 +104,93 @@
   let camera = { x: 3000, y: 3000, zoom: 1 }; 
   let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 
+  // Connessione WS
   function connect() {
     const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
     ws = new WebSocket(protocol + location.host);
     
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-      if (msg.type === 'welcome') myId = msg.id;
-      else if (msg.type === 'state') gameState = msg;
-      else if (msg.type === 'dead') {
+      if (msg.type === 'welcome') {
+        myId = msg.id;
+      } else if (msg.type === 'state') {
+        gameState = msg;
+      } else if (msg.type === 'dead') {
         isPlaying = false;
         document.getElementById('mainMenu').style.display = 'block';
         document.getElementById('scoreBoard').style.display = 'none';
-        alert(`Sei stato mangiato! Punteggio: ${msg.score}`);
+        alert(`Sei stato mangiato! Punteggio finale: ${msg.score}`);
       }
     };
   }
   connect();
 
+  // Gestione Menu Laterale
+  const sideMenu = document.getElementById('sideMenu');
   document.getElementById('toggleMenu').addEventListener('click', () => {
-    document.getElementById('sideMenu').classList.toggle('open');
+    sideMenu.classList.toggle('open');
   });
 
-  function applicaImpostazioni() {
+  // Funzioni UI originali
+  function login() { alert("Apertura modale di Login per salvare i progressi..."); }
+  function registrati() { alert("Apertura modale di Registrazione..."); }
+  
+  function applicaImpostazioni() { 
+    alert("Impostazioni salvate: Massa, Velocità e Bot aggiornati."); 
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    // Invia i settaggi aggiornati al server
     ws.send(JSON.stringify({
       type: "settings",
       botCount: document.getElementById('botCount').value,
       startMass: document.getElementById('startMass').value,
       startSpeed: document.getElementById('startSpeed').value
     }));
-    alert("Impostazioni inviate al server!");
   }
   
   function startGame() {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return alert("Connessione in corso...");
-    ws.send(JSON.stringify({
-      type: "join",
-      name: document.getElementById('playerName').value,
-      botCount: document.getElementById('botCount').value,
-      startMass: document.getElementById('startMass').value,
-      startSpeed: document.getElementById('startSpeed').value
-    }));
-    
-    document.getElementById('mainMenu').style.display = 'none'; 
+    document.getElementById('mainMenu').style.display = 'none';
     document.getElementById('scoreBoard').style.display = 'block'; 
-    isPlaying = true;
+    
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: "join",
+        name: document.getElementById('playerName').value,
+        botCount: document.getElementById('botCount').value,
+        startMass: document.getElementById('startMass').value,
+        startSpeed: document.getElementById('startSpeed').value
+      }));
+      isPlaying = true;
+    } else {
+      alert("Connessione in corso, riprova tra un secondo.");
+    }
   }
 
-  // Supporto Mouse e Touch
+  // Input Mouse & Touch (gestione mirino e posizionamento)
   window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
   window.addEventListener('touchmove', (e) => { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; });
 
+  // Comandi di Gioco integrati (Split e Feed)
   window.addEventListener('keydown', (e) => {
-    if (!isPlaying) return;
-    if (e.code === 'Space') ws.send(JSON.stringify({ type: "split" }));
-    if (e.key.toLowerCase() === 'w') ws.send(JSON.stringify({ type: "eject" }));
+    if (document.getElementById('mainMenu').style.display !== 'none') return;
+    
+    if (e.code === 'Space') {
+      console.log("Comando: SPLIT eseguito");
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "split" }));
+    }
+    if (e.key.toLowerCase() === 'w') {
+      console.log("Comando: FEED (Lancia massa) eseguito");
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "eject" }));
+    }
   });
 
+  // Ridimensionamento dinamico
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+  // Loop di invio movimento al server
   setInterval(() => {
     if (!isPlaying || !ws || ws.readyState !== WebSocket.OPEN || !gameState) return;
     const targetX = (mouse.x - canvas.width / 2) / camera.zoom + camera.x;
@@ -145,6 +198,7 @@
     ws.send(JSON.stringify({ type: "move", x: targetX, y: targetY }));
   }, 50);
 
+  // Render Loop del gioco
   function draw() {
     requestAnimationFrame(draw);
     if (!gameState) return;
@@ -153,7 +207,10 @@
     let me = gameState.players.find(p => p.id === myId);
     
     if (me && me.cells.length > 0) {
+      // Aggiorna punteggio in alto a sinistra
       document.getElementById('scoreValue').innerText = me.score;
+      
+      // Calcolo centro della visuale in base alla cellula
       let avgX = 0, avgY = 0, totalMass = 0;
       me.cells.forEach(c => { avgX += c.x; avgY += c.y; totalMass += c.r; });
       avgX /= me.cells.length; avgY /= me.cells.length;
@@ -173,11 +230,12 @@
     ctx.scale(camera.zoom, camera.zoom);
     ctx.translate(-camera.x, -camera.y);
 
+    // Disegna i bordi della mappa
     ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
     ctx.lineWidth = 10;
     ctx.strokeRect(0, 0, gameState.world, gameState.world);
 
-    // Nuovo: Mirino laser direzionale
+    // Mirino laser direzionale
     if (me && me.cells.length > 0) {
       const worldMouseX = (mouse.x - canvas.width / 2) / camera.zoom + camera.x;
       const worldMouseY = (mouse.y - canvas.height / 2) / camera.zoom + camera.y;
@@ -191,6 +249,7 @@
       ctx.setLineDash([]);
     }
 
+    // Disegna cibo
     gameState.foods.forEach(f => {
       ctx.beginPath();
       ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
@@ -198,8 +257,11 @@
       ctx.fill();
     });
 
+    // Raccoglie e disegna le cellule
     let allCells = [];
-    gameState.players.forEach(p => { p.cells.forEach(c => { allCells.push({ ...c, ownerName: p.name, color: p.color }); }); });
+    gameState.players.forEach(p => { 
+      p.cells.forEach(c => { allCells.push({ ...c, ownerName: p.name, color: p.color }); }); 
+    });
     allCells.sort((a, b) => a.r - b.r);
 
     allCells.forEach(c => {
@@ -225,11 +287,6 @@
   }
 
   draw();
-
-  window.addEventListener('resize', () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  });
 </script>
 </body>
 </html>

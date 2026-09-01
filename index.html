@@ -1771,6 +1771,7 @@ function applyServerState(msg){
         id:p.id,
         name:p.name,
         color:p.color,
+        partyCode:p.partyCode||null,
         cells:p.cells.map(c=>({x:c.x,y:c.y,r:c.r}))
       });
     }

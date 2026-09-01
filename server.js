@@ -89,36 +89,30 @@ function cleanMessage(message) {
    PLAYER & BOTS
 ---------------------------- */
 
+// CORRETTA: La funzione era duplicata, ora è stata consolidata con il fix.
 function createPlayer(id, name, isBot = false, startMass = 25, startSpeed = 7) {
   const p = {
     id,
     name: cleanName(name),
     color: randomColor(),
-
     x: WORLD / 2,
     y: WORLD / 2,
-
     targetX: WORLD / 2,
     targetY: WORLD / 2,
-
     r: startMass, 
     baseSpeed: startSpeed, 
     isBot: isBot, 
-
     energy: 100,
     score: 0,
-
     cells: [],
-
     lastMove: 0,
     lastSplit: 0,
     lastEject: 0,
-
     socket: null
   };
 
   findSpawn(p);
-  ensureCells(p); // IL FIX CRITICO: Crea fisicamente la cellula nel mondo!
+  ensureCells(p); // <--- IL FIX CRITICO: Crea fisicamente la cellula nel mondo!
   
   return p;
 }
@@ -127,14 +121,10 @@ function findSpawn(player) {
   for (let attempt = 0; attempt < 100; attempt++) {
     const x = random(200, WORLD - 200);
     const y = random(200, WORLD - 200);
-
     let good = true;
 
     for (const other of players.values()) {
-      if (distance(
-        { x, y },
-        { x: other.x, y: other.y }
-      ) < 350) {
+      if (distance({ x, y }, { x: other.x, y: other.y }) < 350) {
         good = false;
         break;
       }
@@ -165,12 +155,11 @@ function updateBots() {
   while (currentBots < targetBotCount && players.size < MAX_PLAYERS) {
     const id = "bot_" + randomId();
     const botName = "Bot_" + Math.floor(random(1000, 9999));
-    const bot = createPlayer(id, botName, true, 25, 5); // I bot hanno statistiche standard
+    const bot = createPlayer(id, botName, true, 25, 5);
     players.set(id, bot);
     currentBots++;
   }
   
-  // Rimuovi bot in eccesso se il target viene abbassato
   if (currentBots > targetBotCount) {
     let toRemove = currentBots - targetBotCount;
     for (const p of players.values()) {
@@ -182,11 +171,9 @@ function updateBots() {
   }
 }
 
-// Intelligenza artificiale basilare per i bot
 function updateBotsAI() {
   for (const p of players.values()) {
     if (p.isBot) {
-      // 5% di probabilità per tick di cambiare direzione casualmente
       if (Math.random() < 0.05) {
         p.targetX = p.x + random(-600, 600);
         p.targetY = p.y + random(-600, 600);
@@ -202,31 +189,14 @@ function updateBotsAI() {
 ---------------------------- */
 
 function getCells(player) {
-  if (player.cells.length > 0) {
-    return player.cells;
-  }
-
-  return [{
-    id: player.id,
-    x: player.x,
-    y: player.y,
-    r: player.r,
-    vx: 0,
-    vy: 0,
-    boost: 0
-  }];
+  if (player.cells.length > 0) return player.cells;
+  return [{ id: player.id, x: player.x, y: player.y, r: player.r, vx: 0, vy: 0, boost: 0 }];
 }
 
 function ensureCells(player) {
   if (player.cells.length === 0) {
     player.cells.push({
-      id: player.id,
-      x: player.x,
-      y: player.y,
-      r: player.r,
-      vx: 0,
-      vy: 0,
-      boost: 0
+      id: player.id, x: player.x, y: player.y, r: player.r, vx: 0, vy: 0, boost: 0
     });
   }
 }
@@ -234,7 +204,6 @@ function ensureCells(player) {
 function syncPlayerMainData(player) {
   if (player.cells.length === 1) {
     const c = player.cells[0];
-
     player.x = c.x;
     player.y = c.y;
     player.r = c.r;
@@ -243,20 +212,13 @@ function syncPlayerMainData(player) {
 
 function publicPlayer(player) {
   const cells = getCells(player);
-
   return {
     id: player.id,
     name: player.name,
     color: player.color,
     score: Math.floor(player.score),
     energy: Math.floor(player.energy),
-
-    cells: cells.map(c => ({
-      id: c.id,
-      x: c.x,
-      y: c.y,
-      r: c.r
-    }))
+    cells: cells.map(c => ({ id: c.id, x: c.x, y: c.y, r: c.r }))
   };
 }
 
@@ -270,15 +232,11 @@ function movePlayer(player) {
   for (const cell of cells) {
     const dx = player.targetX - cell.x;
     const dy = player.targetY - cell.y;
-
     const d = Math.hypot(dx, dy);
 
     if (d < 2) continue;
 
-    // Utilizza la baseSpeed impostata dal client o 7 di default
     let speed = (player.baseSpeed || 7) * Math.pow(25 / Math.max(cell.r, 1), 0.43);
-
-    // Scala il clamp basandosi sulla velocità base personalizzata
     speed = clamp(speed, 0.75, (player.baseSpeed * 1.15) || 8);
 
     cell.x += (dx / d) * speed;
@@ -287,10 +245,8 @@ function movePlayer(player) {
     if (cell.boost > 0) {
       cell.x += cell.vx || 0;
       cell.y += cell.vy || 0;
-
       cell.vx *= 0.90;
       cell.vy *= 0.90;
-
       cell.boost--;
     }
 
@@ -308,15 +264,12 @@ function movePlayer(player) {
 function eatFood() {
   for (const player of players.values()) {
     const cells = getCells(player);
-
     for (const cell of cells) {
       for (let i = foods.length - 1; i >= 0; i--) {
         const food = foods[i];
-
         if (distance(cell, food) < cell.r + food.r) {
           cell.r = Math.sqrt(cell.r * cell.r + 1);
           player.score += 1;
-
           foods.splice(i, 1);
           foods.push(makeFood());
         }
@@ -329,10 +282,8 @@ function eatFood() {
 function splitPlayer(player) {
   const now = Date.now();
   if (now - player.lastSplit < 900) return;
-
   player.lastSplit = now;
   ensureCells(player);
-
   if (player.cells.length >= 16) return;
 
   const originalCells = [...player.cells];
@@ -347,7 +298,6 @@ function splitPlayer(player) {
     cell.r = newRadius;
 
     const angle = Math.atan2(player.targetY - cell.y, player.targetX - cell.x);
-
     const child = {
       id: randomId(),
       x: clamp(cell.x + Math.cos(angle) * newRadius * 1.8, newRadius, WORLD - newRadius),
@@ -357,10 +307,8 @@ function splitPlayer(player) {
       vy: Math.sin(angle) * 13,
       boost: 28
     };
-
     created.push(child);
   }
-
   player.cells.push(...created);
   syncPlayerMainData(player);
 }
@@ -368,7 +316,6 @@ function splitPlayer(player) {
 function ejectMass(player) {
   const now = Date.now();
   if (now - player.lastEject < 120 || player.energy < 8) return;
-
   player.lastEject = now;
   player.energy -= 8;
   ensureCells(player);
@@ -376,7 +323,6 @@ function ejectMass(player) {
   for (const cell of player.cells) {
     if (cell.r < 16) continue;
     cell.r = Math.sqrt(Math.max(20, cell.r * cell.r - 6));
-
     const angle = Math.atan2(player.targetY - cell.y, player.targetX - cell.x);
 
     foods.push({
@@ -413,28 +359,20 @@ function killPlayer(player) {
 
 function collisions() {
   const cells = allCells();
-
   for (let i = 0; i < cells.length; i++) {
     for (let j = i + 1; j < cells.length; j++) {
       const A = cells[i];
       const B = cells[j];
-
       if (A.owner === B.owner || !players.has(A.owner.id) || !players.has(B.owner.id)) continue;
 
       const a = A.cell;
       const b = B.cell;
       const d = distance(a, b);
-
       if (d > Math.max(a.r, b.r) * 0.78) continue;
 
       let big = A;
       let small = B;
-
-      if (b.r > a.r) {
-        big = B;
-        small = A;
-      }
-
+      if (b.r > a.r) { big = B; small = A; }
       if (big.cell.r <= small.cell.r * 1.12) continue;
 
       big.cell.r = Math.sqrt(big.cell.r * big.cell.r + small.cell.r * small.cell.r * 0.82);
@@ -446,7 +384,6 @@ function collisions() {
       } else {
         killPlayer(owner);
       }
-
       big.owner.score += Math.floor(small.cell.r * small.cell.r);
       syncPlayerMainData(big.owner);
     }
@@ -460,7 +397,6 @@ function collisions() {
 function addChatMessage(player, text) {
   text = cleanMessage(text);
   if (!text) return;
-
   const message = {
     id: randomId(),
     playerId: player.id,
@@ -469,7 +405,6 @@ function addChatMessage(player, text) {
     text,
     time: new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
   };
-
   chat.push(message);
   if (chat.length > 80) chat.splice(0, chat.length - 80);
   broadcastChat();
@@ -489,8 +424,8 @@ function broadcastChat() {
 ---------------------------- */
 
 function update() {
-  updateBots();   // Gestisci la quantità di bot
-  updateBotsAI(); // Calcola i movimenti AI
+  updateBots();   
+  updateBotsAI(); 
 
   for (const player of players.values()) {
     movePlayer(player);
@@ -594,22 +529,16 @@ wss.on("connection", socket => {
     /* JOIN */
     if (message.type === "join") {
       if (player) return;
-
-      // Accetta le nuove statistiche fornite dal client
       const startMass = message.startMass ? Number(message.startMass) : 25;
       const startSpeed = message.startSpeed ? Number(message.startSpeed) : 7;
       if (message.botCount !== undefined) targetBotCount = Number(message.botCount);
 
       player = createPlayer(id, message.name, false, startMass, startSpeed);
+      if (message.color) player.color = message.color;
       player.socket = socket;
       players.set(id, player);
 
-      socket.send(JSON.stringify({
-        type: "welcome",
-        id,
-        world: WORLD,
-        playerCount: players.size
-      }));
+      socket.send(JSON.stringify({ type: "welcome", id, world: WORLD, playerCount: players.size }));
       socket.send(JSON.stringify({ type: "chatHistory", messages: chat }));
       addChatMessage(player, "è entrato nella partita");
       return;
@@ -617,7 +546,7 @@ wss.on("connection", socket => {
 
     if (!player) return;
 
-    /* SETTINGS - Riceve i comandi del menu in tempo reale */
+    /* SETTINGS */
     if (message.type === "settings") {
       if (message.startMass) {
         const newMass = Number(message.startMass);
@@ -627,7 +556,6 @@ wss.on("connection", socket => {
       if (message.startSpeed) player.baseSpeed = Number(message.startSpeed);
       if (message.botCount !== undefined) targetBotCount = Number(message.botCount);
     }
-
     /* MOVIMENTO */
     else if (message.type === "move") {
       const x = Number(message.x);
@@ -637,26 +565,22 @@ wss.on("connection", socket => {
         player.targetY = clamp(y, 0, WORLD);
       }
     }
-
     /* SPLIT */
     else if (message.type === "split") {
       splitPlayer(player);
     }
-
-    /* EJECT */
+    /* EJECT / FEED */
     else if (message.type === "eject") {
       ejectMass(player);
     }
-
     /* CHAT */
     else if (message.type === "chat") {
       addChatMessage(player, message.text);
     }
-
-    /* CAMBIO NOME */
-    else if (message.type === "changeName") {
-      const newName = cleanName(message.name);
-      if (newName) player.name = newName;
+    /* CAMBIO NOME/COLORE */
+    else if (message.type === "updateProfile") {
+      if (message.name) player.name = cleanName(message.name);
+      if (message.color) player.color = message.color;
     }
   });
 

@@ -1766,9 +1766,7 @@ function drawFood(){
     const pulse=1+ext_mathSinWave(performance.now(), 1/500, 0.08) + f.pulse*0;
     const r=f.r*camera.zoom*pulse;
 
-    if(settings.shadows) ext_renApplyShadow(ctx, f.color, 7);
     ext_renDrawCircleFill(ctx, p.x, p.y, r, f.color);
-    if(settings.shadows) ext_renClearShadow(ctx);
   }
 }
 

@@ -71,7 +71,9 @@ for (let i = 0; i < FOOD_COUNT; i++) {
 
 function cleanName(name) {
   return String(name || "Player")
-    .replace(/[^\w ._-]/g, "")
+    // \p{L} = qualsiasi lettera Unicode, \p{N} = qualsiasi cifra Unicode
+    // (prima si usava \w, che ammette solo ASCII e cancellava nomi in cirillico/cinese/giapponese/hindi/ecc.)
+    .replace(/[^\p{L}\p{N} ._-]/gu, "")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 16) || "Player";
@@ -114,45 +116,14 @@ function createPlayer(id, name, isBot = false, startMass = 25, startSpeed = 7) {
     lastMove: 0,
     lastSplit: 0,
     lastEject: 0,
+    lastChat: 0,
 
     socket: null
   };
 
   findSpawn(p);
-  // Sostituisci la tua funzione createPlayer con questa:
-function createPlayer(id, name, isBot = false, startMass = 25, startSpeed = 7) {
-  const p = {
-    id,
-    name: cleanName(name),
-    color: randomColor(),
+  ensureCells(p); // Crea fisicamente la cellula nel mondo, altrimenti il player/bot non si muove mai
 
-    x: WORLD / 2,
-    y: WORLD / 2,
-
-    targetX: WORLD / 2,
-    targetY: WORLD / 2,
-
-    r: startMass, 
-    baseSpeed: startSpeed, 
-    isBot: isBot, 
-
-    energy: 100,
-    score: 0,
-
-    cells: [],
-
-    lastMove: 0,
-    lastSplit: 0,
-    lastEject: 0,
-
-    socket: null
-  };
-
-  findSpawn(p);
-  ensureCells(p); // <--- IL FIX CRITICO: Crea fisicamente la cellula nel mondo!
-  
-  return p;
-}
   return p;
 }
 
@@ -363,10 +334,10 @@ function splitPlayer(player) {
   const now = Date.now();
   if (now - player.lastSplit < 900) return;
 
-  player.lastSplit = now;
   ensureCells(player);
-
   if (player.cells.length >= 16) return;
+
+  player.lastSplit = now;
 
   const originalCells = [...player.cells];
   const created = [];
@@ -490,7 +461,13 @@ function collisions() {
    CHAT
 ---------------------------- */
 
+const CHAT_COOLDOWN_MS = 600;
+
 function addChatMessage(player, text) {
+  const now = Date.now();
+  if (now - (player.lastChat || 0) < CHAT_COOLDOWN_MS) return; // anti-spam
+  player.lastChat = now;
+
   text = cleanMessage(text);
   if (!text) return;
 
@@ -510,6 +487,15 @@ function addChatMessage(player, text) {
 
 function broadcastChat() {
   const data = JSON.stringify({ type: "chatHistory", messages: chat });
+  for (const player of players.values()) {
+    if (player.socket && player.socket.readyState === WebSocket.OPEN) {
+      try { player.socket.send(data); } catch {}
+    }
+  }
+}
+
+function broadcastPlayerCount() {
+  const data = JSON.stringify({ type: "playerCount", count: players.size });
   for (const player of players.values()) {
     if (player.socket && player.socket.readyState === WebSocket.OPEN) {
       try { player.socket.send(data); } catch {}
@@ -608,12 +594,19 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocket.Server({ server });
 
+function heartbeat() {
+  this.isAlive = true;
+}
+
 wss.on("connection", socket => {
   if (players.size >= MAX_PLAYERS) {
     socket.send(JSON.stringify({ type: "error", message: "Server pieno" }));
     socket.close();
     return;
   }
+
+  socket.isAlive = true;
+  socket.on("pong", heartbeat);
 
   const id = randomId();
   let player = null;
@@ -645,6 +638,7 @@ wss.on("connection", socket => {
       }));
       socket.send(JSON.stringify({ type: "chatHistory", messages: chat }));
       addChatMessage(player, "è entrato nella partita");
+      broadcastPlayerCount();
       return;
     }
 
@@ -697,11 +691,27 @@ wss.on("connection", socket => {
     if (player) {
       addChatMessage(player, "ha lasciato la partita");
       players.delete(player.id);
+      broadcastPlayerCount();
     }
   });
 
   socket.on("error", () => {});
 });
+
+// Ripulisce periodicamente i socket morti (connessioni cadute senza un "close" pulito),
+// altrimenti restano fantasma nella mappa e occupano uno slot giocatore per sempre.
+const heartbeatInterval = setInterval(() => {
+  for (const socket of wss.clients) {
+    if (socket.isAlive === false) {
+      socket.terminate();
+      continue;
+    }
+    socket.isAlive = false;
+    socket.ping();
+  }
+}, 20000);
+
+wss.on("close", () => clearInterval(heartbeatInterval));
 
 /* ---------------------------
    START

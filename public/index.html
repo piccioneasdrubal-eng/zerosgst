@@ -309,7 +309,23 @@
       ctx.strokeText(c.ownerName, c.x, c.y);
       ctx.fillText(c.ownerName, c.x, c.y);
     });
+// --- INIZIO NUOVO CODICE: Linea di direzione verso il mouse ---
+    if (me && me.cells.length > 0) {
+      const targetX = (mouse.x - canvas.width / 2) / camera.zoom + camera.x;
+      const targetY = (mouse.y - canvas.height / 2) / camera.zoom + camera.y;
+      
+      ctx.beginPath();
+      ctx.moveTo(camera.x, camera.y);
+      ctx.lineTo(targetX, targetY);
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.2)"; // Linea semitrasparente
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 10]); // Tratteggio
+      ctx.stroke();
+      ctx.setLineDash([]); // Resetta il tratteggio
+    }
+    // --- FINE NUOVO CODICE ---
 
+    ctx.restore(); // Questa riga ce l'hai già
     ctx.restore();
   }
 

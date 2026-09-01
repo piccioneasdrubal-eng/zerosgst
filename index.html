@@ -214,11 +214,17 @@ button{border:0;cursor:pointer}
 }
 #toast.show{opacity:1}
 
-#menu,#pause,#over,#settings{
+#pause,#over,#settings{
  position:fixed;inset:0;z-index:200;display:flex;
  justify-content:center;align-items:center;
  background:radial-gradient(circle at center,#002233ee,#000000fa)
 }
+#menu{
+ position:fixed;inset:0;z-index:200;display:flex;
+ justify-content:center;align-items:center;
+ background:transparent;pointer-events:none;
+}
+#menu>*{pointer-events:auto}
 .card{
  width:min(480px,92vw);max-height:92vh;overflow:auto;
  padding:30px;border-radius:12px;
@@ -261,8 +267,153 @@ button{border:0;cursor:pointer}
 .switch.on i{left:21px;background:#000;}
 
 /* =========================================================
-   HUB MENU PRINCIPALE — pannello scuro con tab
-   (Start / Impostazioni / Tema / Hotkey)
+   HUB MENU PRINCIPALE — stile "Agar.io" (card chiare a griglia)
+========================================================= */
+.agarHub{
+ display:grid;grid-template-columns:260px 330px 300px;
+ grid-template-areas:
+  "profile play mode"
+  "offers play party"
+  "shopbar mobile mobile";
+ gap:14px;width:min(900px,94vw);max-height:92vh;overflow-y:auto;
+ font-family:"Segoe UI",Arial,sans-serif;
+}
+.agarCard{
+ background:#f4f4f4;border-radius:10px;padding:16px;
+ box-shadow:0 4px 14px #00000055;color:#222;
+}
+.agarCard h2,.agarCard h3{margin:0 0 10px;color:#222;font-family:inherit}
+
+/* --- Profilo (Guest) --- */
+.agarProfile{grid-area:profile}
+.agarProfileTop{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.agarAvatar{
+ width:46px;height:46px;border-radius:50%;background:#d8d8d8;
+ display:flex;align-items:center;justify-content:center;font-size:22px;color:#888;
+ flex:0 0 auto;
+}
+.agarStatRow{
+ display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #ccc;
+ border-radius:20px;padding:5px 10px;margin-bottom:7px;font-weight:bold;font-size:13px;
+}
+.agarStatRow .agarStatIcon{font-size:14px}
+.agarStatRow .agarStatAdd{
+ margin-left:auto;width:20px;height:20px;border-radius:50%;background:#4caf50;
+ color:#fff;font-weight:bold;font-size:13px;display:flex;align-items:center;justify-content:center;
+}
+.agarGuestName{font-size:20px;font-weight:bold;margin:4px 0 10px}
+.agarXpBar{
+ background:#fff;border:1px solid #ccc;border-radius:20px;padding:6px 12px;
+ display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:bold;color:#888;
+}
+
+/* --- Play --- */
+.agarPlay{grid-area:play;text-align:center;position:relative}
+.agarLogo{font-size:34px;font-weight:900;color:#222;margin:6px 0 14px}
+.agarSkinsBtn{
+ display:inline-flex;flex-direction:column;align-items:center;gap:3px;
+ background:none;color:#444;font-size:11px;font-weight:bold;margin-bottom:10px;
+}
+.agarSkinsCircle{
+ width:38px;height:38px;border-radius:50%;border:2px solid #999;
+ display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.agarNick{
+ width:100%;padding:11px;border-radius:8px;border:1px solid #ccc;
+ font-size:14px;margin-bottom:10px;text-align:center;background:#fff;color:#222;
+}
+.agarPlayBtn{
+ width:100%;padding:13px;border-radius:8px;background:#8bc34a;color:#fff;
+ font-weight:bold;font-size:17px;box-shadow:0 3px 0 #689f38;margin-bottom:8px;
+}
+.agarSignRow{display:flex;gap:8px;margin-bottom:10px}
+.agarSignBtn{
+ flex:1;padding:9px;border-radius:6px;color:#fff;font-weight:bold;font-size:13px;
+ display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;
+}
+.agarSignBtn.fb{background:#3b5998}
+.agarSignBtn.gg{background:#dd4b39}
+.agarHint{font-size:11.5px;color:#777;line-height:1.5}
+
+/* --- Modalità --- */
+.agarMode{grid-area:mode}
+.agarModeGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.agarModeCell{
+ background:#fff;border:2px solid #e0e0e0;border-radius:8px;padding:10px 4px;
+ text-align:center;font-size:12px;font-weight:bold;color:#555;cursor:pointer;
+}
+.agarModeCell .agarModeIcon{
+ width:34px;height:34px;margin:0 auto 6px;border-radius:50%;
+ background:#eee;display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.agarModeCell.active{border-color:#2196f3;background:#e3f2fd;color:#1565c0}
+
+/* --- Party --- */
+.agarParty{grid-area:party;text-align:center}
+.agarParty p{font-size:12px;color:#666;margin:0 0 10px}
+.agarPartyBtns{display:flex;gap:8px}
+.agarPartyBtn{flex:1;padding:9px;border-radius:6px;color:#fff;font-weight:bold;font-size:13px}
+.agarPartyBtn.create{background:#2196f3}
+.agarPartyBtn.join{background:#8bc34a}
+
+/* --- Offerte --- */
+.agarOffers{grid-area:offers}
+.agarOfferRow{display:flex;gap:8px}
+.agarOfferBtn{
+ flex:1;border-radius:8px;padding:10px 6px;color:#fff;font-weight:bold;font-size:12px;
+ text-align:center;position:relative;overflow:hidden;
+}
+.agarOfferBtn.coins{background:#8bc34a}
+.agarOfferBtn.timed{background:#7b3fa0;font-size:10px}
+.agarOfferTimer{display:block;margin-top:3px;font-size:10px;opacity:.9}
+
+/* --- Barra Shop/Leaderboard/Quest/Gifts + slot pozioni --- */
+.agarShopBar{grid-area:shopbar}
+.agarShopGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.agarShopBtn{
+ background:#29b6f6;color:#fff;border-radius:8px;padding:10px 4px;
+ display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;font-weight:bold;
+}
+.agarShopBtn .agarShopIcon{font-size:18px}
+.agarSlotGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.agarSlot{
+ background:#fff;border:1px dashed #ccc;border-radius:8px;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:6px;padding:10px 4px;font-size:11px;color:#999;font-weight:bold;
+}
+.agarSlot button{
+ width:100%;padding:5px;border-radius:5px;background:#8bc34a;color:#fff;
+ font-size:10.5px;font-weight:bold;
+}
+
+/* --- Banner mobile --- */
+.agarMobile{grid-area:mobile;padding:0;overflow:hidden}
+.agarMobileHead{
+ background:#29b6f6;color:#fff;font-weight:bold;font-size:13px;
+ padding:8px 12px;
+}
+.agarMobileBody{padding:12px;text-align:center}
+.agarMobileBody img{max-width:100%;border-radius:8px}
+.agarMobileFoot{
+ display:flex;justify-content:space-between;align-items:center;
+ background:#111;color:#fff;padding:8px 12px;font-size:11px;
+}
+.agarStoreBtn{
+ background:#000;border:1px solid #666;border-radius:5px;
+ padding:4px 8px;color:#fff;font-size:9.5px;
+}
+
+@media(max-width:860px){
+ .agarHub{
+  grid-template-columns:1fr;
+  grid-template-areas:"play" "profile" "mode" "party" "offers" "shopbar" "mobile";
+  width:94vw;
+ }
+}
+
+/* =========================================================
+   HUB MENU (vecchio tema scuro a tab) — non più usato per #menu,
+   classi mantenute solo per compatibilità di stile.
 ========================================================= */
 .hubCard{
  width:min(560px,94vw);max-height:92vh;overflow:hidden;
@@ -491,95 +642,133 @@ button{border:0;cursor:pointer}
 </div>
 
 <div id="menu">
-  <div class="hubCard">
+  <div class="agarHub">
 
-    <div class="hubTabs">
-      <button class="hubTab active" data-hubtab="start" type="button">
-        <span class="hubTabIcon">🏠</span><span data-i18n="tab_start">Start</span>
-      </button>
-      <button class="hubTab" data-hubtab="settingsTab" type="button">
-        <span class="hubTabIcon">⚙️</span><span data-i18n="tab_settings">Impostazioni</span>
-      </button>
-      <button class="hubTab" data-hubtab="themeTab" type="button">
-        <span class="hubTabIcon">🎨</span><span data-i18n="tab_theme">Tema</span>
-      </button>
-      <button class="hubTab" data-hubtab="hotkeysTab" type="button">
-        <span class="hubTabIcon">⌨️</span><span data-i18n="tab_hotkeys">Hotkey</span>
-      </button>
+    <!-- PROFILO / GUEST -->
+    <div class="agarCard agarProfile">
+      <div class="agarProfileTop">
+        <div class="agarAvatar">👤</div>
+        <div style="flex:1">
+          <div class="agarStatRow"><span class="agarStatIcon">⭐</span><span id="agarGems">20</span><span class="agarStatAdd">+</span></div>
+          <div class="agarStatRow"><span class="agarStatIcon">💰</span><span id="agarCoinsTop">100</span><span class="agarStatAdd">+</span></div>
+        </div>
+      </div>
+      <div class="agarGuestName" id="agarGuestName">Guest</div>
+      <div class="agarXpBar"><span id="agarXpLabel">0/50 XP</span><span>⭐1</span></div>
     </div>
 
-    <div class="hubBody">
-
-      <div class="hubPane" data-hubpane="start">
-        <h1 style="font-size:26px;">ZERO_AND_YASSINE_EVOLUTION<br><span style="font-size:18px;color:#0088ff;" data-i18n="game_subtitle">// NEON EDITION</span></h1>
-
-        <p data-i18n="game_desc">
-          Esegui l'assorbimento delle particelle. Elimina le entità inferiori.<br>
-          <b>W</b> = Feed | <b>SPACE</b> = Split | <b>SHIFT</b> = Dash.
-        </p>
-
-        <label data-i18n="lbl_player_id">ID_GIOCATORE</label>
-        <input id="name" maxlength="16" value="Player">
-
-        <label data-i18n="lbl_protocol">PROTOCOLLO</label>
-        <select id="mode">
-          <option value="classic" data-i18n="prot_classic">Standard (Classic)</option>
-          <option value="survival" data-i18n="prot_survival">Hardcore (Survival)</option>
-          <option value="chaos" data-i18n="prot_chaos">Overload (Chaos)</option>
-        </select>
-
-        <button class="play" id="playButton" data-i18n="btn_play">INIZIALIZZA</button>
-
-        <p class="small" data-i18n="game_controls">
-          > CMD: Mouse/Touch · SPACE=split · W=feed · E=boost · SHIFT=dash · F=Fullscreen · \=Debug · ESC=Pausa
-        </p>
+    <!-- OFFERTE -->
+    <div class="agarCard agarOffers">
+      <h3 data-i18n="tab_offers">Offerte</h3>
+      <div class="agarOfferRow">
+        <div class="agarOfferBtn coins">🪙 <span data-i18n="offer_free_coins">Monete Gratis</span></div>
+        <div class="agarOfferBtn timed" data-i18n="offer_timed">Offerta a tempo<span class="agarOfferTimer" id="agarOfferTimer">5g 17h 48m</span></div>
       </div>
-
-      <div class="hubPane hidden" data-hubpane="settingsTab">
-        <h2 data-i18n="btn_config">[ SYS_CONFIG ]</h2>
-
-        <div class="settingRow">
-          <label data-i18n="lbl_render">Render Particelle</label>
-          <div class="switch on" id="hubParticlesSwitch"><i></i></div>
-        </div>
-
-        <div class="settingRow">
-          <label data-i18n="lbl_shadow">Ombreggiatura Neon</label>
-          <div class="switch on" id="hubShadowsSwitch"><i></i></div>
-        </div>
-
-        <div class="settingRow">
-          <label data-i18n="lbl_haptic">Feedback Aptico</label>
-          <div class="switch on" id="hubVibrateSwitch"><i></i></div>
-        </div>
-
-        <div class="settingRow">
-          <label data-i18n="lbl_ai">IA Aggressiva</label>
-          <div class="switch on" id="hubAggressiveSwitch"><i></i></div>
-        </div>
-      </div>
-
-      <div class="hubPane hidden" data-hubpane="themeTab">
-        <h2 data-i18n="tab_theme">[ TEMA ]</h2>
-        <div class="themeLabel" data-i18n="theme_desc">Scegli il colore neon della tua entità</div>
-        <div class="themeSwatches" id="hubThemeSwatches"></div>
-      </div>
-
-      <div class="hubPane hidden" data-hubpane="hotkeysTab">
-        <h2 data-i18n="tab_hotkeys">[ HOTKEY ]</h2>
-        <div class="hotkeyList">
-          <div class="hotkeyRow"><span data-i18n="hk_move">Muovi cellula</span><span class="hotkeyKey">Mouse</span></div>
-          <div class="hotkeyRow"><span data-i18n="hk_split">Dividi</span><span class="hotkeyKey">SPACE</span></div>
-          <div class="hotkeyRow"><span data-i18n="hk_feed">Nutri</span><span class="hotkeyKey">W</span></div>
-          <div class="hotkeyRow"><span data-i18n="hk_boost">Boost</span><span class="hotkeyKey">E</span></div>
-          <div class="hotkeyRow"><span data-i18n="hk_dash">Scatto</span><span class="hotkeyKey">SHIFT</span></div>
-          <div class="hotkeyRow"><span data-i18n="hk_fullscreen">Schermo intero</span><span class="hotkeyKey">F</span></div>
-          <div class="hotkeyRow"><span data-i18n="hk_debug">Debug</span><span class="hotkeyKey">\</span></div>
-          <div class="hotkeyRow"><span data-i18n="hk_pause">Pausa</span><span class="hotkeyKey">ESC</span></div>
-        </div>
-      </div>
-
     </div>
+
+    <!-- SHOP / LEADERBOARD / QUEST / GIFTS + SLOT -->
+    <div class="agarCard agarShopBar">
+      <div class="agarShopGrid">
+        <button class="agarShopBtn" type="button"><span class="agarShopIcon">🛒</span><span data-i18n="tab_shop">Shop</span></button>
+        <button class="agarShopBtn" type="button"><span class="agarShopIcon">🏆</span><span data-i18n="tab_leaderboards">Classifiche</span></button>
+        <button class="agarShopBtn" type="button"><span class="agarShopIcon">📋</span><span data-i18n="tab_quests">Missioni</span></button>
+        <button class="agarShopBtn" type="button"><span class="agarShopIcon">🎁</span><span data-i18n="tab_gifts">Regali</span></button>
+      </div>
+      <div class="agarSlotGrid">
+        <div class="agarSlot"><span data-i18n="slot_empty">Slot Vuoto</span><button type="button" data-i18n="btn_get_potions">Ottieni Pozioni</button></div>
+        <div class="agarSlot"><span data-i18n="slot_empty">Slot Vuoto</span><button type="button" data-i18n="btn_get_potions">Ottieni Pozioni</button></div>
+        <div class="agarSlot"><span data-i18n="slot_empty">Slot Vuoto</span><button type="button" data-i18n="btn_get_potions">Ottieni Pozioni</button></div>
+      </div>
+    </div>
+
+    <!-- PLAY -->
+    <div class="agarCard agarPlay">
+      <button class="agarSkinsBtn" id="openSettingsFromHub" type="button" title="Impostazioni">
+        <span class="agarSkinsCircle">⚙️</span>
+      </button>
+
+      <div class="agarLogo">ZERO &amp; YASSINE</div>
+
+      <button class="agarSkinsBtn" id="openThemeFromHub" type="button">
+        <span class="agarSkinsCircle">🎨</span><span data-i18n="tab_theme">Skin</span>
+      </button>
+
+      <input class="agarNick" id="name" maxlength="16" value="Player" data-i18n-placeholder="lbl_nick_placeholder" placeholder="Nick">
+
+      <button class="agarPlayBtn" id="playButton" data-i18n="btn_play">Play</button>
+
+      <div class="agarSignRow">
+        <a class="agarSignBtn fb" href="/auth/facebook" data-i18n="btn_signin_fb">📘 Sign in</a>
+        <a class="agarSignBtn gg" href="/auth/google" data-i18n="btn_signin_gg">🔴 Sign in</a>
+      </div>
+
+      <div class="agarHint" data-i18n="game_controls_short">
+        Muovi il mouse per controllare la cellula.<br>
+        Premi <b>Space</b> per dividerti e <b>W</b> per espellere massa.
+      </div>
+
+      <select id="mode" style="margin-top:10px;width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;">
+        <option value="classic" data-i18n="prot_classic">Standard (Classic)</option>
+        <option value="survival" data-i18n="prot_survival">Hardcore (Survival)</option>
+        <option value="chaos" data-i18n="prot_chaos">Overload (Chaos)</option>
+      </select>
+    </div>
+
+    <!-- SELECT GAME MODE -->
+    <div class="agarCard agarMode">
+      <h3 data-i18n="tab_gamemode">Select Game Mode</h3>
+      <div class="agarModeGrid">
+        <div class="agarModeCell active" data-mode="classic"><div class="agarModeIcon">⚪</div>FFA</div>
+        <div class="agarModeCell" data-mode="survival"><div class="agarModeIcon">🔵</div><span data-i18n="mode_battleroyale">Battle Royale</span></div>
+        <div class="agarModeCell" data-mode="chaos"><div class="agarModeIcon">⚙️</div><span data-i18n="mode_teams">Teams</span></div>
+        <div class="agarModeCell" data-mode="chaos"><div class="agarModeIcon">✨</div><span data-i18n="mode_experimental">Experimental</span></div>
+      </div>
+    </div>
+
+    <!-- PARTY MODE -->
+    <div class="agarCard agarParty">
+      <h3 data-i18n="tab_party">👥 Party Mode</h3>
+      <p data-i18n="party_desc">Gioca con i tuoi amici nella stessa arena</p>
+      <div class="agarPartyBtns">
+        <button class="agarPartyBtn create" type="button" data-i18n="btn_create">Create</button>
+        <button class="agarPartyBtn join" type="button" data-i18n="btn_join">Join</button>
+      </div>
+    </div>
+
+    <!-- BANNER MOBILE -->
+    <div class="agarCard agarMobile">
+      <div class="agarMobileHead" data-i18n="mobile_available">📱 DISPONIBILE SU MOBILE!</div>
+      <div class="agarMobileBody">
+        <div class="agarHint" data-i18n="mobile_desc">Gioca ovunque tu sia, sul tuo smartphone.</div>
+      </div>
+      <div class="agarMobileFoot">
+        <span data-i18n="mobile_offer">250 monete + 1h Triple Mass Boost</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Pannelli nascosti riusati dalle card sopra (impostazioni / tema / hotkey) -->
+  <div id="hubExtraPanels" class="hidden">
+    <div class="hubPane" data-hubpane="settingsTab">
+      <div class="settingRow">
+        <label data-i18n="lbl_render">Render Particelle</label>
+        <div class="switch on" id="hubParticlesSwitch"><i></i></div>
+      </div>
+      <div class="settingRow">
+        <label data-i18n="lbl_shadow">Ombreggiatura Neon</label>
+        <div class="switch on" id="hubShadowsSwitch"><i></i></div>
+      </div>
+      <div class="settingRow">
+        <label data-i18n="lbl_haptic">Feedback Aptico</label>
+        <div class="switch on" id="hubVibrateSwitch"><i></i></div>
+      </div>
+      <div class="settingRow">
+        <label data-i18n="lbl_ai">IA Aggressiva</label>
+        <div class="switch on" id="hubAggressiveSwitch"><i></i></div>
+      </div>
+    </div>
+    <div class="themeSwatches" id="hubThemeSwatches"></div>
   </div>
 </div>
 
@@ -2716,20 +2905,38 @@ document.getElementById("openSettings").onclick=openSettings;
 document.getElementById("closeSettings").onclick=closeSettings;
 
 /* =========================================================
-   HUB MENU — tab Start / Impostazioni / Tema / Hotkey
+   HUB MENU — card in stile Agar.io
 ========================================================= */
 
-document.querySelectorAll(".hubTab").forEach(tabBtn=>{
-  tabBtn.onclick=()=>{
-    const target=tabBtn.getAttribute("data-hubtab");
+/* L'ingranaggio nella card "Play" apre lo stesso modale impostazioni
+   già usato in partita (stessi switch, sincronizzati). */
+document.getElementById("openSettingsFromHub").onclick=openSettings;
 
-    document.querySelectorAll(".hubTab").forEach(b=>
-      b.classList.toggle("active",b===tabBtn));
+/* La card "Skin" apre un piccolo pannello con le stesse palette colore
+   già presenti nel profilo utente (#colorInput). */
+document.getElementById("openThemeFromHub").onclick=()=>{
+  document.getElementById("hubExtraPanels").classList.remove("hidden");
+  document.getElementById("userMenu").classList.remove("hidden");
+};
 
-    document.querySelectorAll(".hubPane").forEach(pane=>
-      pane.classList.toggle("hidden",pane.getAttribute("data-hubpane")!==target));
+/* Le 4 card "Select Game Mode" impostano la select #mode già esistente,
+   così tutta la logica di gioco resta invariata. */
+document.querySelectorAll(".agarModeCell").forEach(cell=>{
+  cell.onclick=()=>{
+    document.querySelectorAll(".agarModeCell").forEach(c=>c.classList.remove("active"));
+    cell.classList.add("active");
+    document.getElementById("mode").value=cell.getAttribute("data-mode");
   };
 });
+
+/* Il nick della card "Play" resta la sorgente principale del nome;
+   qui teniamo sincronizzato anche il nome mostrato nella card profilo. */
+function refreshAgarProfileName(){
+  const n=document.getElementById("name").value.trim()||"Guest";
+  document.getElementById("agarGuestName").textContent=n;
+}
+document.getElementById("name").addEventListener("input",refreshAgarProfileName);
+refreshAgarProfileName();
 
 /* Popola la tab "Tema" riusando le stesse opzioni colore già presenti
    nel profilo utente (#colorInput), cosi la lista resta unica e coerente. */

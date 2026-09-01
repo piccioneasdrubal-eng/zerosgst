@@ -78,6 +78,7 @@ button{border:0;cursor:pointer}
  width:100%;padding:11px;border-radius:8px;
  border:1px solid #00ffff55;background:#00111a;
  color:#00ffff;outline:0;font-family:inherit;
+ margin-bottom: 5px;
 }
 .green{color:#00ffff;font-size:12px;text-shadow:0 0 3px #00ffff;}
 .menuBtn{
@@ -232,7 +233,7 @@ button{border:0;cursor:pointer}
 <div id="toast"></div>
 
 <div id="hud">
-  <div id="mass">MASS: 25</div>
+  <div id="mass" data-i18n="mass_display">MASS: 25</div>
   <div>LVL <b id="level">1</b> | XP <span id="xp">0</span></div>
   <div class="bar"><i id="xpbar"></i></div>
   <div class="small">PWR: <span id="energy">100</span>%</div>
@@ -246,20 +247,34 @@ button{border:0;cursor:pointer}
 </div>
 
 <div id="board">
-  <h3>[ CLASSIFICA ]</h3>
+  <h3 data-i18n="leaderboard_title">[ CLASSIFICA ]</h3>
   <div id="rows"></div>
 </div>
 
 <button id="userButton">USR_ <span id="userNameButton">Player</span></button>
 
 <div id="userMenu" class="hidden">
-  <h3>[ PROFILO ]</h3>
+  <h3 data-i18n="profile_title">[ PROFILO ]</h3>
   <div class="green">STATUS: ROOT_LOCAL</div>
+  
+  <label data-i18n="lbl_lang">LINGUA / LANGUAGE</label>
+  <select id="langSelect">
+    <option value="it">Italiano (IT)</option>
+    <option value="en">English (EN)</option>
+    <option value="es">Español (ES)</option>
+    <option value="fr">Français (FR)</option>
+    <option value="de">Deutsch (DE)</option>
+    <option value="zh">中文 (ZH)</option>
+    <option value="ja">日本語 (JA)</option>
+    <option value="ru">Русский (RU)</option>
+    <option value="pt">Português (PT)</option>
+    <option value="hi">हिन्दी (HI)</option>
+  </select>
 
-  <label>ID_NOME</label>
+  <label data-i18n="lbl_player_id">ID_GIOCATORE</label>
   <input id="userNameInput" maxlength="16" value="Player">
 
-  <label>HEX_COLOR</label>
+  <label data-i18n="lbl_hex">HEX_COLOR</label>
   <select id="colorInput">
     <option value="#00ffff">Neon Cyan</option>
     <option value="#0088ff">Electric Blue</option>
@@ -271,9 +286,9 @@ button{border:0;cursor:pointer}
     <option value="#ffffff">Pure White</option>
   </select>
 
-  <button class="menuBtn" id="saveName">SALVA_DATI</button>
-  <button class="menuBtn alt" id="openSettings">SYS_CONFIG</button>
-  <button class="menuBtn alt" id="closeUser">ESCI</button>
+  <button class="menuBtn" id="saveName" data-i18n="btn_save">SALVA_DATI</button>
+  <button class="menuBtn alt" id="openSettings" data-i18n="btn_config">SYS_CONFIG</button>
+  <button class="menuBtn alt" id="closeUser" data-i18n="btn_exit">ESCI</button>
 </div>
 
 <div id="chat">
@@ -286,8 +301,8 @@ button{border:0;cursor:pointer}
 
   <div id="chatInputArea">
     <input id="chatInput" maxlength="180" autocomplete="off"
-           placeholder="> Inserisci comando...">
-    <button id="chatSend">EXEC</button>
+           data-i18n="chat_placeholder" placeholder="> Inserisci comando...">
+    <button id="chatSend" data-i18n="chat_send">EXEC</button>
   </div>
 </div>
 
@@ -312,27 +327,27 @@ button{border:0;cursor:pointer}
 
 <div id="menu">
   <div class="card">
-    <h1>CELL_ARENA<br><span style="font-size:18px;color:#0088ff;">// NEON EDITION</span></h1>
+    <h1>CELL_ARENA<br><span style="font-size:18px;color:#0088ff;" data-i18n="game_subtitle">// NEON EDITION</span></h1>
 
-    <p>
+    <p data-i18n="game_desc">
       Esegui l'assorbimento delle particelle. Elimina le entità inferiori.<br>
       <b>W</b> = Feed | <b>SPACE</b> = Split | <b>SHIFT</b> = Dash.
     </p>
 
-    <label>ID_GIOCATORE</label>
+    <label data-i18n="lbl_player_id">ID_GIOCATORE</label>
     <input id="name" maxlength="16" value="Player">
 
-    <label>PROTOCOLLO</label>
+    <label data-i18n="lbl_protocol">PROTOCOLLO</label>
     <select id="mode">
-      <option value="classic">Standard (Classic)</option>
-      <option value="survival">Hardcore (Survival)</option>
-      <option value="chaos">Overload (Chaos)</option>
+      <option value="classic" data-i18n="prot_classic">Standard (Classic)</option>
+      <option value="survival" data-i18n="prot_survival">Hardcore (Survival)</option>
+      <option value="chaos" data-i18n="prot_chaos">Overload (Chaos)</option>
     </select>
 
-    <button class="play" id="playButton">INIZIALIZZA</button>
-    <button class="secondary" id="menuSettings">SYS_CONFIG</button>
+    <button class="play" id="playButton" data-i18n="btn_play">INIZIALIZZA</button>
+    <button class="secondary" id="menuSettings" data-i18n="btn_config">SYS_CONFIG</button>
 
-    <p class="small">
+    <p class="small" data-i18n="game_controls">
       > CMD: Mouse/Touch · SPACE=split · W=feed · E=boost · SHIFT=dash · F=Fullscreen · \=Debug · ESC=Pausa
     </p>
   </div>
@@ -340,48 +355,48 @@ button{border:0;cursor:pointer}
 
 <div id="pause" class="hidden">
   <div class="card">
-    <h2>[ SISTEMA IN PAUSA ]</h2>
-    <p>Flusso temporale arrestato.</p>
+    <h2 data-i18n="lbl_paused">[ SISTEMA IN PAUSA ]</h2>
+    <p data-i18n="paused_desc">Flusso temporale arrestato.</p>
 
-    <button class="play" id="resumeButton">RIPRENDI</button>
-    <button class="menuBtn alt" id="menuButton">TORNA ALL'HUB</button>
+    <button class="play" id="resumeButton" data-i18n="lbl_resume">RIPRENDI</button>
+    <button class="menuBtn alt" id="menuButton" data-i18n="lbl_hub">TORNA ALL'HUB</button>
   </div>
 </div>
 
 <div id="over" class="hidden">
   <div class="card">
-    <h2>[ CRITICO: ENTITÀ DISTRUTTA ]</h2>
+    <h2 data-i18n="lbl_over">[ CRITICO: ENTITÀ DISTRUTTA ]</h2>
     <p id="result"></p>
-    <button class="play" id="retryButton">REBOOT</button>
-    <button class="menuBtn alt" id="overMenu">HUB</button>
+    <button class="play" id="retryButton" data-i18n="btn_reboot">REBOOT</button>
+    <button class="menuBtn alt" id="overMenu" data-i18n="lbl_hub">HUB</button>
   </div>
 </div>
 
 <div id="settings" class="hidden">
   <div class="card">
-    <h2>[ SYS_CONFIG ]</h2>
+    <h2 data-i18n="btn_config">[ SYS_CONFIG ]</h2>
 
     <div class="settingRow">
-      <label>Render Particelle</label>
+      <label data-i18n="lbl_render">Render Particelle</label>
       <div class="switch on" id="particlesSwitch"><i></i></div>
     </div>
 
     <div class="settingRow">
-      <label>Ombreggiatura Neon</label>
+      <label data-i18n="lbl_shadow">Ombreggiatura Neon</label>
       <div class="switch on" id="shadowsSwitch"><i></i></div>
     </div>
 
     <div class="settingRow">
-      <label>Feedback Aptico</label>
+      <label data-i18n="lbl_haptic">Feedback Aptico</label>
       <div class="switch on" id="vibrateSwitch"><i></i></div>
     </div>
 
     <div class="settingRow">
-      <label>IA Aggressiva</label>
+      <label data-i18n="lbl_ai">IA Aggressiva</label>
       <div class="switch on" id="aggressiveSwitch"><i></i></div>
     </div>
 
-    <button class="play" id="closeSettings">APPLICA</button>
+    <button class="play" id="closeSettings" data-i18n="btn_apply">APPLICA</button>
   </div>
 </div>
 
@@ -389,7 +404,162 @@ button{border:0;cursor:pointer}
 "use strict";
 
 /* =========================================================
-   200 FUNZIONI (LIBRERIA / API ESTESA)
+   SISTEMA DI TRADUZIONE I18N
+========================================================= */
+const i18n_dict = {
+  it: {
+    mass_display: "MASS: ", leaderboard_title: "[ CLASSIFICA ]", profile_title: "[ PROFILO ]", lbl_lang: "LINGUA",
+    lbl_player_id: "ID_GIOCATORE", lbl_hex: "HEX_COLOR", btn_save: "SALVA_DATI", btn_config: "SYS_CONFIG", btn_exit: "ESCI",
+    chat_placeholder: "> Inserisci comando...", chat_send: "EXEC", game_subtitle: "// NEON EDITION",
+    game_desc: "Esegui l'assorbimento delle particelle. Elimina le entità inferiori.<br><b>W</b> = Feed | <b>SPACE</b> = Split | <b>SHIFT</b> = Dash.",
+    lbl_protocol: "PROTOCOLLO", prot_classic: "Standard (Classic)", prot_survival: "Hardcore (Survival)", prot_chaos: "Overload (Chaos)",
+    btn_play: "INIZIALIZZA", game_controls: "> CMD: Mouse/Touch · SPACE=split · W=feed · E=boost · SHIFT=dash · F=Fullscreen · \\=Debug · ESC=Pausa",
+    lbl_paused: "[ SISTEMA IN PAUSA ]", paused_desc: "Flusso temporale arrestato.", lbl_resume: "RIPRENDI", lbl_hub: "TORNA ALL'HUB",
+    lbl_over: "[ CRITICO: ENTITÀ DISTRUTTA ]", btn_reboot: "REBOOT", lbl_render: "Render Particelle", lbl_shadow: "Ombreggiatura Neon",
+    lbl_haptic: "Feedback Aptico", lbl_ai: "IA Aggressiva", btn_apply: "APPLICA",
+    go_mass: "Massa finale", go_absorbed: "Assorbimenti", go_time: "Tempo attivo", go_record: "Record Max"
+  },
+  en: {
+    mass_display: "MASS: ", leaderboard_title: "[ LEADERBOARD ]", profile_title: "[ PROFILE ]", lbl_lang: "LANGUAGE",
+    lbl_player_id: "PLAYER ID", lbl_hex: "HEX_COLOR", btn_save: "SAVE_DATA", btn_config: "SYS_CONFIG", btn_exit: "EXIT",
+    chat_placeholder: "> Enter command...", chat_send: "EXEC", game_subtitle: "// NEON EDITION",
+    game_desc: "Absorb particles. Eliminate inferior entities.<br><b>W</b> = Feed | <b>SPACE</b> = Split | <b>SHIFT</b> = Dash.",
+    lbl_protocol: "PROTOCOL", prot_classic: "Standard (Classic)", prot_survival: "Hardcore (Survival)", prot_chaos: "Overload (Chaos)",
+    btn_play: "INITIALIZE", game_controls: "> CMD: Mouse/Touch · SPACE=split · W=feed · E=boost · SHIFT=dash · F=Fullscreen · \\=Debug · ESC=Pause",
+    lbl_paused: "[ SYSTEM PAUSED ]", paused_desc: "Time flow halted.", lbl_resume: "RESUME", lbl_hub: "RETURN TO HUB",
+    lbl_over: "[ CRITICAL: ENTITY DESTROYED ]", btn_reboot: "REBOOT", lbl_render: "Particle Render", lbl_shadow: "Neon Shadows",
+    lbl_haptic: "Haptic Feedback", lbl_ai: "Aggressive AI", btn_apply: "APPLY",
+    go_mass: "Final Mass", go_absorbed: "Absorbed", go_time: "Active Time", go_record: "Max Record"
+  },
+  es: {
+    mass_display: "MASA: ", leaderboard_title: "[ CLASIFICACIÓN ]", profile_title: "[ PERFIL ]", lbl_lang: "IDIOMA",
+    lbl_player_id: "ID_JUGADOR", lbl_hex: "COLOR_HEX", btn_save: "GUARDAR_DATOS", btn_config: "SIS_CONFIG", btn_exit: "SALIR",
+    chat_placeholder: "> Ingrese comando...", chat_send: "EJEC", game_subtitle: "// EDICIÓN NEÓN",
+    game_desc: "Absorbe partículas. Elimina entidades inferiores.<br><b>W</b> = Feed | <b>SPACE</b> = Split | <b>SHIFT</b> = Dash.",
+    lbl_protocol: "PROTOCOLO", prot_classic: "Estándar (Clásico)", prot_survival: "Extremo (Supervivencia)", prot_chaos: "Sobrecarga (Caos)",
+    btn_play: "INICIALIZAR", game_controls: "> CMD: Ratón/Touch · SPACE=split · W=feed · E=boost · SHIFT=dash · F=Fullscreen · \\=Debug · ESC=Pausa",
+    lbl_paused: "[ SISTEMA EN PAUSA ]", paused_desc: "Flujo temporal detenido.", lbl_resume: "REANUDAR", lbl_hub: "VOLVER AL HUB",
+    lbl_over: "[ CRÍTICO: ENTIDAD DESTRUIDA ]", btn_reboot: "REINICIAR", lbl_render: "Renderizado de Partículas", lbl_shadow: "Sombras Neón",
+    lbl_haptic: "Respuesta Háptica", lbl_ai: "IA Agresiva", btn_apply: "APLICAR",
+    go_mass: "Masa Final", go_absorbed: "Absorbido", go_time: "Tiempo Activo", go_record: "Récord Máximo"
+  },
+  fr: {
+    mass_display: "MASSE: ", leaderboard_title: "[ CLASSEMENT ]", profile_title: "[ PROFIL ]", lbl_lang: "LANGUE",
+    lbl_player_id: "ID_JOUEUR", lbl_hex: "COULEUR_HEX", btn_save: "ENREGISTRER", btn_config: "SYS_CONFIG", btn_exit: "QUITTER",
+    chat_placeholder: "> Entrez commande...", chat_send: "EXEC", game_subtitle: "// ÉDITION NÉON",
+    game_desc: "Absorbez des particules. Éliminez les entités inférieures.<br><b>W</b> = Nourrir | <b>ESPACE</b> = Diviser | <b>SHIFT</b> = Dash.",
+    lbl_protocol: "PROTOCOLE", prot_classic: "Standard (Classique)", prot_survival: "Hardcore (Survie)", prot_chaos: "Surcharge (Chaos)",
+    btn_play: "INITIALISER", game_controls: "> CMD: Souris/Tactile · ESPACE=diviser · W=nourrir · E=boost · SHIFT=dash · F=Plein écran · \\=Debug · ESC=Pause",
+    lbl_paused: "[ SYSTÈME EN PAUSE ]", paused_desc: "Flux temporel arrêté.", lbl_resume: "REPRENDRE", lbl_hub: "RETOUR AU HUB",
+    lbl_over: "[ CRITIQUE : ENTITÉ DÉTRUITE ]", btn_reboot: "REDÉMARRER", lbl_render: "Rendu des Particules", lbl_shadow: "Ombres Néon",
+    lbl_haptic: "Retour Haptique", lbl_ai: "IA Agressive", btn_apply: "APPLIQUER",
+    go_mass: "Masse Finale", go_absorbed: "Absorbé", go_time: "Temps Actif", go_record: "Record Max"
+  },
+  de: {
+    mass_display: "MASSE: ", leaderboard_title: "[ RANGLISTE ]", profile_title: "[ PROFIL ]", lbl_lang: "SPRACHE",
+    lbl_player_id: "SPIELER_ID", lbl_hex: "HEX_FARBE", btn_save: "DATEN_SPEICHERN", btn_config: "SYS_KONFIG", btn_exit: "BEENDEN",
+    chat_placeholder: "> Befehl eingeben...", chat_send: "AUSFÜHREN", game_subtitle: "// NEON EDITION",
+    game_desc: "Partikel absorbieren. Unterlegene Entitäten eliminieren.<br><b>W</b> = Füttern | <b>LEERTASTE</b> = Teilen | <b>SHIFT</b> = Dash.",
+    lbl_protocol: "PROTOKOLL", prot_classic: "Standard (Klassisch)", prot_survival: "Hardcore (Überleben)", prot_chaos: "Überlastung (Chaos)",
+    btn_play: "INITIALISIEREN", game_controls: "> CMD: Maus/Touch · SPACE=teilen · W=füttern · E=boost · SHIFT=dash · F=Vollbild · \\=Debug · ESC=Pause",
+    lbl_paused: "[ SYSTEM PAUSIERT ]", paused_desc: "Zeitfluss angehalten.", lbl_resume: "FORTSETZEN", lbl_hub: "ZURÜCK ZUM HUB",
+    lbl_over: "[ KRITISCH: ENTITÄT ZERSTÖRT ]", btn_reboot: "NEUSTART", lbl_render: "Partikel-Rendering", lbl_shadow: "Neon-Schatten",
+    lbl_haptic: "Haptisches Feedback", lbl_ai: "Aggressive KI", btn_apply: "ANWENDEN",
+    go_mass: "Endgültige Masse", go_absorbed: "Absorbiert", go_time: "Aktive Zeit", go_record: "Max Rekord"
+  },
+  zh: {
+    mass_display: "质量: ", leaderboard_title: "[ 排行榜 ]", profile_title: "[ 个人资料 ]", lbl_lang: "语言",
+    lbl_player_id: "玩家_ID", lbl_hex: "十六进制颜色", btn_save: "保存数据", btn_config: "系统配置", btn_exit: "退出",
+    chat_placeholder: "> 输入命令...", chat_send: "执行", game_subtitle: "// 霓虹版",
+    game_desc: "吸收粒子。消除劣势实体。<br><b>W</b> = 喂食 | <b>空格</b> = 分裂 | <b>SHIFT</b> = 冲刺。",
+    lbl_protocol: "协议", prot_classic: "标准（经典）", prot_survival: "硬核（生存）", prot_chaos: "超载（混乱）",
+    btn_play: "初始化", game_controls: "> 命令: 鼠标/触摸 · 空格=分裂 · W=喂食 · E=加速 · SHIFT=冲刺 · F=全屏 · \\=调试 · ESC=暂停",
+    lbl_paused: "[ 系统暂停 ]", paused_desc: "时间流停止。", lbl_resume: "恢复", lbl_hub: "返回中心",
+    lbl_over: "[ 严重：实体被破坏 ]", btn_reboot: "重启", lbl_render: "粒子渲染", lbl_shadow: "霓虹阴影",
+    lbl_haptic: "触觉反馈", lbl_ai: "攻击性AI", btn_apply: "应用",
+    go_mass: "最终质量", go_absorbed: "吸收", go_time: "活动时间", go_record: "最高记录"
+  },
+  ja: {
+    mass_display: "質量: ", leaderboard_title: "[ リーダーボード ]", profile_title: "[ プロフィール ]", lbl_lang: "言語",
+    lbl_player_id: "プレイヤーID", lbl_hex: "HEXカラー", btn_save: "データ保存", btn_config: "システム設定", btn_exit: "終了",
+    chat_placeholder: "> コマンドを入力...", chat_send: "実行", game_subtitle: "// ネオンエディション",
+    game_desc: "粒子を吸収。劣等エンティティを排除。<br><b>W</b> = フィード | <b>スペース</b> = 分割 | <b>SHIFT</b> = ダッシュ。",
+    lbl_protocol: "プロトコル", prot_classic: "標準 (クラシック)", prot_survival: "ハードコア (サバイバル)", prot_chaos: "オーバーロード (カオス)",
+    btn_play: "初期化", game_controls: "> 操作: マウス/タッチ · SPACE=分割 · W=フィード · E=ブースト · SHIFT=ダッシュ · F=全画面 · \\=デバッグ · ESC=一時停止",
+    lbl_paused: "[ システム一時停止 ]", paused_desc: "時間の流れが停止しました。", lbl_resume: "再開", lbl_hub: "ハブに戻る",
+    lbl_over: "[ クリティカル: エンティティ破壊 ]", btn_reboot: "再起動", lbl_render: "パーティクル描画", lbl_shadow: "ネオンシャドウ",
+    lbl_haptic: "ハプティックフィードバック", lbl_ai: "攻撃的なAI", btn_apply: "適用",
+    go_mass: "最終質量", go_absorbed: "吸収", go_time: "アクティブ時間", go_record: "最高記録"
+  },
+  ru: {
+    mass_display: "МАССА: ", leaderboard_title: "[ ТАБЛИЦА ЛИДЕРОВ ]", profile_title: "[ ПРОФИЛЬ ]", lbl_lang: "ЯЗЫК",
+    lbl_player_id: "ID ИГРОКА", lbl_hex: "ЦВЕТ HEX", btn_save: "СОХРАНИТЬ", btn_config: "СИСТЕМНЫЕ НАСТРОЙКИ", btn_exit: "ВЫХОД",
+    chat_placeholder: "> Введите команду...", chat_send: "ВЫПОЛНИТЬ", game_subtitle: "// НЕОНОВОЕ ИЗДАНИЕ",
+    game_desc: "Поглощайте частицы. Устраняйте слабые сущности.<br><b>W</b> = Кормить | <b>ПРОБЕЛ</b> = Разделить | <b>SHIFT</b> = Рывок.",
+    lbl_protocol: "ПРОТОКОЛ", prot_classic: "Стандарт (Классика)", prot_survival: "Хардкор (Выживание)", prot_chaos: "Перегрузка (Хаос)",
+    btn_play: "ИНИЦИАЛИЗАЦИЯ", game_controls: "> Упр: Мышь/Сенсор · ПРОБЕЛ=разделить · W=кормить · E=буст · SHIFT=рывок · F=Полный экран · \\=Дебаг · ESC=Пауза",
+    lbl_paused: "[ СИСТЕМА НА ПАУЗЕ ]", paused_desc: "Поток времени остановлен.", lbl_resume: "ПРОДОЛЖИТЬ", lbl_hub: "ВЕРНУТЬСЯ В ХАБ",
+    lbl_over: "[ КРИТИЧЕСКИ: СУЩНОСТЬ УНИЧТОЖЕНА ]", btn_reboot: "ПЕРЕЗАГРУЗКА", lbl_render: "Рендер частиц", lbl_shadow: "Неоновые тени",
+    lbl_haptic: "Тактильная отдача", lbl_ai: "Агрессивный ИИ", btn_apply: "ПРИМЕНИТЬ",
+    go_mass: "Итоговая масса", go_absorbed: "Поглощено", go_time: "Активное время", go_record: "Макс Рекорд"
+  },
+  pt: {
+    mass_display: "MASSA: ", leaderboard_title: "[ CLASSIFICAÇÃO ]", profile_title: "[ PERFIL ]", lbl_lang: "IDIOMA",
+    lbl_player_id: "ID_JOGADOR", lbl_hex: "COR_HEX", btn_save: "SALVAR_DADOS", btn_config: "SIS_CONFIG", btn_exit: "SAIR",
+    chat_placeholder: "> Inserir comando...", chat_send: "EXEC", game_subtitle: "// EDIÇÃO NEON",
+    game_desc: "Absorva partículas. Elimine entidades inferiores.<br><b>W</b> = Alimentar | <b>ESPAÇO</b> = Dividir | <b>SHIFT</b> = Arrancada.",
+    lbl_protocol: "PROTOCOLO", prot_classic: "Padrão (Clássico)", prot_survival: "Extremo (Sobrevivência)", prot_chaos: "Sobrecarga (Caos)",
+    btn_play: "INICIALIZAR", game_controls: "> CMD: Mouse/Touch · ESPAÇO=dividir · W=alimentar · E=impulso · SHIFT=arrancada · F=Tela Cheia · \\=Debug · ESC=Pausa",
+    lbl_paused: "[ SISTEMA EM PAUSA ]", paused_desc: "Fluxo temporal interrompido.", lbl_resume: "RETOMAR", lbl_hub: "VOLTAR AO HUB",
+    lbl_over: "[ CRÍTICO: ENTIDADE DESTRUÍDA ]", btn_reboot: "REINICIAR", lbl_render: "Renderizar Partículas", lbl_shadow: "Sombras Neon",
+    lbl_haptic: "Feedback Háptico", lbl_ai: "IA Agressiva", btn_apply: "APLICAR",
+    go_mass: "Massa Final", go_absorbed: "Absorvido", go_time: "Tempo Ativo", go_record: "Recorde Máx"
+  },
+  hi: {
+    mass_display: "द्रव्यमान: ", leaderboard_title: "[ लीडरबोर्ड ]", profile_title: "[ प्रोफ़ाइल ]", lbl_lang: "भाषा",
+    lbl_player_id: "खिलाड़ी_ID", lbl_hex: "HEX_रंग", btn_save: "डेटा सहेजें", btn_config: "सिस्टम कॉन्फ़िगरेशन", btn_exit: "बाहर निकलें",
+    chat_placeholder: "> कमांड दर्ज करें...", chat_send: "चलाएं", game_subtitle: "// नियॉन संस्करण",
+    game_desc: "कणों को अवशोषित करें। कमजोर इकाइयों को समाप्त करें।<br><b>W</b> = फ़ीड | <b>SPACE</b> = विभाजित | <b>SHIFT</b> = डैश।",
+    lbl_protocol: "प्रोटोकॉल", prot_classic: "मानक (क्लासिक)", prot_survival: "हार्डकोर (सर्वाइवल)", prot_chaos: "ओवरलोड (कैओस)",
+    btn_play: "प्रारंभ करें", game_controls: "> CMD: माउस/टच · SPACE=विभाजित · W=फ़ीड · E=बूस्ट · SHIFT=डैश · F=फुलस्क्रीन · \\=डीबग · ESC=रोकें",
+    lbl_paused: "[ सिस्टम रोका गया ]", paused_desc: "समय प्रवाह रुक गया है।", lbl_resume: "फिर से शुरू", lbl_hub: "हब पर लौटें",
+    lbl_over: "[ गंभीर: इकाई नष्ट ]", btn_reboot: "रीबूट", lbl_render: "कण रेंडर", lbl_shadow: "नियॉन शैडो",
+    lbl_haptic: "हैप्टिक फ़ीडबैक", lbl_ai: "आक्रामक AI", btn_apply: "लागू करें",
+    go_mass: "अंतिम द्रव्यमान", go_absorbed: "अवशोषित", go_time: "सक्रिय समय", go_record: "अधिकतम रिकॉर्ड"
+  }
+};
+
+let currentLang = localStorage.getItem("cellArenaLang") || "it";
+
+function applyTranslation(lang) {
+  currentLang = lang;
+  document.getElementById("langSelect").value = lang;
+  
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (i18n_dict[lang] && i18n_dict[lang][key]) {
+      if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
+        el.placeholder = i18n_dict[lang][key];
+      } else if (el.tagName === 'OPTION') {
+        el.innerText = i18n_dict[lang][key];
+      } else {
+        el.innerHTML = i18n_dict[lang][key];
+      }
+    }
+  });
+
+  if(!running && document.getElementById("over").classList.contains("hidden") === false) {
+     gameOver(); // Aggiorna i testi del game over se visibile
+  }
+}
+
+document.getElementById('langSelect').addEventListener('change', (e) => {
+  localStorage.setItem('cellArenaLang', e.target.value);
+  applyTranslation(e.target.value);
+});
+
+/* =========================================================
+   250 FUNZIONI (LIBRERIA / API ESTESA)
    Modulo Aggiuntivo per calcoli, logica, rendering e utility
 ========================================================= */
 
@@ -618,6 +788,66 @@ function ext_camSetPos(x, y) { camera.x = x; camera.y = y; }
 function ext_camSetZoom(z) { camera.zoom = z; }
 function ext_dbgGetBotCount() { return bots.length; }
 function ext_dbgGetVirusCount() { return viruses.length; }
+
+// --- SEZIONE 11: DATE/TIME (201-210) ---
+function ext_dateNow() { return Date.now(); }
+function ext_dateIsLeapYear(y) { return (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0); }
+function ext_dateAddDays(d, days) { let nd = new Date(d); nd.setDate(nd.getDate() + days); return nd; }
+function ext_dateDiffDays(d1, d2) { return Math.ceil(Math.abs(d1 - d2) / (1000 * 60 * 60 * 24)); }
+function ext_dateStartOfDay(d) { let nd = new Date(d); nd.setHours(0,0,0,0); return nd; }
+function ext_dateEndOfDay(d) { let nd = new Date(d); nd.setHours(23,59,59,999); return nd; }
+function ext_dateFormatIso(d) { return new Date(d).toISOString(); }
+function ext_dateGetMonthName(d, loc="en-US") { return new Date(d).toLocaleString(loc, { month: "long" }); }
+function ext_dateGetDayName(d, loc="en-US") { return new Date(d).toLocaleString(loc, { weekday: "long" }); }
+function ext_dateIsWeekend(d) { let day = new Date(d).getDay(); return day === 0 || day === 6; }
+
+// --- SEZIONE 12: OBJECT UTILS (211-220) ---
+function ext_objKeys(o) { return Object.keys(o); }
+function ext_objValues(o) { return Object.values(o); }
+function ext_objEntries(o) { return Object.entries(o); }
+function ext_objHas(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
+function ext_objFreeze(o) { return Object.freeze(o); }
+function ext_objClone(o) { return JSON.parse(JSON.stringify(o)); }
+function ext_objMerge(o1, o2) { return { ...o1, ...o2 }; }
+function ext_objPick(o, keys) { return keys.reduce((acc, k) => { if(ext_objHas(o,k)) acc[k] = o[k]; return acc; }, {}); }
+function ext_objOmit(o, keys) { return ext_objKeys(o).reduce((acc, k) => { if(!keys.includes(k)) acc[k] = o[k]; return acc; }, {}); }
+function ext_objIsEmpty(o) { return ext_objKeys(o).length === 0; }
+
+// --- SEZIONE 13: ASYNC & FUNCTION UTILS (221-230) ---
+function ext_fnSleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+function ext_fnDebounce(fn, ms) { let t; return function(...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); }; }
+function ext_fnThrottle(fn, ms) { let wait=false; return function(...args) { if(!wait){ fn.apply(this,args); wait=true; setTimeout(()=>wait=false, ms); }}; }
+function ext_fnMemoize(fn) { const cache=new Map(); return function(...args){ const k=JSON.stringify(args); if(cache.has(k))return cache.get(k); const r=fn.apply(this,args); cache.set(k,r); return r; }; }
+function ext_fnNoop() {}
+function ext_fnIdentity(x) { return x; }
+function ext_fnIsFunction(f) { return typeof f === 'function'; }
+function ext_fnOnce(fn) { let done=false, res; return function(...args){ if(!done){ res=fn.apply(this,args); done=true; } return res; }; }
+function ext_fnDelay(fn, ms, ...args) { return setTimeout(fn, ms, ...args); }
+function ext_fnCompose(...fns) { return (x) => fns.reduceRight((v, f) => f(v), x); }
+
+// --- SEZIONE 14: TYPE & VALIDATION (231-240) ---
+function ext_valIsString(s) { return typeof s === 'string'; }
+function ext_valIsNumber(n) { return typeof n === 'number' && !isNaN(n); }
+function ext_valIsBoolean(b) { return typeof b === 'boolean'; }
+function ext_valIsArray(a) { return Array.isArray(a); }
+function ext_valIsObject(o) { return o !== null && typeof o === 'object' && !Array.isArray(o); }
+function ext_valIsNull(n) { return n === null; }
+function ext_valIsUndefined(u) { return typeof u === 'undefined'; }
+function ext_valIsEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+function ext_valIsURL(u) { try { new URL(u); return true; } catch { return false; } }
+function ext_valIsFalsy(v) { return !v; }
+
+// --- SEZIONE 15: MISC / DOM EXTRAS (241-250) ---
+function ext_miscUUIDv4() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { let r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }); }
+function ext_miscCopyToClipboard(txt) { navigator.clipboard.writeText(txt).catch(ext_fnNoop); }
+function ext_miscGetUrlParam(param) { return new URLSearchParams(window.location.search).get(param); }
+function ext_miscSetUrlParam(k, v) { let u = new URL(window.location); u.searchParams.set(k,v); window.history.pushState({},'',u); }
+function ext_miscScrollToTop() { window.scrollTo({top: 0, behavior: 'smooth'}); }
+function ext_miscScrollToElement(id) { let el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth'}); }
+function ext_miscGenerateHash(s) { let h=0; for(let i=0;i<s.length;i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0; return h; }
+function ext_miscBase64Encode(s) { return btoa(unescape(encodeURIComponent(s))); }
+function ext_miscBase64Decode(s) { return decodeURIComponent(escape(atob(s))); }
+function ext_miscParseJSON(s, def={}) { try{ return JSON.parse(s); }catch{ return def; } }
 
 /* =========================================================
    CANVAS & SETUP ORIGINALE
@@ -1724,8 +1954,9 @@ function updateHUD(){
   if(!player)return;
 
   const mass=ext_entGetPlayerMassInt();
+  const massLabel = i18n_dict[currentLang] ? (i18n_dict[currentLang].mass_display || "MASS: ") : "MASS: ";
 
-  document.getElementById("mass").textContent="MASS: "+ext_sysFormatScoreNumber(mass);
+  document.getElementById("mass").textContent = massLabel + ext_sysFormatScoreNumber(mass);
   document.getElementById("level").textContent=level;
   document.getElementById("xp").textContent=ext_sysFormatScoreNumber(xp);
   document.getElementById("energy").textContent=Math.floor(energy);
@@ -1906,12 +2137,14 @@ function gameOver(){
   best=Math.max(best,mass);
   localStorage.setItem("cellArenaBest",best);
 
+  const loc = i18n_dict[currentLang] || i18n_dict['it'];
+
   document.getElementById("result").innerHTML=`
-      Massa finale: <b>${ext_sysFormatScoreNumber(mass)}</b><br>
+      ${loc.go_mass}: <b>${ext_sysFormatScoreNumber(mass)}</b><br>
       [K] Kill: <b>${kills}</b><br>
-      [F] Assorbimenti: <b>${ext_sysFormatScoreNumber(foodEaten)}</b><br>
-      [T] Tempo attivo: <b>${formatTime(gameTime)}</b><br>
-      [R] Record Max: <b>${ext_sysFormatScoreNumber(best)}</b>
+      [F] ${loc.go_absorbed}: <b>${ext_sysFormatScoreNumber(foodEaten)}</b><br>
+      [T] ${loc.go_time}: <b>${formatTime(gameTime)}</b><br>
+      [R] ${loc.go_record}: <b>${ext_sysFormatScoreNumber(best)}</b>
     `;
 
   document.getElementById("over").classList.remove("hidden");
@@ -2062,8 +2295,10 @@ function loop(now){
 }
 
 /* =========================================================
-   INITIAL CHAT
+   INITIAL CHAT & LOAD TRASLATIONS
 ========================================================= */
+
+applyTranslation(currentLang);
 
 addChat({ name:"SYS_CORE", color:"#00ffff", text:"Logging node attivato. UI Total Black / NeonCyan caricata." });
 addChat({ name:"SYS_TUTORIAL", color:"#0088ff", text:"Comandi estesi: SHIFT per scattare, F per schermo intero, \\ per debug." });

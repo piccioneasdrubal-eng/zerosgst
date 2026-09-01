@@ -61,6 +61,32 @@ public/skins/skin_1000.gif
 Finché un file non esiste, il gioco mostra automaticamente un
 placeholder animato al suo posto (nessun errore per l'utente).
 
+## 4. Ruoli: Admin, Moderatore, Vip user, User
+Ogni account ha un ruolo (`user` di default). I ruoli superiori si
+assegnano in due modi:
+
+**A) Variabili d'ambiente (comodo per te, il proprietario del server)**
+```bash
+export ADMIN_USERNAMES="tuoUsername,altroAdmin"
+export MODERATOR_USERNAMES="nomeModeratore1,nomeModeratore2"
+node server.js
+```
+
+**B) A mano nel file `data/users.json`**, modificando il campo
+`"role"` dell'utente in `"admin"`, `"moderator"` o `"vip"`
+(riavvia il server dopo la modifica).
+
+I giocatori Admin/Moderatore vedono un badge colorato accanto al nome
+in chat e possono usare questi comandi (scrivendoli in chat):
+- `/kick <nome>` — espelle un giocatore dalla partita
+- `/mute <nome>` / `/unmute <nome>` — silenzia/riattiva la chat di un giocatore
+- `/help` — elenco comandi disponibili
+
+I Vip user hanno solo il badge colorato (nessun comando speciale).
+Tutti i giocatori possono usare `/clear` (pulisce la chat solo sul
+proprio schermo) e `/ignore <nome>` / `/unignore <nome>` (nasconde i
+messaggi di un utente solo per te).
+
 ## Nota sulla ricompensa "0 monete" ogni 10 livelli
 Come richiesto, ogni 10 livelli il giocatore riceve **0 monete** (di
 fatto nessuna moneta) più la nuova skin. Se invece volevi che le

@@ -1,289 +1,124 @@
-.addEventListener("keydown", e => {
-  if (e.key === "Enter") sendChat();
-});
-
-document.getElementById("chatClose").onclick = () => {
-  document.getElementById("chat").classList.add("hidden");
-  document.getElementById("chatOpen").classList.remove("hidden");
-};
-
-document.getElementById("chatOpen").onclick = () => {
-  document.getElementById("chat").classList.remove("hidden");
-  document.getElementById("chatOpen").classList.add("hidden");
-  document.getElementById("chatInput").focus();
-};
-
-/* =========================================================
-   INPUT & COMANDI GLOBALI
-========================================================= */
-
-window.addEventListener("keydown", e => {
-  if (document.activeElement.tagName === "INPUT") return;
-  if (!running) return;
-
-  switch (e.key.toLowerCase()) {
-    case " ":
-      split();
-      break;
-    case "w":
-      eject();
-      break;
-    case "e":
-      boosting = true;
-      break;
-    case "shift":
-      ext_playerExecuteDash();
-      break;
-    case "escape":
-      togglePause();
-      break;
-    case "f":
-      ext_sysToggleFullscreen();
-      break;
-    case "\\":
-      ext_sysToggleDebugOverlay();
-      break;
-  }
-});
-
-window.addEventListener("keyup", e => {
-  if (e.key.toLowerCase() === "e") boosting = false;
-});
-
-/* =========================================================
-   TOUCH & JOYSTICK CONTROLS
-========================================================= */
-
-document.getElementById("splitBtn").ontouchstart = (e) => { 
-  e.preventDefault(); 
-  split(); 
-};
-
-document.getElementById("feedBtn").ontouchstart = (e) => { 
-  e.preventDefault(); 
-  eject(); 
-};
-
-const stick = document.getElementById("stick");
-const joy = document.getElementById("joystick");
-
-joy.ontouchstart = joy.ontouchmove = (e) => {
-  e.preventDefault();
-  if (!e.touches[0]) return;
-
-  const rect = joy.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-
-  let dx = e.touches[0].clientX - cx;
-  let dy = e.touches[0].clientY - cy;
-
-  const dist = Math.hypot(dx, dy);
-  const max = rect.width / 2 - stick.offsetWidth / 2;
-
-  if (dist > max) {
-    dx = (dx / dist) * max;
-    dy = (dy / dist) * max;
-  }
-
-  stick.style.transform = `translate(${dx}px, ${dy}px)`;
-
-  joystick.active = true;
-  joystick.x = dx / max;
-  joystick.y = dy / max;
-};
-
-joy.ontouchend = (e) => {
-  e.preventDefault();
-  stick.style.transform = `translate(0px, 0px)`;
-  joystick.active = false;
-  joystick.x = 0;
-  joystick.y = 0;
-};
-
-/* =========================================================
-   MAIN GAME LOOP
-========================================================= */
-
-let lastTime = 0;
-let framesCount = 0;
-
-function gameLoop(now) {
-  requestAnimationFrame(gameLoop);
-
-  const dt = Math.min((now - lastTime) / 1000, 0.1);
-  lastTime = now;
-
-  if (running && !paused) {
-    gameTime += dt;
-
-    if (player) {
-      player.invuln = Math.max(0, player.invuln - dt);
-    }
-
-    updatePlayer(dt);
-    updateBots(dt);
-    updateBoost(dt);
-    updatePhysics(dt);
-    updateMerge();
-
-    playerBotCollisions();
-    playerCellCollision();
-    virusCollision();
-
-    updateParticles(dt);
-    updateCamera(dt);
-  }
-
-  drawBackground();
-  drawFood();
-  drawEjected();
-
-  for (const v of viruses) drawVirus(v);
-  for (const bot of bots) drawBot(bot);
-
-  drawPlayer();
-  drawParticles();
-
-  if (running) {
-    drawMini();
-    updateHUD();
-    drawDebugOverlay(now);
-  }
-
-  if (running && !paused && framesCount % 30 === 0) {
-    updateLeaderboard();
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero The Legend</title>
+<style>
+  /* Grafica in stile Agar.io con sfondo a griglia */
+  body { margin: 0; overflow: hidden; font-family: 'Ubuntu', sans-serif; background-color: #f2fbff; }
+  #gameCanvas { 
+    display: block; 
+    background-image: linear-gradient(#d3d3d3 1px, transparent 1px), linear-gradient(90deg, #d3d3d3 1px, transparent 1px); 
+    background-size: 50px 50px; 
   }
   
-  framesCount++;
-}
-
-requestAnimationFrame(gameLoop);
-
-/* =========================================================
-   GESTIONE GAME OVER & MENU DI GIOCO
-========================================================= */
-
-function gameOver() {
-  running = false;
-  document.getElementById("over").classList.remove("hidden");
-
-  const t = i18n_dict[currentLang];
-  const massStr = t && t.go_mass ? t.go_mass : "Mass";
-  const absStr = t && t.go_absorbed ? t.go_absorbed : "Absorbed";
-  const timeStr = t && t.go_time ? t.go_time : "Time";
-  const recStr = t && t.go_record ? t.go_record : "Record";
-
-  document.getElementById("result").innerHTML = `
-    ${massStr}: <b style="color:#00ffff">${ext_sysFormatScoreNumber(ext_entGetPlayerMassInt())}</b><br>
-    ${absStr}: <b style="color:#0088ff">${ext_sysFormatScoreNumber(foodEaten)}</b><br>
-    Kills: <b style="color:#ff6680">${kills}</b><br>
-    ${timeStr}: <b style="color:#42d392">${formatTime(gameTime)}</b><br>
-    ${recStr}: <b style="color:#ffe66d">${ext_sysFormatScoreNumber(best)}</b>
-  `;
-
-  localStorage.setItem("cellArenaBest", best);
-}
-
-function togglePause() {
-  if (!running) return;
-  paused = !paused;
-  const p = document.getElementById("pause");
-  if (paused) p.classList.remove("hidden");
-  else p.classList.add("hidden");
-}
-
-document.getElementById("playButton").onclick = () => {
-  document.getElementById("menu").classList.add("hidden");
-  saveProfile();
-  resetWorld();
-  running = true;
-  paused = false;
+  /* Menu Centrale */
+  #mainMenu {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center;
+  }
+  #mainMenu h1 { margin: 0 0 20px 0; font-size: 48px; color: #333; font-weight: bold; }
+  .btn { padding: 12px 24px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; font-weight: bold; }
+  .btn-play { background: #4CAF50; color: white; width: 100%; margin-top: 15px; }
+  .btn-auth { background: #2196F3; color: white; }
   
-  addChat({
-    name: "SYS_ADMIN",
-    color: "#00ffff",
-    text: "[LOG] Inizializzazione completata. Entità attive nel settore."
+  /* Menu Laterale Collapsable */
+  #sideMenu {
+    position: absolute; top: 0; left: -260px; width: 260px; height: 100%;
+    background: rgba(30, 30, 30, 0.9); color: white; padding: 20px;
+    box-sizing: border-box; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+  }
+  #sideMenu.open { left: 0; }
+  #toggleMenu {
+    position: absolute; top: 20px; right: -40px; width: 40px; height: 40px;
+    background: #333; color: white; border: none; border-radius: 0 5px 5px 0; cursor: pointer; font-size: 20px;
+  }
+  .input-group { margin-bottom: 15px; text-align: left; }
+  .input-group label { display: block; font-size: 13px; margin-bottom: 5px; color: #aaa; }
+  .input-group input { width: 100%; padding: 8px; border: none; border-radius: 4px; box-sizing: border-box; }
+</style>
+</head>
+<body>
+
+  <!-- Canvas del gioco -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Menu Laterale -->
+  <div id="sideMenu">
+    <button id="toggleMenu">☰</button>
+    <h3 style="margin-top:0;">Impostazioni</h3>
+    <div class="input-group">
+      <label>Nome Giocatore</label>
+      <input type="text" id="playerName" placeholder="Il tuo nome" value="Giocatore1">
+    </div>
+    <div class="input-group">
+      <label>Quantità Bot</label>
+      <input type="number" id="botCount" value="10" min="0" max="100">
+    </div>
+    <div class="input-group">
+      <label>Massa Iniziale</label>
+      <input type="number" id="startMass" value="10" min="10" max="500">
+    </div>
+    <div class="input-group">
+      <label>Velocità</label>
+      <input type="number" id="startSpeed" value="5" min="1" max="20">
+    </div>
+    <button class="btn btn-auth" style="width:100%; margin-top:10px;" onclick="applicaImpostazioni()">Applica</button>
+  </div>
+
+  <!-- Menu Centrale -->
+  <div id="mainMenu">
+    <h1>Zero The Legend</h1>
+    <div>
+      <button class="btn btn-auth" onclick="login()">Login</button>
+      <button class="btn btn-auth" onclick="registrati()">Registrati</button>
+    </div>
+    <button class="btn btn-play" onclick="startGame()">Gioca</button>
+  </div>
+
+<script>
+  // Setup Canvas
+  const canvas = document.getElementById('gameCanvas');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Gestione Menu Laterale
+  const sideMenu = document.getElementById('sideMenu');
+  document.getElementById('toggleMenu').addEventListener('click', () => {
+    sideMenu.classList.toggle('open');
   });
-};
 
-document.getElementById("resumeButton").onclick = togglePause;
-
-document.getElementById("retryButton").onclick = () => {
-  document.getElementById("over").classList.add("hidden");
-  resetWorld();
-  running = true;
-  paused = false;
-};
-
-document.getElementById("menuButton").onclick = 
-document.getElementById("overMenu").onclick = () => {
-  document.getElementById("pause").classList.add("hidden");
-  document.getElementById("over").classList.add("hidden");
-  document.getElementById("menu").classList.remove("hidden");
-  running = false;
-};
-
-/* =========================================================
-   PROFILO, USER MENU & SETTINGS DOM
-========================================================= */
-
-document.getElementById("userButton").onclick = () => {
-  document.getElementById("userMenu").classList.toggle("hidden");
-};
-
-document.getElementById("closeUser").onclick = () => {
-  document.getElementById("userMenu").classList.add("hidden");
-};
-
-document.getElementById("saveName").onclick = () => {
-  saveProfile();
-  document.getElementById("userMenu").classList.add("hidden");
-};
-
-document.getElementById("menuSettings").onclick = 
-document.getElementById("openSettings").onclick = () => {
-  document.getElementById("settings").classList.remove("hidden");
-  document.getElementById("userMenu").classList.add("hidden");
-};
-
-document.getElementById("closeSettings").onclick = () => {
-  document.getElementById("settings").classList.add("hidden");
-
-  settings.particles = document.getElementById("particlesSwitch").classList.contains("on");
-  settings.shadows = document.getElementById("shadowsSwitch").classList.contains("on");
-  settings.vibrate = document.getElementById("vibrateSwitch").classList.contains("on");
-  settings.aggressive = document.getElementById("aggressiveSwitch").classList.contains("on");
-
-  localStorage.setItem("particles", settings.particles ? "1" : "0");
-  localStorage.setItem("shadows", settings.shadows ? "1" : "0");
-  localStorage.setItem("vibrate", settings.vibrate ? "1" : "0");
-  localStorage.setItem("aggressive", settings.aggressive ? "1" : "0");
-
-  toast("[SYS] Configurazione salvata con successo");
-};
-
-// Inizializza visualmente i toggle delle impostazioni 
-["particlesSwitch", "shadowsSwitch", "vibrateSwitch", "aggressiveSwitch"].forEach(id => {
-  const el = document.getElementById(id);
-  const key = id.replace("Switch", "");
+  // Funzioni UI
+  function login() { alert("Apertura modale di Login per salvare i progressi..."); }
+  function registrati() { alert("Apertura modale di Registrazione..."); }
+  function applicaImpostazioni() { alert("Impostazioni salvate: Massa, Velocità e Bot aggiornati."); }
   
-  if (settings[key] === false) {
-    el.classList.remove("on");
+  function startGame() {
+    document.getElementById('mainMenu').style.display = 'none';
+    // Qui andrà avviato il loop del tuo gioco
   }
 
-  el.onclick = () => {
-    el.classList.toggle("on");
-  };
-});
+  // Comandi di Gioco (Split e Feed)
+  window.addEventListener('keydown', (e) => {
+    if (document.getElementById('mainMenu').style.display !== 'none') return;
+    
+    if (e.code === 'Space') {
+      console.log("Comando: SPLIT eseguito");
+      // Inserisci logica di split qui
+    }
+    if (e.key.toLowerCase() === 'w') {
+      console.log("Comando: FEED (Lancia massa) eseguito");
+      // Inserisci logica di feed qui
+    }
+  });
 
-/* =========================================================
-   BOOTSTRAP FINALE
-========================================================= */
-
-applyTranslation(currentLang);
-ext_sysLog("Cell Arena // Protocollo UI inizializzato.");
-
+  // Ridimensionamento dinamico
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
 </script>
 </body>
 </html>

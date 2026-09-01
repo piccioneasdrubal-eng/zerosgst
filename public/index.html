@@ -2,15 +2,11 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport"
-      content="width=device-width,initial-scale=1,user-scalable=no">
-
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Cell Arena</title>
 
 <style>
-*{ 
-  box-sizing:border-box;
-}
+*{box-sizing:border-box}
 
 html,body{
   width:100%;
@@ -28,22 +24,10 @@ canvas{
   display:block;
 }
 
-.hidden{
-  display:none!important;
-}
+.hidden{display:none!important}
 
-button,
-input,
-select{
-  font:inherit;
-}
-
-button{
-  border:0;
-  cursor:pointer;
-}
-
-/* CONNECTION */
+button,input,select{font:inherit}
+button{border:0;cursor:pointer}
 
 #connection{
   position:fixed;
@@ -59,8 +43,6 @@ button{
   color:#ffbf55;
 }
 
-/* HUD */
-
 #hud{
   position:fixed;
   left:15px;
@@ -75,9 +57,7 @@ button{
   backdrop-filter:blur(12px);
 }
 
-#mass{
-  font-size:19px;
-}
+#mass{font-size:19px}
 
 .small{
   color:#8190a7;
@@ -101,8 +81,6 @@ button{
   transition:width .15s;
 }
 
-/* LEADERBOARD */
-
 #board{
   position:fixed;
   right:15px;
@@ -116,9 +94,7 @@ button{
   backdrop-filter:blur(12px);
 }
 
-#board h3{
-  margin:0 0 10px;
-}
+#board h3{margin:0 0 10px}
 
 .row{
   display:flex;
@@ -126,8 +102,6 @@ button{
   padding:5px 0;
   font-size:13px;
 }
-
-/* MINIMAP */
 
 #mini{
   position:fixed;
@@ -140,8 +114,6 @@ button{
   border-radius:12px;
   background:#07101d;
 }
-
-/* POWER */
 
 #power{
   position:fixed;
@@ -162,8 +134,6 @@ button{
   font-size:12px;
 }
 
-/* USER */
-
 #userButton{
   position:fixed;
   right:250px;
@@ -176,9 +146,7 @@ button{
   color:#fff;
 }
 
-#userButton:hover{
-  background:#14243b;
-}
+#userButton:hover{background:#14243b}
 
 #userMenu{
   position:fixed;
@@ -193,9 +161,7 @@ button{
   box-shadow:0 20px 70px #0009;
 }
 
-#userMenu h3{
-  margin:0 0 12px;
-}
+#userMenu h3{margin:0 0 12px}
 
 #userMenu input{
   width:100%;
@@ -226,8 +192,6 @@ button{
   background:#ffffff12;
   color:#fff;
 }
-
-/* CHAT */
 
 #chat{
   position:fixed;
@@ -262,9 +226,7 @@ button{
 }
 
 #chatClose{
-  width:auto;
   padding:5px 9px;
-  margin:0;
   background:#ffffff10;
   color:white;
   border-radius:8px;
@@ -282,19 +244,14 @@ button{
   line-height:1.35;
 }
 
-.chatName{
-  font-weight:bold;
-}
-
+.chatName{font-weight:bold}
 .chatTime{
   color:#62728b;
   font-size:9px;
   margin-left:5px;
 }
 
-.chatText{
-  color:#dbe4ef;
-}
+.chatText{color:#dbe4ef}
 
 #chatInputArea{
   display:flex;
@@ -336,23 +293,14 @@ button{
   border:1px solid #ffffff15;
 }
 
-/* MENU / PAUSE / GAME OVER */
-
-#menu,
-#pause,
-#over{
+#menu,#pause,#over{
   position:fixed;
   inset:0;
   z-index:200;
   display:flex;
   justify-content:center;
   align-items:center;
-  background:
-    radial-gradient(
-      circle at center,
-      #162944dd,
-      #02050bee
-    );
+  background:radial-gradient(circle at center,#162944dd,#02050bee);
 }
 
 .card{
@@ -369,9 +317,7 @@ button{
   font-size:42px;
 }
 
-.card h2{
-  margin-top:0;
-}
+.card h2{margin-top:0}
 
 .card p{
   color:#aebbd0;
@@ -385,8 +331,7 @@ button{
   margin-top:12px;
 }
 
-.card input,
-.card select{
+.card input,.card select{
   width:100%;
   padding:12px;
   margin-top:6px;
@@ -407,10 +352,27 @@ button{
   font-weight:bold;
 }
 
-/* MOBILE */
+#touchControls{
+  position:fixed;
+  right:15px;
+  bottom:15px;
+  z-index:25;
+  display:none;
+  gap:8px;
+}
+
+.touchBtn{
+  width:58px;
+  height:58px;
+  border-radius:50%;
+  background:#0b1728dd;
+  color:white;
+  border:1px solid #ffffff18;
+  font-weight:bold;
+  box-shadow:0 8px 30px #0008;
+}
 
 @media(max-width:700px){
-
   #board{
     width:170px;
     top:65px;
@@ -436,8 +398,14 @@ button{
     height:105px;
   }
 
-  #hud{
-    min-width:160px;
+  #hud{min-width:160px}
+
+  #touchControls{
+    display:flex;
+  }
+
+  #power{
+    bottom:85px;
   }
 }
 </style>
@@ -447,16 +415,10 @@ button{
 
 <canvas id="game"></canvas>
 
-<div id="connection">
-  🔴 Disconnesso
-</div>
-
-<!-- HUD -->
+<div id="connection">🟠 Connessione...</div>
 
 <div id="hud">
-  <div id="mass">
-    Massa: 25
-  </div>
+  <div id="mass">Massa: 25</div>
 
   <div>
     Livello <b id="level">1</b>
@@ -473,106 +435,69 @@ button{
   </div>
 </div>
 
-<!-- BOARD -->
-
 <div id="board">
   <h3>🏆 Classifica</h3>
   <div id="rows"></div>
 </div>
-
-<!-- USER -->
 
 <button id="userButton">
   👤 <span id="userNameButton">Player</span>
 </button>
 
 <div id="userMenu" class="hidden">
-
   <h3>👤 Profilo</h3>
 
-  <div class="green">
-    🟢 Account locale
-  </div>
+  <div class="green">🟢 Account locale</div>
 
   <label>Nickname</label>
 
-  <input
-    id="userNameInput"
-    maxlength="16"
-    value="Player"
-  >
+  <input id="userNameInput" maxlength="16" value="Player">
 
-  <button
-    class="menuBtn"
-    id="saveName"
-  >
+  <button class="menuBtn" id="saveName">
     💾 Salva nome
   </button>
 
-  <button
-    class="menuBtn alt"
-    id="closeUser"
-  >
+  <button class="menuBtn alt" id="closeUser">
     Chiudi
   </button>
-
 </div>
 
-<!-- CHAT -->
-
 <div id="chat">
-
   <div id="chatHeader">
     <div>
       💬 Chat globale
-      <span id="chatOnline">
-        ● 0 online
-      </span>
+      <span id="chatOnline">● 0 online</span>
     </div>
 
-    <button id="chatClose">
-      −
-    </button>
+    <button id="chatClose">−</button>
   </div>
 
   <div id="chatMessages"></div>
 
   <div id="chatInputArea">
-
     <input
       id="chatInput"
       maxlength="180"
       autocomplete="off"
       placeholder="Scrivi un messaggio..."
     >
-
-    <button id="chatSend">
-      ➤
-    </button>
-
+    <button id="chatSend">➤</button>
   </div>
 </div>
 
-<button id="chatOpen" class="hidden">
-  💬 Chat
-</button>
+<button id="chatOpen" class="hidden">💬 Chat</button>
 
-<!-- MINIMAP -->
-
-<canvas id="mini"
-        width="150"
-        height="150"></canvas>
-
-<!-- POWER -->
+<canvas id="mini" width="150" height="150"></canvas>
 
 <div id="power"></div>
 
-<!-- MENU -->
+<div id="touchControls">
+  <button class="touchBtn" id="touchSplit">SPLIT</button>
+  <button class="touchBtn" id="touchEject">MASSA</button>
+</div>
 
 <div id="menu">
-
   <div class="card">
-
     <h1>🟢 Cell Arena</h1>
 
     <p>
@@ -584,141 +509,96 @@ button{
 
     <label>Nome</label>
 
-    <input
-      id="name"
-      maxlength="16"
-      value="Player"
-    >
+    <input id="name" maxlength="16" value="Player">
 
     <label>Modalità</label>
 
     <select id="mode">
-      <option value="classic">
-        Classic
-      </option>
-
-      <option value="survival">
-        Survival
-      </option>
-
-      <option value="chaos">
-        Chaos
-      </option>
+      <option value="classic">Classic</option>
+      <option value="survival">Survival</option>
+      <option value="chaos">Chaos</option>
     </select>
 
-    <button
-      class="play"
-      id="playButton"
-    >
+    <button class="play" id="playButton">
       GIOCA
     </button>
 
     <p class="small">
-      SPACE = split · W = massa
-      · ESC = pausa
+      SPACE = split · W = massa · ESC = pausa
     </p>
-
   </div>
-
 </div>
 
-<!-- PAUSE -->
-
 <div id="pause" class="hidden">
-
   <div class="card">
-
     <h2>⏸️ Pausa</h2>
 
-    <p>
-      La partita è in pausa.
-    </p>
+    <p>La partita è in pausa.</p>
 
-    <button
-      class="play"
-      id="resumeButton"
-    >
+    <button class="play" id="resumeButton">
       ▶ Continua
     </button>
 
-    <button
-      class="menuBtn alt"
-      id="menuButton"
-    >
+    <button class="menuBtn alt" id="menuButton">
       ☰ Torna al menu
     </button>
-
   </div>
-
 </div>
 
-<!-- GAME OVER -->
-
 <div id="over" class="hidden">
-
   <div class="card">
-
     <h2>💥 Game Over</h2>
 
     <p id="result"></p>
 
-    <button
-      class="play"
-      id="retryButton"
-    >
+    <button class="play" id="retryButton">
       🔄 Rigioca
     </button>
 
+    <button class="menuBtn alt" id="overMenuButton">
+      ☰ Menu
+    </button>
   </div>
-
 </div>
 
 <script>
+"use strict";
+
 /* =========================================================
-   CANVAS
+   DOM
 ========================================================= */
 
-const canvas =
-  document.getElementById("game");
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-const ctx =
-  canvas.getContext("2d");
+const mini = document.getElementById("mini");
+const mctx = mini.getContext("2d");
 
-const mini =
-  document.getElementById("mini");
+const $ = id => document.getElementById(id);
 
-const mctx =
-  mini.getContext("2d");
+/* =========================================================
+   SIZE
+========================================================= */
 
 let SW = innerWidth;
 let SH = innerHeight;
 let DPR = devicePixelRatio || 1;
 
 function resize(){
-
   SW = innerWidth;
   SH = innerHeight;
-  DPR = devicePixelRatio || 1;
+  DPR = Math.min(devicePixelRatio || 1, 2);
 
   canvas.width = SW * DPR;
   canvas.height = SH * DPR;
 
-  canvas.style.width =
-    SW + "px";
+  canvas.style.width = SW + "px";
+  canvas.style.height = SH + "px";
 
-  canvas.style.height =
-    SH + "px";
-
-  ctx.setTransform(
-    DPR,0,0,DPR,0,0
-  );
+  ctx.setTransform(DPR,0,0,DPR,0,0);
 }
 
-addEventListener(
-  "resize",
-  resize
-);
-
+addEventListener("resize", resize);
 resize();
 
 /* =========================================================
@@ -732,9 +612,17 @@ let ejected = [];
 let onlinePlayers = [];
 
 let me = null;
+let clientId = null;
+
+let socket = null;
+let reconnectTimer = null;
 
 let running = false;
 let paused = false;
+
+let xp = 0;
+let level = 1;
+let energy = 100;
 
 let mouse = {
   x: SW / 2,
@@ -747,33 +635,19 @@ let camera = {
   zoom: 1
 };
 
-let xp = 0;
-let level = 1;
-let mission = 0;
-let energy = 100;
-
 let lastFrame = performance.now();
+let lastMoveSent = 0;
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
 function clamp(v,a,b){
-  return Math.max(
-    a,
-    Math.min(b,v)
-  );
-}
-
-function distance(a,b){
-  return Math.hypot(
-    a.x-b.x,
-    a.y-b.y
-  );
+  return Math.max(a,Math.min(b,v));
 }
 
 function escapeHTML(text){
-  return String(text)
+  return String(text ?? "")
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;")
@@ -781,38 +655,282 @@ function escapeHTML(text){
     .replaceAll("'","&#039;");
 }
 
+function setHidden(id,value){
+  $(id).classList.toggle("hidden",value);
+}
+
 /* =========================================================
-   MOUSE
+   CONNECTION
 ========================================================= */
 
-addEventListener(
-  "mousemove",
-  e => {
+function setConnection(text,color){
+  $("connection").textContent = text;
+  $("connection").style.color = color;
+}
 
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
+function connect(){
 
-    sendMove();
+  if(
+    socket &&
+    (
+      socket.readyState === WebSocket.OPEN ||
+      socket.readyState === WebSocket.CONNECTING
+    )
+  ){
+    return;
   }
-);
 
-addEventListener(
-  "touchmove",
-  e => {
+  const protocol =
+    location.protocol === "https:" ? "wss:" : "ws:";
 
-    if(!e.touches[0]) return;
+  const host = location.host;
 
-    mouse.x =
-      e.touches[0].clientX;
+  if(!host){
+    setConnection("🟠 Apri la pagina tramite server","#ffbf55");
+    return;
+  }
 
-    mouse.y =
-      e.touches[0].clientY;
+  try{
+    socket = new WebSocket(
+      protocol + "//" + host
+    );
+  }catch(err){
+    scheduleReconnect();
+    return;
+  }
 
-    sendMove();
+  setConnection("🟡 Connessione...","#ffbf55");
 
-  },
-  {passive:true}
-);
+  socket.onopen = () => {
+
+    setConnection("🟢 Connesso","#42d392");
+
+    sendJSON({
+      type:"join",
+      name:getName(),
+      mode:$("mode").value
+    });
+  };
+
+  socket.onmessage = event => {
+
+    let msg;
+
+    try{
+      msg = JSON.parse(event.data);
+    }catch{
+      return;
+    }
+
+    handleMessage(msg);
+  };
+
+  socket.onerror = () => {
+    setConnection("🟠 Errore connessione","#ffbf55");
+  };
+
+  socket.onclose = () => {
+
+    setConnection(
+      "🔴 Disconnesso — riconnessione...",
+      "#ff6680"
+    );
+
+    scheduleReconnect();
+  };
+}
+
+function scheduleReconnect(){
+
+  if(reconnectTimer) return;
+
+  reconnectTimer = setTimeout(() => {
+
+    reconnectTimer = null;
+
+    if(running || !socket){
+      connect();
+    }
+
+  },3000);
+}
+
+function sendJSON(data){
+
+  if(
+    socket &&
+    socket.readyState === WebSocket.OPEN
+  ){
+    socket.send(JSON.stringify(data));
+    return true;
+  }
+
+  return false;
+}
+
+/* =========================================================
+   SERVER MESSAGES
+========================================================= */
+
+function handleMessage(msg){
+
+  switch(msg.type){
+
+    case "welcome":
+      clientId = msg.id ?? clientId;
+
+      if(msg.players){
+        onlinePlayers = msg.players;
+      }
+
+      setConnection("🟢 Connesso","#42d392");
+      break;
+
+    case "state":
+      foods = Array.isArray(msg.foods)
+        ? msg.foods
+        : [];
+
+      ejected = Array.isArray(msg.ejected)
+        ? msg.ejected
+        : [];
+
+      onlinePlayers = Array.isArray(msg.players)
+        ? msg.players
+        : [];
+
+      me =
+        onlinePlayers.find(
+          p => p.id === clientId
+        ) || me;
+
+      if(me && me.energy != null){
+        energy = me.energy;
+      }
+
+      updateOnlineCount(onlinePlayers.length);
+      updateLeaderboard();
+      break;
+
+    case "chatHistory":
+      renderChat(msg.messages || []);
+      break;
+
+    case "chat":
+    case "message":
+      addChat(msg);
+      break;
+
+    case "dead":
+      gameOver();
+      break;
+
+    case "xp":
+      xp = Number(msg.xp) || xp;
+      level = Number(msg.level) || level;
+      break;
+
+    case "error":
+      addChat({
+        name:"Sistema",
+        color:"#ff6680",
+        text:msg.message || "Errore server",
+        time:""
+      });
+      break;
+  }
+}
+
+/* =========================================================
+   NAME
+========================================================= */
+
+function getName(){
+
+  const value =
+    $("name").value.trim().slice(0,16);
+
+  return value || "Player";
+}
+
+function saveLocalName(name){
+  try{
+    localStorage.setItem("cellArenaName",name);
+  }catch{}
+}
+
+function loadLocalName(){
+
+  try{
+    const name =
+      localStorage.getItem("cellArenaName");
+
+    if(name){
+      $("name").value = name.slice(0,16);
+    }
+  }catch{}
+}
+
+function updateNameUI(){
+
+  const name = getName();
+
+  $("userNameButton").textContent = name;
+  $("userNameInput").value = name;
+}
+
+/* =========================================================
+   MOUSE / TOUCH
+========================================================= */
+
+function sendMove(){
+
+  if(!running || paused || !me) return;
+
+  const now = performance.now();
+
+  if(now - lastMoveSent < 40) return;
+
+  lastMoveSent = now;
+
+  const target = worldMouse();
+
+  sendJSON({
+    type:"move",
+    x:clamp(target.x,0,WORLD),
+    y:clamp(target.y,0,WORLD)
+  });
+}
+
+addEventListener("mousemove",e => {
+
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+
+  sendMove();
+});
+
+addEventListener("touchstart",e => {
+
+  if(!e.touches[0]) return;
+
+  mouse.x = e.touches[0].clientX;
+  mouse.y = e.touches[0].clientY;
+
+  sendMove();
+
+},{passive:true});
+
+addEventListener("touchmove",e => {
+
+  if(!e.touches[0]) return;
+
+  mouse.x = e.touches[0].clientX;
+  mouse.y = e.touches[0].clientY;
+
+  sendMove();
+
+},{passive:true});
 
 /* =========================================================
    WORLD MOUSE
@@ -823,254 +941,12 @@ function worldMouse(){
   return {
     x:
       camera.x +
-      (mouse.x - SW / 2) /
-      camera.zoom,
+      (mouse.x - SW/2) / camera.zoom,
 
     y:
       camera.y +
-      (mouse.y - SH / 2) /
-      camera.zoom
+      (mouse.y - SH/2) / camera.zoom
   };
-}
-
-/* =========================================================
-   SOCKET
-========================================================= */
-
-let socket = null;
-let reconnectTimer = null;
-
-function setConnection(
-  text,
-  color
-){
-
-  const el =
-    document.getElementById(
-      "connection"
-    );
-
-  el.textContent = text;
-  el.style.color = color;
-}
-
-function connect(){
-
-  if(
-    socket &&
-    (
-      socket.readyState ===
-      WebSocket.OPEN ||
-
-      socket.readyState ===
-      WebSocket.CONNECTING
-    )
-  ){
-    return;
-  }
-
-  const protocol =
-    location.protocol ===
-    "https:"
-      ? "wss:"
-      : "ws:";
-
-  try{
-
-    socket =
-      new WebSocket(
-        protocol +
-        "//" +
-        location.host
-      );
-
-  }catch{
-
-    reconnect();
-    return;
-  }
-
-  socket.onopen = () => {
-
-    setConnection(
-      "🟢 Connesso",
-      "#42d392"
-    );
-
-    sendJSON({
-      type:"join",
-      name:
-        document.getElementById(
-          "name"
-        ).value || "Player"
-    });
-  };
-
-  socket.onmessage = e => {
-
-    let msg;
-
-    try{
-      msg = JSON.parse(e.data);
-    }catch{
-      return;
-    }
-
-    handleMessage(msg);
-  };
-
-  socket.onclose = () => {
-
-    setConnection(
-      "🔴 Disconnesso — riconnessione...",
-      "#ff6680"
-    );
-
-    reconnect();
-  };
-
-  socket.onerror = () => {
-
-    setConnection(
-      "🟠 Errore connessione",
-      "#ffbf55"
-    );
-  };
-}
-
-function reconnect(){
-
-  if(reconnectTimer) return;
-
-  reconnectTimer =
-    setTimeout(() => {
-
-      reconnectTimer = null;
-
-      if(running){
-        connect();
-      }
-
-    },3000);
-}
-
-function sendJSON(data){
-
-  if(
-    socket &&
-    socket.readyState ===
-    WebSocket.OPEN
-  ){
-
-    socket.send(
-      JSON.stringify(data)
-    );
-
-    return true;
-  }
-
-  return false;
-}
-
-/* =========================================================
-   SERVER
-========================================================= */
-
-function handleMessage(msg){
-
-  if(msg.type === "welcome"){
-
-    setConnection(
-      "🟢 Connesso",
-      "#42d392"
-    );
-
-    return;
-  }
-
-  if(msg.type === "state"){
-
-    foods =
-      msg.foods || [];
-
-    ejected =
-      msg.ejected || [];
-
-    onlinePlayers =
-      msg.players || [];
-
-    const found =
-      onlinePlayers.find(
-        p => p.id === clientId
-      );
-
-    if(found){
-
-      me = found;
-
-      energy =
-        found.energy ?? energy;
-    }
-
-    updateOnlineCount(
-      onlinePlayers.length
-    );
-
-    return;
-  }
-
-  if(msg.type === "chatHistory"){
-
-    renderChat(
-      msg.messages || []
-    );
-
-    return;
-  }
-
-  if(msg.type === "dead"){
-
-    gameOver();
-
-    return;
-  }
-
-  if(msg.type === "error"){
-
-    addChat({
-      name:"Sistema",
-      color:"#ff6680",
-      text:
-        msg.message ||
-        "Errore server",
-      time:""
-    });
-  }
-}
-
-let clientId = null;
-
-/* =========================================================
-   MOVE
-========================================================= */
-
-function sendMove(){
-
-  if(
-    !running ||
-    !me
-  ){
-    return;
-  }
-
-  const t =
-    worldMouse();
-
-  sendJSON({
-    type:"move",
-    x:t.x,
-    y:t.y
-  });
 }
 
 /* =========================================================
@@ -1079,134 +955,93 @@ function sendMove(){
 
 function split(){
 
-  if(
-    !running ||
-    paused ||
-    !me
-  ){
-    return;
-  }
+  if(!running || paused || !me) return;
 
-  sendJSON({
-    type:"split"
-  });
+  sendJSON({type:"split"});
 }
 
 function eject(){
 
-  if(
-    !running ||
-    paused ||
-    !me
-  ){
-    return;
-  }
+  if(!running || paused || !me) return;
 
-  sendJSON({
-    type:"eject"
-  });
+  sendJSON({type:"eject"});
 }
 
-addEventListener(
-  "keydown",
-  e => {
+addEventListener("keydown",e => {
 
-    if(
-      e.target ===
-      document.getElementById(
-        "chatInput"
-      ) ||
-      e.target ===
-      document.getElementById(
-        "userNameInput"
-      ) ||
-      e.target ===
-      document.getElementById(
-        "name"
-      )
-    ){
-      return;
-    }
+  const typing =
+    e.target === $("chatInput") ||
+    e.target === $("userNameInput") ||
+    e.target === $("name");
 
-    if(e.code === "Space"){
+  if(typing) return;
 
-      e.preventDefault();
+  if(e.code === "Space"){
+    e.preventDefault();
+    split();
+  }
 
-      split();
-    }
+  if(e.code === "KeyW"){
+    e.preventDefault();
+    eject();
+  }
 
-    if(e.code === "KeyW"){
+  if(e.code === "Escape"){
+    e.preventDefault();
 
-      e.preventDefault();
-
-      eject();
-    }
-
-    if(e.code === "Escape"){
-
-      e.preventDefault();
-
-      if(
-        !document
-          .getElementById(
-            "userMenu"
-          )
-          .classList.contains(
-            "hidden"
-          )
-      ){
-
-        closeUserMenu();
-        return;
-      }
-
+    if(!$("userMenu").classList.contains("hidden")){
+      closeUserMenu();
+    }else{
       togglePause();
     }
   }
-);
+});
+
+$("touchSplit").onclick = split;
+$("touchEject").onclick = eject;
 
 /* =========================================================
-   START
+   START / STOP
 ========================================================= */
 
 function startGame(){
 
+  const name = getName();
+
+  saveLocalName(name);
+  updateNameUI();
+
   running = true;
   paused = false;
 
-  document
-    .getElementById("menu")
-    .classList.add("hidden");
-
-  document
-    .getElementById("pause")
-    .classList.add("hidden");
-
-  document
-    .getElementById("over")
-    .classList.add("hidden");
+  setHidden("menu",true);
+  setHidden("pause",true);
+  setHidden("over",true);
 
   xp = 0;
   level = 1;
-  mission = 0;
   energy = 100;
 
-  camera.x = WORLD / 2;
-  camera.y = WORLD / 2;
+  camera.x = WORLD/2;
+  camera.y = WORLD/2;
+  camera.zoom = 1;
 
-  if(!socket){
+  if(!socket ||
+     socket.readyState === WebSocket.CLOSED ||
+     socket.readyState === WebSocket.CLOSING){
     connect();
+  }else{
+    sendJSON({
+      type:"join",
+      name,
+      mode:$("mode").value
+    });
   }
 
-  lastFrame =
-    performance.now();
-
-  requestAnimationFrame(loop);
+  lastFrame = performance.now();
 }
 
-document
-  .getElementById("playButton")
-  .onclick = startGame;
+$("playButton").onclick = startGame;
 
 /* =========================================================
    CAMERA
@@ -1214,158 +1049,84 @@ document
 
 function updateCamera(){
 
-  if(!me || !me.cells.length){
+  if(!me || !Array.isArray(me.cells) || !me.cells.length){
     return;
   }
 
-  const main =
-    me.cells[0];
+  const main = me.cells[0];
 
   camera.x +=
-    (main.x - camera.x) *
-    0.09;
+    (main.x-camera.x)*0.09;
 
   camera.y +=
-    (main.y - camera.y) *
-    0.09;
+    (main.y-camera.y)*0.09;
 
   const targetZoom =
-    clamp(
-      40 / main.r,
-      0.42,
-      1.15
-    );
+    clamp(40 / Math.max(main.r,1),0.42,1.15);
 
   camera.zoom +=
-    (
-      targetZoom -
-      camera.zoom
-    ) * 0.035;
+    (targetZoom-camera.zoom)*0.035;
 }
 
 function screen(x,y){
 
   return {
-    x:
-      (x-camera.x) *
-      camera.zoom +
-      SW/2,
-
-    y:
-      (y-camera.y) *
-      camera.zoom +
-      SH/2
+    x:(x-camera.x)*camera.zoom+SW/2,
+    y:(y-camera.y)*camera.zoom+SH/2
   };
 }
 
 /* =========================================================
-   DRAW BACKGROUND
+   BACKGROUND
 ========================================================= */
 
 function drawBackground(){
 
-  ctx.fillStyle =
-    "#050b14";
-
-  ctx.fillRect(
-    0,
-    0,
-    SW,
-    SH
-  );
+  ctx.fillStyle = "#050b14";
+  ctx.fillRect(0,0,SW,SH);
 
   const left =
-    camera.x -
-    SW /
-    camera.zoom /
-    2;
+    camera.x - SW/camera.zoom/2;
 
   const top =
-    camera.y -
-    SH /
-    camera.zoom /
-    2;
+    camera.y - SH/camera.zoom/2;
 
-  ctx.strokeStyle =
-    "#ffffff08";
-
+  ctx.strokeStyle = "#ffffff08";
   ctx.lineWidth = 1;
 
   for(
-    let x =
-      Math.floor(left/100)*
-      100;
-
-    x <
-      left +
-      SW/camera.zoom +
-      100;
-
-    x += 100
+    let x=Math.floor(left/100)*100;
+    x<left+SW/camera.zoom+100;
+    x+=100
   ){
 
-    const p =
-      screen(x,0);
+    const p=screen(x,0);
 
     ctx.beginPath();
-
-    ctx.moveTo(
-      p.x,
-      0
-    );
-
-    ctx.lineTo(
-      p.x,
-      SH
-    );
-
+    ctx.moveTo(p.x,0);
+    ctx.lineTo(p.x,SH);
     ctx.stroke();
   }
 
   for(
-    let y =
-      Math.floor(top/100)*
-      100;
-
-    y <
-      top +
-      SH/camera.zoom +
-      100;
-
-    y += 100
+    let y=Math.floor(top/100)*100;
+    y<top+SH/camera.zoom+100;
+    y+=100
   ){
 
-    const p =
-      screen(0,y);
+    const p=screen(0,y);
 
     ctx.beginPath();
-
-    ctx.moveTo(
-      0,
-      p.y
-    );
-
-    ctx.lineTo(
-      SW,
-      p.y
-    );
-
+    ctx.moveTo(0,p.y);
+    ctx.lineTo(SW,p.y);
     ctx.stroke();
   }
 
-  const a =
-    screen(0,0);
+  const a=screen(0,0);
+  const b=screen(WORLD,WORLD);
 
-  const b =
-    screen(
-      WORLD,
-      WORLD
-    );
-
-  ctx.strokeStyle =
-    "#42d39255";
-
-  ctx.lineWidth = 4;
+  ctx.strokeStyle="#42d39255";
+  ctx.lineWidth=4;
 
   ctx.strokeRect(
     a.x,
@@ -1376,183 +1137,112 @@ function drawBackground(){
 }
 
 /* =========================================================
-   DRAW FOOD
+   FOOD
 ========================================================= */
 
 function drawFood(){
 
-  for(
-    const f of foods
-  ){
+  for(const f of foods){
 
-    const p =
-      screen(
-        f.x,
-        f.y
-      );
+    if(!f) continue;
+
+    const p=screen(f.x,f.y);
+    const r=(f.r || 4)*camera.zoom;
 
     if(
       p.x < -20 ||
       p.x > SW+20 ||
       p.y < -20 ||
       p.y > SH+20
-    ){
-      continue;
-    }
+    ) continue;
 
     ctx.beginPath();
+    ctx.arc(p.x,p.y,r,0,Math.PI*2);
 
-    ctx.arc(
-      p.x,
-      p.y,
-      f.r *
-      camera.zoom,
-      0,
-      Math.PI*2
-    );
+    ctx.fillStyle=f.color || "#42d392";
 
-    ctx.fillStyle =
-      f.color;
-
-    ctx.shadowBlur = 7;
-    ctx.shadowColor =
-      f.color;
+    ctx.shadowBlur=7;
+    ctx.shadowColor=f.color || "#42d392";
 
     ctx.fill();
-
-    ctx.shadowBlur = 0;
+    ctx.shadowBlur=0;
   }
 }
 
 /* =========================================================
-   DRAW EJECTED
+   EJECTED
 ========================================================= */
 
 function drawEjected(){
 
-  for(
-    const e of ejected
-  ){
+  for(const e of ejected){
 
-    const p =
-      screen(
-        e.x,
-        e.y
-      );
+    if(!e) continue;
+
+    const p=screen(e.x,e.y);
+    const r=(e.r || 8)*camera.zoom;
 
     ctx.beginPath();
+    ctx.arc(p.x,p.y,r,0,Math.PI*2);
 
-    ctx.arc(
-      p.x,
-      p.y,
-      e.r *
-      camera.zoom,
-      0,
-      Math.PI*2
-    );
+    ctx.fillStyle=e.color || "#42d392";
 
-    ctx.fillStyle =
-      e.color;
-
-    ctx.shadowBlur = 8;
-    ctx.shadowColor =
-      e.color;
+    ctx.shadowBlur=8;
+    ctx.shadowColor=e.color || "#42d392";
 
     ctx.fill();
-
-    ctx.shadowBlur = 0;
+    ctx.shadowBlur=0;
   }
 }
 
 /* =========================================================
-   DRAW CELLS
+   CELLS
 ========================================================= */
 
 function drawCells(){
 
-  const cells = [];
+  const cells=[];
 
-  for(
-    const p of onlinePlayers
-  ){
+  for(const player of onlinePlayers){
 
-    for(
-      const c of p.cells
-    ){
+    if(!Array.isArray(player.cells)) continue;
+
+    for(const cell of player.cells){
 
       cells.push({
-        ...c,
-        player:p
+        ...cell,
+        player
       });
     }
   }
 
-  cells.sort(
-    (a,b) =>
-      a.r-b.r
-  );
+  cells.sort((a,b)=>(a.r||0)-(b.r||0));
 
-  for(
-    const c of cells
-  ){
+  for(const cell of cells){
 
-    const p =
-      screen(
-        c.x,
-        c.y
-      );
-
-    const r =
-      c.r *
-      camera.zoom;
+    const p=screen(cell.x,cell.y);
+    const r=(cell.r||1)*camera.zoom;
 
     if(
       p.x < -r ||
       p.x > SW+r ||
       p.y < -r ||
       p.y > SH+r
-    ){
-      continue;
-    }
-
-    /* OUTER */
+    ) continue;
 
     ctx.beginPath();
+    ctx.arc(p.x,p.y,r+3,0,Math.PI*2);
 
-    ctx.arc(
-      p.x,
-      p.y,
-      r+3,
-      0,
-      Math.PI*2
-    );
-
-    ctx.fillStyle =
-      "#0008";
-
+    ctx.fillStyle="#0008";
     ctx.fill();
 
-    /* CELL */
-
     ctx.beginPath();
+    ctx.arc(p.x,p.y,r,0,Math.PI*2);
 
-    ctx.arc(
-      p.x,
-      p.y,
-      r,
-      0,
-      Math.PI*2
-    );
-
-    ctx.fillStyle =
-      c.player.color;
-
+    ctx.fillStyle=cell.player.color || "#42d392";
     ctx.fill();
 
-    /* HIGHLIGHT */
-
     ctx.beginPath();
-
     ctx.arc(
       p.x-r*.28,
       p.y-r*.30,
@@ -1561,84 +1251,37 @@ function drawCells(){
       Math.PI*2
     );
 
-    ctx.fillStyle =
-      "#ffffff28";
-
+    ctx.fillStyle="#ffffff28";
     ctx.fill();
 
-    /* BORDER */
-
     ctx.beginPath();
+    ctx.arc(p.x,p.y,r,0,Math.PI*2);
 
-    ctx.arc(
-      p.x,
-      p.y,
-      r,
-      0,
-      Math.PI*2
-    );
-
-    ctx.strokeStyle =
-      "#ffffff22";
-
-    ctx.lineWidth = 2;
-
+    ctx.strokeStyle="#ffffff22";
+    ctx.lineWidth=2;
     ctx.stroke();
 
-    /* NAME */
+    if(r>18){
 
-    if(r > 18){
+      ctx.fillStyle="#fff";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
 
-      ctx.fillStyle =
-        "#fff";
+      ctx.font=
+        `bold ${Math.max(10,Math.min(20,r*.27))}px Arial`;
 
-      ctx.textAlign =
-        "center";
-
-      ctx.textBaseline =
-        "middle";
-
-      ctx.font =
-        `bold ${
-          Math.max(
-            10,
-            Math.min(
-              20,
-              r*.27
-            )
-          )
-        }px Arial`;
-
-      ctx.shadowBlur = 4;
-      ctx.shadowColor =
-        "#000";
+      ctx.shadowBlur=4;
+      ctx.shadowColor="#000";
 
       ctx.fillText(
-        c.player.name,
+        escapeHTML(cell.player.name || "Player"),
         p.x,
         p.y
       );
 
-      ctx.shadowBlur = 0;
+      ctx.shadowBlur=0;
     }
   }
-}
-
-/* =========================================================
-   DRAW
-========================================================= */
-
-function draw(){
-
-  drawBackground();
-
-  drawFood();
-
-  drawEjected();
-
-  drawCells();
-
-  drawMini();
 }
 
 /* =========================================================
@@ -1647,35 +1290,19 @@ function draw(){
 
 function drawMini(){
 
-  const w = 150;
-  const h = 150;
+  const w=mini.width;
+  const h=mini.height;
 
-  mctx.clearRect(
-    0,
-    0,
-    w,
-    h
-  );
+  mctx.clearRect(0,0,w,h);
 
-  mctx.fillStyle =
-    "#07101d";
+  mctx.fillStyle="#07101d";
+  mctx.fillRect(0,0,w,h);
 
-  mctx.fillRect(
-    0,
-    0,
-    w,
-    h
-  );
+  const scale=w/WORLD;
 
-  const scale =
-    w/WORLD;
+  for(const f of foods){
 
-  for(
-    const f of foods
-  ){
-
-    mctx.fillStyle =
-      "#ffffff40";
+    mctx.fillStyle="#ffffff40";
 
     mctx.fillRect(
       f.x*scale,
@@ -1685,439 +1312,256 @@ function drawMini(){
     );
   }
 
-  for(
-    const p of onlinePlayers
-  ){
+  for(const player of onlinePlayers){
 
-    for(
-      const c of p.cells
-    ){
+    for(const cell of player.cells || []){
 
-      mctx.fillStyle =
-        p.id === clientId
-          ? "#fff"
-          : p.color;
+      const own=player.id===clientId;
+      const size=own?3:2;
 
-      const size =
-        p.id === clientId
-          ? 3
-          : 2;
+      mctx.fillStyle=own
+        ? "#fff"
+        : player.color || "#42d392";
 
       mctx.fillRect(
-        c.x*scale-size/2,
-        c.y*scale-size/2,
+        cell.x*scale-size/2,
+        cell.y*scale-size/2,
         size,
         size
       );
     }
   }
 
-  mctx.strokeStyle =
-    "#42d39266";
-
-  mctx.strokeRect(
-    0,
-    0,
-    w,
-    h
-  );
+  mctx.strokeStyle="#42d39266";
+  mctx.strokeRect(0,0,w,h);
 }
 
 /* =========================================================
-   LEADERBOARD
+   DRAW
 ========================================================= */
+
+function draw(){
+
+  drawBackground();
+  drawFood();
+  drawEjected();
+  drawCells();
+  drawMini();
+}
+
+/* =========================================================
+   LEADERBOARD / HUD
+========================================================= */
+
+function getMass(player){
+
+  return (player.cells || []).reduce(
+    (sum,c)=>sum+(c.r||0)*(c.r||0),
+    0
+  );
+}
 
 function updateLeaderboard(){
 
-  const list =
-    onlinePlayers
-      .map(p => ({
-        ...p,
-        mass:
-          p.cells.reduce(
-            (sum,c) =>
-              sum+c.r*c.r,
-            0
-          )
-      }))
-      .sort(
-        (a,b) =>
-          b.mass-a.mass
-      )
-      .slice(0,8);
+  const list=onlinePlayers
+    .map(p=>({
+      ...p,
+      mass:getMass(p)
+    }))
+    .sort((a,b)=>b.mass-a.mass)
+    .slice(0,8);
 
-  document.getElementById(
-    "rows"
-  ).innerHTML =
-    list.map(
-      (p,i) => {
+  $("rows").innerHTML=list.map((p,i)=>{
 
-        const own =
-          p.id === clientId;
+    const own=p.id===clientId;
 
-        return `
-          <div
-            class="row"
-            style="
-              color:${
-                own
-                  ? "#42d392"
-                  : "#fff"
-              };
-              font-weight:${
-                own
-                  ? "bold"
-                  : "normal"
-              };
-            "
-          >
-            <span>
-              ${i+1}.
-              ${escapeHTML(p.name)}
-            </span>
-
-            <span>
-              ${Math.floor(p.mass)}
-            </span>
-          </div>
-        `;
-      }
-    ).join("");
+    return `
+      <div class="row"
+        style="
+          color:${own?"#42d392":"#fff"};
+          font-weight:${own?"bold":"normal"};
+        "
+      >
+        <span>
+          ${i+1}. ${escapeHTML(p.name || "Player")}
+        </span>
+        <span>${Math.floor(p.mass)}</span>
+      </div>
+    `;
+  }).join("");
 
   if(!me) return;
 
-  const mass =
-    me.cells.reduce(
-      (sum,c) =>
-        sum+c.r*c.r,
-      0
-    );
+  const mass=getMass(me);
 
-  document.getElementById(
-    "mass"
-  ).textContent =
-    "Massa: " +
-    Math.floor(mass);
+  $("mass").textContent =
+    "Massa: "+Math.floor(mass);
 
-  document.getElementById(
-    "energy"
-  ).textContent =
-    Math.floor(energy);
+  $("energy").textContent =
+    Math.floor(clamp(energy,0,100));
 
-  document.getElementById(
-    "level"
-  ).textContent =
-    level;
+  $("level").textContent=level;
+  $("xp").textContent=xp;
 
-  document.getElementById(
-    "xp"
-  ).textContent =
-    xp;
+  const required=Math.max(level*50,1);
 
-  document.getElementById(
-    "xpbar"
-  ).style.width =
-    (
-      xp /
-      Math.max(
-        level*50,
-        1
-      )
-    ) *
-    100 +
-    "%";
+  $("xpbar").style.width=
+    clamp(xp/required*100,0,100)+"%";
 }
 
 /* =========================================================
    CHAT
 ========================================================= */
 
-const chatMessages =
-  document.getElementById(
-    "chatMessages"
-  );
-
 function addChat(msg){
 
-  const div =
-    document.createElement(
-      "div"
-    );
+  const div=document.createElement("div");
 
-  div.className =
-    "chatMessage";
+  div.className="chatMessage";
 
-  div.innerHTML = `
+  div.innerHTML=`
     <span
       class="chatName"
-      style="color:${
-        msg.color ||
-        "#42d392"
-      }"
+      style="color:${escapeHTML(msg.color || "#42d392")}"
     >
-      ${escapeHTML(
-        msg.name ||
-        "Sistema"
-      )}
+      ${escapeHTML(msg.name || "Sistema")}
     </span>
 
     <span class="chatTime">
-      ${escapeHTML(
-        msg.time || ""
-      )}
+      ${escapeHTML(msg.time || "")}
     </span>
 
     <br>
 
     <span class="chatText">
-      ${escapeHTML(
-        msg.text || ""
-      )}
+      ${escapeHTML(msg.text || "")}
     </span>
   `;
 
-  chatMessages.appendChild(
-    div
-  );
+  $("chatMessages").appendChild(div);
 
-  while(
-    chatMessages.children.length >
-    100
-  ){
-
-    chatMessages.removeChild(
-      chatMessages.firstChild
+  while($("chatMessages").children.length>100){
+    $("chatMessages").removeChild(
+      $("chatMessages").firstChild
     );
   }
 
-  chatMessages.scrollTop =
-    chatMessages.scrollHeight;
+  $("chatMessages").scrollTop=
+    $("chatMessages").scrollHeight;
 }
 
 function renderChat(messages){
 
-  chatMessages.innerHTML = "";
+  $("chatMessages").innerHTML="";
 
-  for(
-    const msg of messages
-  ){
+  for(const msg of messages){
     addChat(msg);
   }
 }
 
 function sendChat(){
 
-  const input =
-    document.getElementById(
-      "chatInput"
-    );
+  const input=$("chatInput");
 
-  const text =
-    input.value
-      .replace(/\s+/g," ")
-      .trim()
-      .slice(0,180);
+  const text=input.value
+    .replace(/\s+/g," ")
+    .trim()
+    .slice(0,180);
 
   if(!text) return;
 
-  if(
-    !sendJSON({
-      type:"chat",
-      text
-    })
-  ){
+  if(!sendJSON({
+    type:"chat",
+    text
+  })){
 
     addChat({
       name:"Sistema",
       color:"#ff6680",
-      text:
-        "Non sei connesso al server."
+      text:"Non sei connesso al server."
     });
 
     return;
   }
 
-  input.value = "";
+  input.value="";
 }
 
-document
-  .getElementById(
-    "chatSend"
-  )
-  .onclick =
-  sendChat;
+$("chatSend").onclick=sendChat;
 
-document
-  .getElementById(
-    "chatInput"
-  )
-  .addEventListener(
-    "keydown",
-    e => {
+$("chatInput").addEventListener("keydown",e=>{
 
-      if(e.key === "Enter"){
+  if(e.key==="Enter"){
+    e.preventDefault();
+    sendChat();
+  }
 
-        e.preventDefault();
+  e.stopPropagation();
+});
 
-        sendChat();
-      }
+$("chatClose").onclick=()=>{
 
-      e.stopPropagation();
-    }
-  );
+  setHidden("chat",true);
+  setHidden("chatOpen",false);
+};
 
-document
-  .getElementById(
-    "chatClose"
-  )
-  .onclick = () => {
+$("chatOpen").onclick=()=>{
 
-    document
-      .getElementById(
-        "chat"
-      )
-      .classList.add(
-        "hidden"
-      );
-
-    document
-      .getElementById(
-        "chatOpen"
-      )
-      .classList.remove(
-        "hidden"
-      );
-  };
-
-document
-  .getElementById(
-    "chatOpen"
-  )
-  .onclick = () => {
-
-    document
-      .getElementById(
-        "chat"
-      )
-      .classList.remove(
-        "hidden"
-      );
-
-    document
-      .getElementById(
-        "chatOpen"
-      )
-      .classList.add(
-        "hidden"
-      );
-  };
+  setHidden("chat",false);
+  setHidden("chatOpen",true);
+};
 
 function updateOnlineCount(n){
 
-  document.getElementById(
-    "chatOnline"
-  ).textContent =
-    "● " +
-    n +
-    " online";
+  $("chatOnline").textContent=
+    "● "+n+" online";
 }
 
 /* =========================================================
    USER MENU
 ========================================================= */
 
-const userMenu =
-  document.getElementById(
-    "userMenu"
-  );
-
 function closeUserMenu(){
-
-  userMenu.classList.add(
-    "hidden"
-  );
+  setHidden("userMenu",true);
 }
 
-document
-  .getElementById(
-    "userButton"
-  )
-  .onclick = () => {
+$("userButton").onclick=()=>{
+  $("userMenu").classList.toggle("hidden");
+};
 
-    userMenu.classList.toggle(
-      "hidden"
-    );
-  };
+$("closeUser").onclick=closeUserMenu;
 
-document
-  .getElementById(
-    "closeUser"
-  )
-  .onclick =
-  closeUserMenu;
+$("saveName").onclick=()=>{
 
-document
-  .getElementById(
-    "saveName"
-  )
-  .onclick = () => {
+  const name=$("userNameInput").value
+    .trim()
+    .slice(0,16);
 
-    const input =
-      document.getElementById(
-        "userNameInput"
-      );
+  if(!name) return;
 
-    const name =
-      input.value
-        .trim()
-        .slice(0,16);
+  $("name").value=name;
 
-    if(!name) return;
+  saveLocalName(name);
+  updateNameUI();
 
-    document.getElementById(
-      "name"
-    ).value = name;
+  sendJSON({
+    type:"changeName",
+    name
+  });
 
-    document.getElementById(
-      "userNameButton"
-    ).textContent =
-      name;
+  if(me){
+    me.name=name;
+  }
 
-    sendJSON({
-      type:"changeName",
-      name
-    });
+  closeUserMenu();
+};
 
-    if(me){
-      me.name = name;
-    }
+$("name").addEventListener("input",e=>{
 
-    closeUserMenu();
-  };
+  e.target.value=e.target.value.slice(0,16);
 
-document
-  .getElementById(
-    "name"
-  )
-  .addEventListener(
-    "input",
-    e => {
-
-      const name =
-        e.target.value
-          .slice(0,16);
-
-      document.getElementById(
-        "userNameButton"
-      ).textContent =
-        name || "Player";
-
-      document.getElementById(
-        "userNameInput"
-      ).value =
-        name;
-    }
-  );
+  updateNameUI();
+});
 
 /* =========================================================
    PAUSE
@@ -2127,50 +1571,21 @@ function togglePause(){
 
   if(!running) return;
 
-  paused = !paused;
+  paused=!paused;
 
-  document
-    .getElementById(
-      "pause"
-    )
-    .classList.toggle(
-      "hidden",
-      !paused
-    );
+  setHidden("pause",!paused);
 }
 
-document
-  .getElementById(
-    "resumeButton"
-  )
-  .onclick =
-  togglePause;
+$("resumeButton").onclick=togglePause;
 
-document
-  .getElementById(
-    "menuButton"
-  )
-  .onclick = () => {
+$("menuButton").onclick=()=>{
 
-    paused = true;
-    running = false;
+  running=false;
+  paused=false;
 
-    document
-      .getElementById(
-        "pause"
-      )
-      .classList.add(
-        "hidden"
-      );
-
-    document
-      .getElementById(
-        "menu"
-      )
-      .classList.remove(
-        "hidden"
-      );
-  };
+  setHidden("pause",true);
+  setHidden("menu",false);
+};
 
 /* =========================================================
    GAME OVER
@@ -2180,41 +1595,28 @@ function gameOver(){
 
   if(!running) return;
 
-  running = false;
+  running=false;
+  paused=false;
 
-  const mass =
-    me
-      ? me.cells.reduce(
-          (sum,c) =>
-            sum+c.r*c.r,
-          0
-        )
-      : 0;
+  const mass=me ? getMass(me) : 0;
 
-  document.getElementById(
-    "result"
-  ).textContent =
-    "Hai raggiunto " +
-    Math.floor(mass) +
-    " di massa.";
+  $("result").textContent=
+    "Hai raggiunto "+Math.floor(mass)+" di massa.";
 
-  document
-    .getElementById(
-      "over"
-    )
-    .classList.remove(
-      "hidden"
-    );
+  setHidden("over",false);
 }
 
-document
-  .getElementById(
-    "retryButton"
-  )
-  .onclick = () => {
+$("retryButton").onclick=()=>{
 
-    location.reload();
-  };
+  setHidden("over",true);
+  startGame();
+};
+
+$("overMenuButton").onclick=()=>{
+
+  setHidden("over",true);
+  setHidden("menu",false);
+};
 
 /* =========================================================
    GAME LOOP
@@ -2222,67 +1624,34 @@ document
 
 function loop(now){
 
-  const dt =
-    Math.min(
-      0.05,
-      (now-lastFrame)/1000
-    );
+  const dt=Math.min(
+    0.05,
+    (now-lastFrame)/1000
+  );
 
-  lastFrame = now;
+  lastFrame=now;
 
   if(running && !paused){
 
     updateCamera();
-
     updateLeaderboard();
+    draw();
+  }else{
 
     draw();
   }
 
-  requestAnimationFrame(
-    loop
-  );
+  requestAnimationFrame(loop);
 }
 
 /* =========================================================
-   INITIALIZE
+   INIT
 ========================================================= */
 
-document.getElementById(
-  "userNameInput"
-).value =
-  document.getElementById(
-    "name"
-  ).value;
+loadLocalName();
+updateNameUI();
 
-document.getElementById(
-  "userNameButton"
-).textContent =
-  document.getElementById(
-    "name"
-  ).value || "Player";
-
-/*
-  Riceviamo l'ID dal welcome.
-*/
-
-const oldHandleMessage =
-  handleMessage;
-
-handleMessage = function(msg){
-
-  if(msg.type === "welcome"){
-    clientId = msg.id;
-  }
-
-  oldHandleMessage(msg);
-};
-
-/*
-  Connessione immediata,
-  così l'indicatore funziona
-  anche prima di GIOCA.
-*/
+$("userNameInput").value=getName();
 
 connect();
 

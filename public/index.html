@@ -20,31 +20,16 @@ canvas{position:fixed;inset:0;display:block}
 button,input,select{font:inherit}
 button{border:0;cursor:pointer}
 
-#hud{
- position:fixed;left:15px;top:15px;z-index:20;
- min-width:225px;padding:14px;border-radius:12px;
- background:#01080cee;border:1px solid #00ffff;
- box-shadow:0 0 15px #00ffff33;backdrop-filter:blur(8px)
-}
-#mass{font-size:19px;text-shadow:0 0 5px #00ffff;}
 .small{color:#0088ff;font-size:11px}
-.bar{
- width:100%;height:7px;margin-top:8px;background:#002222;
- border-radius:10px;overflow:hidden;border:1px solid #00ffff44;
+
+#rightPanel{
+ position:fixed;right:15px;top:15px;z-index:20;
+ display:flex;flex-direction:column;gap:12px;align-items:flex-end;
+ max-height:calc(100vh - 30px);
 }
-.bar i{
- display:block;width:0%;height:100%;
- background:linear-gradient(90deg,#00ffff,#0055ff);
- box-shadow:0 0 8px #00ffff;
-}
-.stats{
- display:grid;grid-template-columns:1fr 1fr;
- gap:5px;margin-top:9px;font-size:11px;color:#00aaaa;
-}
-.stats b{color:#00ffff}
 
 #board{
- position:fixed;right:15px;top:15px;z-index:20;width:230px;
+ width:230px;
  padding:14px;border-radius:12px;background:#01080cee;
  border:1px solid #00ffff;box-shadow:0 0 15px #00ffff33;
  backdrop-filter:blur(8px)
@@ -55,12 +40,14 @@ button{border:0;cursor:pointer}
  font-size:13px
 }
 
-#mini{
- position:fixed;right:15px;bottom:15px;z-index:20;
- width:150px;height:150px;border:1px solid #00ffff;
- border-radius:12px;background:#000508;
+#miniWrap{
+ width:150px;height:150px;min-width:90px;min-height:90px;
+ max-width:320px;max-height:320px;
+ border:1px solid #00ffff;border-radius:12px;background:#000508;
  box-shadow:0 0 15px #00ffff33;
+ resize:both;overflow:hidden;padding:0;
 }
+#mini{width:100%;height:100%;display:block}
 
 #userButton{
  position:fixed;right:260px;top:15px;z-index:40;
@@ -105,32 +92,72 @@ button{border:0;cursor:pointer}
 
 #chat{
  position:fixed;left:15px;bottom:15px;z-index:30;width:350px;height:320px;
- display:flex;flex-direction:column;overflow:hidden;border-radius:12px;
+ min-width:280px;min-height:220px;max-width:92vw;max-height:80vh;
+ display:flex;flex-direction:column;overflow:auto;border-radius:12px;
  background:#01080cee;border:1px solid #00ffff;
- box-shadow:0 0 20px #00ffff33;backdrop-filter:blur(8px)
+ box-shadow:0 0 20px #00ffff33;backdrop-filter:blur(8px);
+ resize:both;
 }
 #chatHeader{
  min-height:44px;display:flex;justify-content:space-between;
- align-items:center;padding:0 12px;background:#001a22;
- border-bottom:1px solid #00ffff55
+ align-items:center;padding:0 8px 0 12px;background:#001a22;
+ border-bottom:1px solid #00ffff55;flex:0 0 auto;gap:6px;
 }
+#chatHeaderTitle{display:flex;flex-direction:column;line-height:1.2}
 #chatOnline{color:#00ffff;font-size:10px}
+#chatHeaderIcons{display:flex;align-items:center;gap:4px}
+.chatIconBtn{
+ padding:5px 7px;background:#00ffff22;color:#00ffff;border-radius:6px;
+ border:1px solid #00ffff55;font-size:12px;line-height:1;
+}
+.chatIconBtn.active{background:#00ffff;color:#000;}
 #chatClose{padding:5px 9px;background:#00ffff33;color:#00ffff;border-radius:6px;border:1px solid #00ffff;}
-#chatMessages{flex:1;overflow-y:auto;padding:10px}
+#chatMessagesWrap{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;overflow:hidden}
+#chatMessages{flex:1;overflow-y:auto;padding:10px;min-height:0}
 .chatMessage{margin-bottom:9px;font-size:12px;line-height:1.35}
+.chatMessage.mentioned{background:#00ffff14;border-left:2px solid #00ffff;padding-left:6px;margin-left:-8px}
+.chatMessage.own{opacity:.85}
 .chatName{font-weight:bold}.chatTime{color:#0088ff;font-size:9px;margin-left:5px}
-.chatText{color:#e0ffff}
-#chatInputArea{display:flex;gap:6px;padding:7px;background:#000a11;border-top:1px solid #00ffff33;}
+.chatText{color:#e0ffff;word-break:break-word}
+.roleBadge{
+ display:inline-block;font-size:8px;font-weight:bold;padding:1px 5px;
+ border-radius:5px;margin-right:5px;vertical-align:middle;letter-spacing:.5px;
+}
+.role-admin{background:#ff2b4d;color:#fff;box-shadow:0 0 6px #ff2b4d99}
+.role-moderator{background:#b56cff;color:#fff;box-shadow:0 0 6px #b56cff99}
+.role-vip{background:#ffd23f;color:#000;box-shadow:0 0 6px #ffd23f99}
+.role-user{background:#003b44;color:#00ffff}
+#chatNewMsg{
+ position:absolute;left:50%;bottom:8px;transform:translateX(-50%);
+ padding:5px 12px;border-radius:20px;background:#00ffff;color:#000;
+ font-size:11px;font-weight:bold;box-shadow:0 0 10px #00ffff;display:none;
+}
+#chatInputArea{display:flex;gap:6px;padding:7px;background:#000a11;border-top:1px solid #00ffff33;flex:0 0 auto;position:relative}
 #chatInput{
  flex:1;min-width:0;margin:0;padding:9px;border:1px solid #00ffff55;border-radius:6px;
  background:#00111a;color:#00ffff;outline:0;font-family:inherit;
 }
 #chatSend{padding:8px 12px;border-radius:6px;background:#00ffff;color:#000;font-weight:bold;}
+#chatCharCount{position:absolute;right:78px;bottom:-1px;font-size:9px;color:#0088ff88;pointer-events:none}
 #chatOpen{
  position:fixed;left:15px;bottom:15px;z-index:29;padding:10px 14px;
  border-radius:12px;background:#01080cee;color:#00ffff;
  border:1px solid #00ffff;box-shadow:0 0 10px #00ffff33;
 }
+#chatUnread{
+ display:none;position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;
+ padding:0 3px;border-radius:10px;background:#ff2b4d;color:#fff;font-size:10px;
+ line-height:16px;text-align:center;box-shadow:0 0 6px #ff2b4d;
+}
+#emojiPanel{
+ display:none;position:absolute;left:7px;bottom:52px;width:270px;max-height:170px;
+ overflow-y:auto;grid-template-columns:repeat(6,1fr);gap:4px;padding:8px;
+ background:#01080cf7;border:1px solid #00ffff;border-radius:8px;
+ box-shadow:0 0 20px #00ffff55;z-index:35;
+}
+#emojiPanel.show{display:grid}
+.emojiBtn{font-size:18px;padding:4px 0;border-radius:6px;background:transparent;text-align:center}
+.emojiBtn:hover{background:#00ffff22}
 
 #power{
  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
@@ -151,7 +178,7 @@ button{border:0;cursor:pointer}
 }
 
 #powerupPanel{
- position:fixed;left:15px;top:165px;z-index:20;
+ position:fixed;left:15px;top:15px;z-index:20;
  display:flex;flex-direction:column;gap:6px;
 }
 #powerupPanel:empty{display:none}
@@ -251,13 +278,12 @@ button{border:0;cursor:pointer}
 }
 
 @media(max-width:700px){
- #board{width:175px;top:65px}
+ #rightPanel{top:65px}
+ #board{width:175px}
  #userButton{right:14px;top:14px}
  #userMenu{right:14px;top:62px}
  #chat{width:calc(100vw - 30px);height:270px}
- #mini{width:105px;height:105px}
- #hud{min-width:165px;padding:11px}
- #hud .stats{display:none}
+ #miniWrap{width:105px;height:105px}
  #power{display:none}
 }
 </style>
@@ -270,23 +296,12 @@ button{border:0;cursor:pointer}
 <div id="connection">[SYS] Modalità locale · 1 entity online</div>
 <div id="toast"></div>
 
-<div id="hud">
-  <div id="mass" data-i18n="mass_display">MASS: 25</div>
-  <div>LVL <b id="level">1</b>/1000 | XP <span id="xp">0</span></div>
-  <div class="bar"><i id="xpbar"></i></div>
-  <div class="small">PWR: <span id="energy">100</span>% · 🪙 <span id="coinsDisplay">0</span></div>
-
-  <div class="stats">
-    <div>[K] Kill <b id="kills">0</b></div>
-    <div>[F] Food <b id="foodCount">0</b></div>
-    <div>[T] Time <b id="time">0:00</b></div>
-    <div>[R] Record <b id="best">25</b></div>
+<div id="rightPanel">
+  <div id="board">
+    <h3 data-i18n="leaderboard_title">[ CLASSIFICA ]</h3>
+    <div id="rows"></div>
   </div>
-</div>
-
-<div id="board">
-  <h3 data-i18n="leaderboard_title">[ CLASSIFICA ]</h3>
-  <div id="rows"></div>
+  <div id="miniWrap"><canvas id="mini" width="150" height="150"></canvas></div>
 </div>
 
 <button id="userButton">USR_ <span id="userNameButton">Player</span></button>
@@ -366,22 +381,33 @@ button{border:0;cursor:pointer}
 
 <div id="chat">
   <div id="chatHeader">
-    <div>LOG_CHAT <span id="chatOnline">● LOCALE</span></div>
-    <button id="chatClose">−</button>
+    <div id="chatHeaderTitle">
+      LOG_CHAT
+      <span id="chatOnline">● LOCALE</span>
+    </div>
+    <div id="chatHeaderIcons">
+      <button class="chatIconBtn" id="chatSoundBtn" title="Suono notifiche">🔔</button>
+      <button class="chatIconBtn" id="chatTimeBtn" title="Mostra/nascondi orario">🕒</button>
+      <button id="chatClose">−</button>
+    </div>
   </div>
 
-  <div id="chatMessages"></div>
+  <div id="chatMessagesWrap">
+    <div id="chatMessages"></div>
+    <button id="chatNewMsg" type="button">▼ Nuovi messaggi</button>
+  </div>
 
   <div id="chatInputArea">
+    <button class="chatIconBtn" id="emojiBtn" type="button" title="Emoticon">😊</button>
+    <div id="emojiPanel"></div>
     <input id="chatInput" maxlength="180" autocomplete="off"
-           data-i18n="chat_placeholder" placeholder="> Inserisci comando...">
+           data-i18n="chat_placeholder" placeholder="> Inserisci comando o /help...">
     <button id="chatSend" data-i18n="chat_send">EXEC</button>
+    <span id="chatCharCount">0/180</span>
   </div>
 </div>
 
-<button id="chatOpen" class="hidden">LOG_CHAT</button>
-
-<canvas id="mini" width="150" height="150"></canvas>
+<button id="chatOpen" class="hidden">LOG_CHAT<span id="chatUnread">0</span></button>
 
 <div id="power">
   <div class="p">SPACE: SPLIT</div>
@@ -1295,7 +1321,8 @@ function connectToServer(name, color, startMass){
       name,
       color,
       startMass,
-      startSpeed:7
+      startSpeed:7,
+      token:authToken||null
     }));
   };
 
@@ -1854,14 +1881,15 @@ function drawPlayer(){
 
 function drawMini(){
 
-  const w=150, h=150;
+  const w=mini.width, h=mini.height;
 
   ext_renClearCanvas(mctx, w, h, "#000508");
 
   const scale=w/WORLD;
+  const foodSize=Math.max(2, w/150);
 
   for(const f of foods){
-    ext_renDrawRectFill(mctx, f.x*scale, f.y*scale, 1, 1, "#ffffff35");
+    ext_renDrawRectFill(mctx, f.x*scale, f.y*scale, foodSize, foodSize, "#8affff");
   }
 
   for(const v of viruses){
@@ -1883,32 +1911,47 @@ function drawMini(){
   ext_renDrawRectStroke(mctx, 0, 0, w, h, "#00ffff", 1);
 }
 
+/* Ridimensionamento minimappa: la casella (#miniWrap) è CSS-resizable,
+   qui sincronizziamo il buffer di disegno del canvas con la nuova dimensione
+   e salviamo la preferenza dell'utente. */
+const miniWrap=document.getElementById("miniWrap");
+
+function applyMiniSize(px){
+  const size=Math.round(clamp(px,90,320));
+  miniWrap.style.width=size+"px";
+  miniWrap.style.height=size+"px";
+  mini.width=size;
+  mini.height=size;
+}
+
+const savedMiniSize=parseInt(localStorage.getItem("cellArenaMiniSize")||"150",10);
+applyMiniSize(savedMiniSize);
+
+if(typeof ResizeObserver!=="undefined"){
+  let miniResizeTimer=null;
+  new ResizeObserver(entries=>{
+    for(const entry of entries){
+      const size=Math.round(entry.contentRect.width);
+      if(size>0 && (mini.width!==size || mini.height!==size)){
+        mini.width=size;
+        mini.height=size;
+        clearTimeout(miniResizeTimer);
+        miniResizeTimer=setTimeout(()=>localStorage.setItem("cellArenaMiniSize",size),300);
+      }
+    }
+  }).observe(miniWrap);
+}
+
 /* =========================================================
    HUD E LOGICA DEBUG
 ========================================================= */
 
 function updateHUD(){
-
   if(!player)return;
-
+  // Il pannello statistiche (MASSA/LVL/XP/Kill/Food/Tempo/Record) è stato rimosso
+  // su richiesta; manteniamo qui solo il tracciamento del record per il game-over.
   const mass=ext_entGetPlayerMassInt();
-  const massLabel = i18n_dict[currentLang] ? (i18n_dict[currentLang].mass_display || "MASS: ") : "MASS: ";
-
   best=Math.max(best,mass);
-
-  document.getElementById("mass").textContent = massLabel + ext_sysFormatScoreNumber(mass);
-  document.getElementById("level").textContent=level;
-  document.getElementById("xp").textContent=ext_sysFormatScoreNumber(xp);
-  document.getElementById("energy").textContent=Math.floor(energy);
-  document.getElementById("coinsDisplay").textContent=ext_sysFormatScoreNumber(coins);
-
-  document.getElementById("kills").textContent=kills;
-  document.getElementById("foodCount").textContent=ext_sysFormatScoreNumber(foodEaten);
-  document.getElementById("time").textContent=formatTime(gameTime);
-  document.getElementById("best").textContent=ext_sysFormatScoreNumber(best);
-
-  const percent=xp/Math.max(level*50,1)*100;
-  document.getElementById("xpbar").style.width=Math.min(100,percent)+"%";
 }
 
 function drawDebugOverlay(now) {
@@ -1955,17 +1998,132 @@ function updateLeaderboard(){
    CHAT
 ========================================================= */
 
+const chatEl=document.getElementById("chat");
+const chatMessagesWrap=document.getElementById("chatMessagesWrap");
 const chatMessages=document.getElementById("chatMessages");
+const chatNewMsgBtn=document.getElementById("chatNewMsg");
+const chatUnreadBadge=document.getElementById("chatUnread");
+const chatCharCount=document.getElementById("chatCharCount");
+const emojiBtn=document.getElementById("emojiBtn");
+const emojiPanel=document.getElementById("emojiPanel");
+
+/* =========================================================
+   RUOLI CHAT (Admin / Moderatore / Vip user / User)
+========================================================= */
+const ROLE_LABELS={ admin:"ADMIN", moderator:"MOD", vip:"VIP", user:"" };
+function roleBadgeHTML(role){
+  const r=(role||"user").toLowerCase();
+  if(r==="user"||!ROLE_LABELS[r])return "";
+  return `<span class="roleBadge role-${r}">${ROLE_LABELS[r]}</span>`;
+}
+
+/* =========================================================
+   NUOVA FUNZIONE 1/10: Ignora utenti (mute lato client)
+========================================================= */
+let ignoredUsers=new Set(JSON.parse(localStorage.getItem("cellArenaIgnored")||"[]"));
+function ignoreUser(name){
+  if(!name)return;
+  ignoredUsers.add(name.toLowerCase());
+  localStorage.setItem("cellArenaIgnored",JSON.stringify([...ignoredUsers]));
+}
+function unignoreUser(name){
+  if(!name)return;
+  ignoredUsers.delete(name.toLowerCase());
+  localStorage.setItem("cellArenaIgnored",JSON.stringify([...ignoredUsers]));
+}
+function isIgnored(name){ return ignoredUsers.has((name||"").toLowerCase()); }
+
+/* =========================================================
+   NUOVA FUNZIONE 2/10: Notifica sonora nuovi messaggi
+========================================================= */
+let chatSoundOn=localStorage.getItem("cellArenaChatSound")!=="0";
+function toggleChatSound(){
+  chatSoundOn=!chatSoundOn;
+  localStorage.setItem("cellArenaChatSound",chatSoundOn?"1":"0");
+  document.getElementById("chatSoundBtn").classList.toggle("active",chatSoundOn);
+}
+let _chatAudioCtx=null;
+function playChatPing(){
+  if(!chatSoundOn)return;
+  try{
+    _chatAudioCtx=_chatAudioCtx||new (window.AudioContext||window.webkitAudioContext)();
+    const osc=_chatAudioCtx.createOscillator();
+    const gain=_chatAudioCtx.createGain();
+    osc.type="sine"; osc.frequency.value=880;
+    gain.gain.setValueAtTime(0.05,_chatAudioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001,_chatAudioCtx.currentTime+0.18);
+    osc.connect(gain); gain.connect(_chatAudioCtx.destination);
+    osc.start(); osc.stop(_chatAudioCtx.currentTime+0.18);
+  }catch(e){}
+}
+
+/* =========================================================
+   NUOVA FUNZIONE 3/10: Mostra/nascondi orario messaggi
+========================================================= */
+let chatShowTime=localStorage.getItem("cellArenaChatTime")!=="0";
+function toggleChatTimestamps(){
+  chatShowTime=!chatShowTime;
+  localStorage.setItem("cellArenaChatTime",chatShowTime?"1":"0");
+  document.getElementById("chatTimeBtn").classList.toggle("active",chatShowTime);
+  chatMessages.querySelectorAll(".chatTime").forEach(el=>{
+    el.style.display=chatShowTime?"":"none";
+  });
+}
+
+/* =========================================================
+   NUOVA FUNZIONE 4/10: Badge messaggi non letti mentre chat è chiusa
+========================================================= */
+let unreadCount=0;
+function bumpUnread(){
+  if(chatEl.classList.contains("hidden")){
+    unreadCount++;
+    chatUnreadBadge.textContent=unreadCount>99?"99+":unreadCount;
+    chatUnreadBadge.style.display="block";
+  }
+}
+function clearUnread(){
+  unreadCount=0;
+  chatUnreadBadge.style.display="none";
+}
+
+/* =========================================================
+   NUOVA FUNZIONE 5/10: Autoscroll intelligente + pulsante "nuovi messaggi"
+========================================================= */
+function isNearChatBottom(){
+  return chatMessages.scrollHeight-chatMessages.scrollTop-chatMessages.clientHeight<40;
+}
+function scrollChatToBottom(){
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+  chatNewMsgBtn.style.display="none";
+}
+chatMessages.addEventListener("scroll",()=>{
+  if(isNearChatBottom())chatNewMsgBtn.style.display="none";
+});
+chatNewMsgBtn.onclick=scrollChatToBottom;
+
+/* =========================================================
+   NUOVA FUNZIONE 6/10: Evidenzia le menzioni al tuo nome
+========================================================= */
+function textMentionsMe(text){
+  const myName=(player&&player.name||"").trim().toLowerCase();
+  if(!myName||myName.length<2)return false;
+  return (text||"").toLowerCase().includes(myName);
+}
 
 function addChat(msg){
 
+  if(isIgnored(msg.name))return;
+
+  const wasNearBottom=isNearChatBottom();
+  const mentioned=textMentionsMe(msg.text);
+
   const div=document.createElement("div");
-  div.className="chatMessage";
+  div.className="chatMessage"+(mentioned?" mentioned":"");
   div.innerHTML=`
-    <span class="chatName" style="color:${msg.color||"#00ffff"}">
+    ${roleBadgeHTML(msg.role)}<span class="chatName" style="color:${msg.color||"#00ffff"}">
       ${escapeHTML(msg.name||"SYS_LOG")}
     </span>
-    <span class="chatTime">${escapeHTML(msg.time||"")}</span>
+    <span class="chatTime" style="display:${chatShowTime?"":"none"}">${escapeHTML(msg.time||"")}</span>
     <br>
     <span class="chatText">>> ${escapeHTML(msg.text||"")}</span>
   `;
@@ -1975,13 +2133,101 @@ function addChat(msg){
   while(chatMessages.children.length>100){
     chatMessages.removeChild(chatMessages.firstChild);
   }
-  chatMessages.scrollTop=chatMessages.scrollHeight;
+
+  if(wasNearBottom){
+    scrollChatToBottom();
+  }else{
+    chatNewMsgBtn.style.display="block";
+  }
+
+  if(msg.playerId!==undefined && msg.playerId!==netId){
+    playChatPing();
+    bumpUnread();
+    if(mentioned)vibrate(60);
+  }
 }
+
+/* =========================================================
+   NUOVA FUNZIONE 7/10: Comandi chat locali (/help, /clear, /ignore...)
+========================================================= */
+function handleLocalChatCommand(text){
+  const parts=text.slice(1).trim().split(/\s+/);
+  const cmd=(parts.shift()||"").toLowerCase();
+  const arg=parts.join(" ");
+
+  if(cmd==="clear"){
+    clearChatLocal();
+    return true;
+  }
+  if(cmd==="ignore"){
+    if(arg){ ignoreUser(arg); addChat({name:"SYS_LOG",color:"#0088ff",text:"Hai ignorato "+arg+".",time:""}); }
+    return true;
+  }
+  if(cmd==="unignore"){
+    if(arg){ unignoreUser(arg); addChat({name:"SYS_LOG",color:"#0088ff",text:"Non ignori più "+arg+".",time:""}); }
+    return true;
+  }
+  if(cmd==="help"){
+    addChat({name:"SYS_LOG",color:"#0088ff",text:"Comandi locali: /clear, /ignore <nome>, /unignore <nome>. Comandi Staff (Admin/Mod): /kick <nome>, /mute <nome>, /unmute <nome>.",time:""});
+    return true;
+  }
+  return false; // non è un comando locale: verrà inviato al server (es. /kick, /mute, /role)
+}
+
+/* =========================================================
+   NUOVA FUNZIONE 8/10: Pulisce la chat solo localmente
+========================================================= */
+function clearChatLocal(){
+  chatMessages.innerHTML="";
+  renderedChatIds.clear();
+}
+
+/* =========================================================
+   NUOVA FUNZIONE 9/10: Contatore caratteri live
+========================================================= */
+function updateCharCounter(){
+  const input=document.getElementById("chatInput");
+  chatCharCount.textContent=input.value.length+"/180";
+}
+
+/* =========================================================
+   NUOVA FUNZIONE 10/10: Selettore emoticon (30 emoji)
+========================================================= */
+const EMOJI_LIST=["😀","😂","😅","😎","😍","🤩","😜","🤔","😱","😡","🥶","🤯","😴","🤝","👍","👎","👏","🙌","💪","🔥","⚡","💯","🎯","🏆","💀","👻","🤖","👽","❤️","💔"];
+function buildEmojiPanel(){
+  emojiPanel.innerHTML=EMOJI_LIST.map(em=>`<button type="button" class="emojiBtn">${em}</button>`).join("");
+  emojiPanel.querySelectorAll(".emojiBtn").forEach(btn=>{
+    btn.onclick=()=>{
+      const input=document.getElementById("chatInput");
+      input.value=(input.value+btn.textContent).slice(0,180);
+      updateCharCounter();
+      input.focus();
+    };
+  });
+}
+buildEmojiPanel();
+function toggleEmojiPanel(){
+  emojiPanel.classList.toggle("show");
+  emojiBtn.classList.toggle("active",emojiPanel.classList.contains("show"));
+}
+emojiBtn.onclick=toggleEmojiPanel;
+document.addEventListener("click",e=>{
+  if(!emojiPanel.contains(e.target) && e.target!==emojiBtn){
+    emojiPanel.classList.remove("show");
+    emojiBtn.classList.remove("active");
+  }
+});
 
 function sendChat(){
   const input=document.getElementById("chatInput");
   const text=input.value.replace(/\s+/g," ").trim().slice(0,180);
   if(!text)return;
+
+  if(text.startsWith("/") && handleLocalChatCommand(text)){
+    input.value="";
+    updateCharCounter();
+    return;
+  }
 
   if(ws&&ws.readyState===WebSocket.OPEN){
     ws.send(JSON.stringify({ type:"chat", text }));
@@ -1989,6 +2235,7 @@ function sendChat(){
     addChat({ name:"SYS_ERR", color:"#ff6680", text:"Non connesso al server.", time:"" });
   }
   input.value="";
+  updateCharCounter();
 }
 
 document.getElementById("chatSend").onclick=sendChat;
@@ -1997,16 +2244,46 @@ document.getElementById("chatInput").addEventListener("keydown",e=>{
   if(e.key==="Enter"){ e.preventDefault(); sendChat(); }
   e.stopPropagation();
 });
+document.getElementById("chatInput").addEventListener("input",updateCharCounter);
+
+document.getElementById("chatSoundBtn").onclick=toggleChatSound;
+document.getElementById("chatSoundBtn").classList.toggle("active",chatSoundOn);
+document.getElementById("chatTimeBtn").onclick=toggleChatTimestamps;
+document.getElementById("chatTimeBtn").classList.toggle("active",chatShowTime);
 
 document.getElementById("chatClose").onclick=()=>{
-  document.getElementById("chat").classList.add("hidden");
+  chatEl.classList.add("hidden");
   document.getElementById("chatOpen").classList.remove("hidden");
 };
 
 document.getElementById("chatOpen").onclick=()=>{
-  document.getElementById("chat").classList.remove("hidden");
+  chatEl.classList.remove("hidden");
   document.getElementById("chatOpen").classList.add("hidden");
+  clearUnread();
+  scrollChatToBottom();
 };
+
+/* Ridimensionamento chat: #chat è CSS-resizable (resize:both), qui
+   salviamo e ripristiniamo la dimensione scelta dall'utente. */
+(function setupChatResize(){
+  const savedW=localStorage.getItem("cellArenaChatW");
+  const savedH=localStorage.getItem("cellArenaChatH");
+  if(savedW)chatEl.style.width=savedW+"px";
+  if(savedH)chatEl.style.height=savedH+"px";
+
+  if(typeof ResizeObserver!=="undefined"){
+    let chatResizeTimer=null;
+    new ResizeObserver(entries=>{
+      for(const entry of entries){
+        clearTimeout(chatResizeTimer);
+        chatResizeTimer=setTimeout(()=>{
+          localStorage.setItem("cellArenaChatW",Math.round(entry.contentRect.width));
+          localStorage.setItem("cellArenaChatH",Math.round(entry.contentRect.height));
+        },300);
+      }
+    }).observe(chatEl);
+  }
+})();
 
 /* =========================================================
    ACCOUNT (registrazione / login / login sociale)
@@ -2031,7 +2308,8 @@ function setAuthError(msg){
 
 function applyLoggedInUI(user){
   currentUser=user;
-  document.getElementById("accountStatus").textContent = "@" + user.username + (user.provider!=="local" ? " ("+user.provider+")" : "");
+  const roleTag=user.role && user.role!=="user" ? " "+roleBadgeHTML(user.role).replace(/"/g,"'") : "";
+  document.getElementById("accountStatus").innerHTML = "@" + escapeHTML(user.username) + (user.provider!=="local" ? " ("+escapeHTML(user.provider)+")" : "") + roleTag;
   document.getElementById("authForms").classList.add("hidden");
   document.getElementById("btnLogout").classList.remove("hidden");
 

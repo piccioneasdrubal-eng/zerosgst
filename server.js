@@ -6,8 +6,8 @@ const WebSocket = require("ws");
 const PORT = process.env.PORT || 3000;
 const WORLD = 6000;
 const TICK = 30;
-const FOOD_COUNT = 850;
-const MAX_PLAYERS = 60;
+const FOOD_COUNT = 1850;
+const MAX_PLAYERS = 600;
 const MAX_CHAT_LENGTH = 180;
 
 let targetBotCount = 15; 

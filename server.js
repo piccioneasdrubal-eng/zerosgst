@@ -119,6 +119,40 @@ function createPlayer(id, name, isBot = false, startMass = 25, startSpeed = 7) {
   };
 
   findSpawn(p);
+  // Sostituisci la tua funzione createPlayer con questa:
+function createPlayer(id, name, isBot = false, startMass = 25, startSpeed = 7) {
+  const p = {
+    id,
+    name: cleanName(name),
+    color: randomColor(),
+
+    x: WORLD / 2,
+    y: WORLD / 2,
+
+    targetX: WORLD / 2,
+    targetY: WORLD / 2,
+
+    r: startMass, 
+    baseSpeed: startSpeed, 
+    isBot: isBot, 
+
+    energy: 100,
+    score: 0,
+
+    cells: [],
+
+    lastMove: 0,
+    lastSplit: 0,
+    lastEject: 0,
+
+    socket: null
+  };
+
+  findSpawn(p);
+  ensureCells(p); // <--- IL FIX CRITICO: Crea fisicamente la cellula nel mondo!
+  
+  return p;
+}
   return p;
 }
 

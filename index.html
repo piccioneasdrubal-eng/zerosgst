@@ -260,6 +260,62 @@ button{border:0;cursor:pointer}
 .switch.on{background:#00ffff;box-shadow:0 0 8px #00ffff;}
 .switch.on i{left:21px;background:#000;}
 
+/* =========================================================
+   HUB MENU PRINCIPALE — pannello scuro con tab
+   (Start / Impostazioni / Tema / Hotkey)
+========================================================= */
+.hubCard{
+ width:min(560px,94vw);max-height:92vh;overflow:hidden;
+ padding:0;border-radius:14px;display:flex;flex-direction:column;
+ background:#01080cf7;border:1px solid #00ffff;
+ box-shadow:0 0 40px #00ffff44;
+}
+.hubTabs{
+ display:flex;flex:0 0 auto;background:#000c11;
+ border-bottom:1px solid #00ffff44;overflow-x:auto;
+}
+.hubTab{
+ flex:1;min-width:82px;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;gap:4px;
+ padding:12px 8px 10px;background:transparent;color:#0088ff;
+ font-size:11px;letter-spacing:.3px;text-transform:uppercase;
+ border-bottom:2px solid transparent;white-space:nowrap;
+}
+.hubTab .hubTabIcon{font-size:17px;line-height:1}
+.hubTab.active{
+ color:#00ffff;border-bottom-color:#00ffff;
+ text-shadow:0 0 6px #00ffff;background:#00ffff0d;
+}
+.hubBody{padding:26px 28px 28px;overflow-y:auto}
+.hubPane.hidden{display:none}
+
+.themeSwatches{
+ display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:10px;
+}
+.themeSwatch{
+ aspect-ratio:1;border-radius:50%;cursor:pointer;
+ border:2px solid #ffffff22;box-shadow:0 0 8px #00000088;position:relative;
+}
+.themeSwatch.active{border-color:#fff;box-shadow:0 0 12px 1px currentColor}
+.themeSwatch.active::after{
+ content:"✓";position:absolute;inset:0;display:flex;
+ align-items:center;justify-content:center;color:#000;font-weight:bold;
+ text-shadow:0 0 3px #fff;
+}
+.themeLabel{margin-top:14px;font-size:11px;color:#0088ff;text-align:center}
+
+.hotkeyList{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.hotkeyRow{
+ display:flex;justify-content:space-between;align-items:center;gap:10px;
+ padding:10px 12px;background:#00111a;border:1px solid #00ffff33;border-radius:8px;
+}
+.hotkeyRow span{color:#8affff;font-size:12.5px}
+.hotkeyKey{
+ padding:3px 10px;border-radius:5px;background:#002233;
+ border:1px solid #00ffff;color:#00ffff;font-weight:bold;
+ font-size:11.5px;min-width:30px;text-align:center;white-space:nowrap;
+}
+
 #touch{
  position:fixed;inset:0;z-index:10;pointer-events:none
 }
@@ -435,30 +491,95 @@ button{border:0;cursor:pointer}
 </div>
 
 <div id="menu">
-  <div class="card">
-    <h1 style="font-size:26px;">ZERO_AND_YASSINE_EVOLUTION<br><span style="font-size:18px;color:#0088ff;" data-i18n="game_subtitle">// NEON EDITION</span></h1>
+  <div class="hubCard">
 
-    <p data-i18n="game_desc">
-      Esegui l'assorbimento delle particelle. Elimina le entità inferiori.<br>
-      <b>W</b> = Feed | <b>SPACE</b> = Split | <b>SHIFT</b> = Dash.
-    </p>
+    <div class="hubTabs">
+      <button class="hubTab active" data-hubtab="start" type="button">
+        <span class="hubTabIcon">🏠</span><span data-i18n="tab_start">Start</span>
+      </button>
+      <button class="hubTab" data-hubtab="settingsTab" type="button">
+        <span class="hubTabIcon">⚙️</span><span data-i18n="tab_settings">Impostazioni</span>
+      </button>
+      <button class="hubTab" data-hubtab="themeTab" type="button">
+        <span class="hubTabIcon">🎨</span><span data-i18n="tab_theme">Tema</span>
+      </button>
+      <button class="hubTab" data-hubtab="hotkeysTab" type="button">
+        <span class="hubTabIcon">⌨️</span><span data-i18n="tab_hotkeys">Hotkey</span>
+      </button>
+    </div>
 
-    <label data-i18n="lbl_player_id">ID_GIOCATORE</label>
-    <input id="name" maxlength="16" value="Player">
+    <div class="hubBody">
 
-    <label data-i18n="lbl_protocol">PROTOCOLLO</label>
-    <select id="mode">
-      <option value="classic" data-i18n="prot_classic">Standard (Classic)</option>
-      <option value="survival" data-i18n="prot_survival">Hardcore (Survival)</option>
-      <option value="chaos" data-i18n="prot_chaos">Overload (Chaos)</option>
-    </select>
+      <div class="hubPane" data-hubpane="start">
+        <h1 style="font-size:26px;">ZERO_AND_YASSINE_EVOLUTION<br><span style="font-size:18px;color:#0088ff;" data-i18n="game_subtitle">// NEON EDITION</span></h1>
 
-    <button class="play" id="playButton" data-i18n="btn_play">INIZIALIZZA</button>
-    <button class="secondary" id="menuSettings" data-i18n="btn_config">SYS_CONFIG</button>
+        <p data-i18n="game_desc">
+          Esegui l'assorbimento delle particelle. Elimina le entità inferiori.<br>
+          <b>W</b> = Feed | <b>SPACE</b> = Split | <b>SHIFT</b> = Dash.
+        </p>
 
-    <p class="small" data-i18n="game_controls">
-      > CMD: Mouse/Touch · SPACE=split · W=feed · E=boost · SHIFT=dash · F=Fullscreen · \=Debug · ESC=Pausa
-    </p>
+        <label data-i18n="lbl_player_id">ID_GIOCATORE</label>
+        <input id="name" maxlength="16" value="Player">
+
+        <label data-i18n="lbl_protocol">PROTOCOLLO</label>
+        <select id="mode">
+          <option value="classic" data-i18n="prot_classic">Standard (Classic)</option>
+          <option value="survival" data-i18n="prot_survival">Hardcore (Survival)</option>
+          <option value="chaos" data-i18n="prot_chaos">Overload (Chaos)</option>
+        </select>
+
+        <button class="play" id="playButton" data-i18n="btn_play">INIZIALIZZA</button>
+
+        <p class="small" data-i18n="game_controls">
+          > CMD: Mouse/Touch · SPACE=split · W=feed · E=boost · SHIFT=dash · F=Fullscreen · \=Debug · ESC=Pausa
+        </p>
+      </div>
+
+      <div class="hubPane hidden" data-hubpane="settingsTab">
+        <h2 data-i18n="btn_config">[ SYS_CONFIG ]</h2>
+
+        <div class="settingRow">
+          <label data-i18n="lbl_render">Render Particelle</label>
+          <div class="switch on" id="hubParticlesSwitch"><i></i></div>
+        </div>
+
+        <div class="settingRow">
+          <label data-i18n="lbl_shadow">Ombreggiatura Neon</label>
+          <div class="switch on" id="hubShadowsSwitch"><i></i></div>
+        </div>
+
+        <div class="settingRow">
+          <label data-i18n="lbl_haptic">Feedback Aptico</label>
+          <div class="switch on" id="hubVibrateSwitch"><i></i></div>
+        </div>
+
+        <div class="settingRow">
+          <label data-i18n="lbl_ai">IA Aggressiva</label>
+          <div class="switch on" id="hubAggressiveSwitch"><i></i></div>
+        </div>
+      </div>
+
+      <div class="hubPane hidden" data-hubpane="themeTab">
+        <h2 data-i18n="tab_theme">[ TEMA ]</h2>
+        <div class="themeLabel" data-i18n="theme_desc">Scegli il colore neon della tua entità</div>
+        <div class="themeSwatches" id="hubThemeSwatches"></div>
+      </div>
+
+      <div class="hubPane hidden" data-hubpane="hotkeysTab">
+        <h2 data-i18n="tab_hotkeys">[ HOTKEY ]</h2>
+        <div class="hotkeyList">
+          <div class="hotkeyRow"><span data-i18n="hk_move">Muovi cellula</span><span class="hotkeyKey">Mouse</span></div>
+          <div class="hotkeyRow"><span data-i18n="hk_split">Dividi</span><span class="hotkeyKey">SPACE</span></div>
+          <div class="hotkeyRow"><span data-i18n="hk_feed">Nutri</span><span class="hotkeyKey">W</span></div>
+          <div class="hotkeyRow"><span data-i18n="hk_boost">Boost</span><span class="hotkeyKey">E</span></div>
+          <div class="hotkeyRow"><span data-i18n="hk_dash">Scatto</span><span class="hotkeyKey">SHIFT</span></div>
+          <div class="hotkeyRow"><span data-i18n="hk_fullscreen">Schermo intero</span><span class="hotkeyKey">F</span></div>
+          <div class="hotkeyRow"><span data-i18n="hk_debug">Debug</span><span class="hotkeyKey">\</span></div>
+          <div class="hotkeyRow"><span data-i18n="hk_pause">Pausa</span><span class="hotkeyKey">ESC</span></div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -2561,27 +2682,88 @@ document.getElementById("name").addEventListener("input",e=>{
   document.getElementById("userNameInput").value=name;
 });
 
-function setupSwitch(id,key){
-  const el=document.getElementById(id);
-  el.classList.toggle("on",settings[key]);
-  el.onclick=()=>{
-    settings[key]=!settings[key];
-    el.classList.toggle("on",settings[key]);
-    localStorage.setItem(key,settings[key]?"1":"0");
-  };
+/* setupSwitch collega uno o più elementi "switch" alla stessa chiave di
+   settings[], cosi il toggle nel modale di gioco e quello nella tab
+   "Impostazioni" del menu principale restano sempre sincronizzati. */
+function setupSwitch(ids,key){
+  const list=(Array.isArray(ids)?ids:[ids])
+    .map(id=>document.getElementById(id))
+    .filter(Boolean);
+
+  function refresh(){
+    list.forEach(el=>el.classList.toggle("on",settings[key]));
+  }
+  refresh();
+
+  list.forEach(el=>{
+    el.onclick=()=>{
+      settings[key]=!settings[key];
+      localStorage.setItem(key,settings[key]?"1":"0");
+      refresh();
+    };
+  });
 }
 
-setupSwitch("particlesSwitch","particles");
-setupSwitch("shadowsSwitch","shadows");
-setupSwitch("vibrateSwitch","vibrate");
-setupSwitch("aggressiveSwitch","aggressive");
+setupSwitch(["particlesSwitch","hubParticlesSwitch"],"particles");
+setupSwitch(["shadowsSwitch","hubShadowsSwitch"],"shadows");
+setupSwitch(["vibrateSwitch","hubVibrateSwitch"],"vibrate");
+setupSwitch(["aggressiveSwitch","hubAggressiveSwitch"],"aggressive");
 
 function openSettings(){ document.getElementById("settings").classList.remove("hidden"); }
 function closeSettings(){ document.getElementById("settings").classList.add("hidden"); }
 
 document.getElementById("openSettings").onclick=openSettings;
-document.getElementById("menuSettings").onclick=openSettings;
 document.getElementById("closeSettings").onclick=closeSettings;
+
+/* =========================================================
+   HUB MENU — tab Start / Impostazioni / Tema / Hotkey
+========================================================= */
+
+document.querySelectorAll(".hubTab").forEach(tabBtn=>{
+  tabBtn.onclick=()=>{
+    const target=tabBtn.getAttribute("data-hubtab");
+
+    document.querySelectorAll(".hubTab").forEach(b=>
+      b.classList.toggle("active",b===tabBtn));
+
+    document.querySelectorAll(".hubPane").forEach(pane=>
+      pane.classList.toggle("hidden",pane.getAttribute("data-hubpane")!==target));
+  };
+});
+
+/* Popola la tab "Tema" riusando le stesse opzioni colore già presenti
+   nel profilo utente (#colorInput), cosi la lista resta unica e coerente. */
+function renderThemeSwatches(){
+  const wrap=document.getElementById("hubThemeSwatches");
+  const colorSelect=document.getElementById("colorInput");
+  if(!wrap||!colorSelect)return;
+
+  const current=localStorage.getItem("cellArenaColor")||"#00ffff";
+  wrap.innerHTML="";
+
+  Array.from(colorSelect.options).forEach(opt=>{
+    const sw=document.createElement("div");
+    sw.className="themeSwatch"+(opt.value===current?" active":"");
+    sw.style.background=opt.value;
+    sw.style.color=opt.value;
+    sw.title=opt.textContent;
+
+    sw.onclick=()=>{
+      localStorage.setItem("cellArenaColor",opt.value);
+      colorSelect.value=opt.value;
+
+      if(player)player.color=opt.value;
+
+      wrap.querySelectorAll(".themeSwatch").forEach(s=>s.classList.remove("active"));
+      sw.classList.add("active");
+
+      toast("[SYS] Colore entità aggiornato");
+    };
+
+    wrap.appendChild(sw);
+  });
+}
+renderThemeSwatches();
 
 /* =========================================================
    PAUSE

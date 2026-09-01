@@ -35,7 +35,7 @@ const mutedNames = new Set();
 const WORLD = 6000;
 const TICK = 30;
 
-const FOOD_COUNT = 850;
+const FOOD_COUNT = 300;
 const MAX_PLAYERS = 60;
 const MAX_CHAT_LENGTH = 180;
 

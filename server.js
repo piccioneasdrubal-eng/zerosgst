@@ -10,10 +10,10 @@ const PORT = Number(process.env.PORT || 3000);
 const WORLD = 6000;
 const TICK = 40;
 
-const FOOD_COUNT = 2000;
+const FOOD_COUNT = 1500;
 const POWER_COUNT = 35;
 const MAX_PLAYERS = 60;
-const MAX_BOTS = 102;
+const MAX_BOTS = 52;
 const MAX_CELLS = 16;
 const MAX_CHAT_LENGTH = 180;
 

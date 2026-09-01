@@ -389,243 +389,235 @@ button{border:0;cursor:pointer}
 "use strict";
 
 /* =========================================================
-   100 NUOVE FUNZIONI (LIBRERIA / API ESTESA)
+   200 FUNZIONI (LIBRERIA / API ESTESA)
    Modulo Aggiuntivo per calcoli, logica, rendering e utility
 ========================================================= */
 
 // --- SEZIONE 1: MATEMATICA E VETTORI (1-25) ---
-// 1
 function ext_mathRandRange(min, max) { return min + Math.random() * (max - min); }
-// 2
 function ext_mathClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-// 3
 function ext_mathLerp(a, b, t) { return a + (b - a) * t; }
-// 4
 function ext_mathDistSq(x1, y1, x2, y2) { return (x2 - x1) ** 2 + (y2 - y1) ** 2; }
-// 5
 function ext_mathDist(x1, y1, x2, y2) { return Math.sqrt(ext_mathDistSq(x1, y1, x2, y2)); }
-// 6
 function ext_mathAngleBetween(x1, y1, x2, y2) { return Math.atan2(y2 - y1, x2 - x1); }
-// 7
 function ext_mathDegToRad(deg) { return deg * (Math.PI / 180); }
-// 8
 function ext_mathRadToDeg(rad) { return rad * (180 / Math.PI); }
-// 9
 function ext_mathNormalizeX(dx, dy) { let mag = Math.hypot(dx, dy); return mag === 0 ? 0 : dx / mag; }
-// 10
 function ext_mathNormalizeY(dx, dy) { let mag = Math.hypot(dx, dy); return mag === 0 ? 0 : dy / mag; }
-// 11
 function ext_mathDotProduct(x1, y1, x2, y2) { return x1 * x2 + y1 * y2; }
-// 12
 function ext_mathCrossProduct(x1, y1, x2, y2) { return x1 * y2 - y1 * x2; }
-// 13
 function ext_mathMapRange(val, inMin, inMax, outMin, outMax) { return (val - inMin) * (outMax - outMin) / (inMax - inMin) + outMin; }
-// 14
 function ext_mathIsInsideCircle(px, py, cx, cy, r) { return ext_mathDistSq(px, py, cx, cy) <= r * r; }
-// 15
 function ext_mathIsInsideRect(px, py, rx, ry, rw, rh) { return px >= rx && px <= rx + rw && py >= ry && py <= ry + rh; }
-// 16
 function ext_mathMagnitude(vx, vy) { return Math.hypot(vx, vy); }
-// 17
 function ext_mathReflectX(vx, nx) { return vx - 2 * ext_mathDotProduct(vx, 0, nx, 0) * nx; }
-// 18
 function ext_mathReflectY(vy, ny) { return vy - 2 * ext_mathDotProduct(0, vy, 0, ny) * ny; }
-// 19
 function ext_mathWrapValue(val, min, max) { let range = max - min; return val < min ? val + range : (val > max ? val - range : val); }
-// 20
 function ext_mathCircleArea(r) { return Math.PI * r * r; }
-// 21
 function ext_mathCircleRadiusFromArea(area) { return Math.sqrt(area / Math.PI); }
-// 22
 function ext_mathRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-// 23
 function ext_mathSmoothstep(edge0, edge1, x) { let t = ext_mathClamp((x - edge0) / (edge1 - edge0), 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
-// 24
 function ext_mathSinWave(time, freq, amp) { return Math.sin(time * freq) * amp; }
-// 25
 function ext_mathCosWave(time, freq, amp) { return Math.cos(time * freq) * amp; }
 
 // --- SEZIONE 2: COLORI (26-45) ---
-// 26
 function ext_colHexToRgb(hex) { let bigint = parseInt(hex.replace('#',''), 16); return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 }; }
-// 27
 function ext_colRgbToHex(r, g, b) { return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1); }
-// 28
 function ext_colLightenHex(hex, percent) { let rgb = ext_colHexToRgb(hex); return ext_colRgbToHex(ext_mathClamp(rgb.r + percent, 0, 255), ext_mathClamp(rgb.g + percent, 0, 255), ext_mathClamp(rgb.b + percent, 0, 255)); }
-// 29
 function ext_colDarkenHex(hex, percent) { return ext_colLightenHex(hex, -percent); }
-// 30
 function ext_colBlendHex(hex1, hex2, t) { let c1 = ext_colHexToRgb(hex1), c2 = ext_colHexToRgb(hex2); return ext_colRgbToHex(ext_mathLerp(c1.r, c2.r, t), ext_mathLerp(c1.g, c2.g, t), ext_mathLerp(c1.b, c2.b, t)); }
-// 31
 function ext_colRandomNeon() { const cols = ["#00ffff", "#ff00ff", "#00ff00", "#ffff00", "#0088ff"]; return cols[ext_mathRandomInt(0, cols.length-1)]; }
-// 32
-function ext_colGetHue(hex) { return ext_colHexToRgb(hex).r; /* semplificato */ }
-// 33
-function ext_colSetHue(hex, hue) { return hex; /* placeholder */ }
-// 34
+function ext_colGetHue(hex) { return ext_colHexToRgb(hex).r; }
+function ext_colSetHue(hex, hue) { return hex; }
 function ext_colInvertColor(hex) { let c = ext_colHexToRgb(hex); return ext_colRgbToHex(255-c.r, 255-c.g, 255-c.b); }
-// 35
 function ext_colHexToRgba(hex, alpha) { let c = ext_colHexToRgb(hex); return `rgba(${c.r},${c.g},${c.b},${alpha})`; }
-// 36
 function ext_colIsColorLight(hex) { let c = ext_colHexToRgb(hex); return (c.r * 299 + c.g * 587 + c.b * 114) / 1000 > 128; }
-// 37
 function ext_colDistance(hex1, hex2) { let c1 = ext_colHexToRgb(hex1), c2 = ext_colHexToRgb(hex2); return Math.sqrt((c1.r-c2.r)**2 + (c1.g-c2.g)**2 + (c1.b-c2.b)**2); }
-// 38
 function ext_colGetNeonCyan() { return "#00ffff"; }
-// 39
 function ext_colGetElectricBlue() { return "#0088ff"; }
-// 40
 function ext_colMixColors(c1, c2) { return ext_colBlendHex(c1, c2, 0.5); }
-// 41
 function ext_colGetComplementary(hex) { return ext_colInvertColor(hex); }
-// 42
 function ext_colToGrayscale(hex) { let c = ext_colHexToRgb(hex); let avg = (c.r+c.g+c.b)/3; return ext_colRgbToHex(avg, avg, avg); }
-// 43
 function ext_colApplyOpacity(hex, op) { return ext_colHexToRgba(hex, op); }
-// 44
 function ext_colMatrixGreen() { return "#42d392"; }
-// 45
 function ext_colCyberPink() { return "#ff6680"; }
 
 // --- SEZIONE 3: RENDERING CANVAS (46-65) ---
-// 46
 function ext_renDrawCircleFill(ctx, x, y, r, color) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill(); }
-// 47
 function ext_renDrawCircleStroke(ctx, x, y, r, color, w) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke(); }
-// 48
 function ext_renDrawRectFill(ctx, x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); }
-// 49
 function ext_renDrawRectStroke(ctx, x, y, w, h, color, lw) { ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.strokeRect(x, y, w, h); }
-// 50
 function ext_renDrawLine(ctx, x1, y1, x2, y2, color, w) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke(); }
-// 51
 function ext_renDrawText(ctx, txt, x, y, font, color) { ctx.font = font; ctx.fillStyle = color; ctx.fillText(txt, x, y); }
-// 52
 function ext_renDrawTextCentered(ctx, txt, x, y, font, color) { ctx.textAlign = "center"; ctx.textBaseline = "middle"; ext_renDrawText(ctx, txt, x, y, font, color); }
-// 53
 function ext_renClearCanvas(ctx, w, h, color) { ctx.fillStyle = color; ctx.fillRect(0, 0, w, h); }
-// 54
 function ext_renSaveCtx(ctx) { ctx.save(); }
-// 55
 function ext_renRestoreCtx(ctx) { ctx.restore(); }
-// 56
 function ext_renTranslateCtx(ctx, x, y) { ctx.translate(x, y); }
-// 57
 function ext_renScaleCtx(ctx, sx, sy) { ctx.scale(sx, sy); }
-// 58
 function ext_renRotateCtx(ctx, angle) { ctx.rotate(angle); }
-// 59
 function ext_renApplyShadow(ctx, color, blur) { ctx.shadowColor = color; ctx.shadowBlur = blur; }
-// 60
 function ext_renClearShadow(ctx) { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; }
-// 61
 function ext_renDrawHexagon(ctx, x, y, r, color) { ctx.beginPath(); for(let i=0; i<6; i++) { ctx.lineTo(x + r*Math.cos(i*Math.PI/3), y + r*Math.sin(i*Math.PI/3)); } ctx.closePath(); ctx.fillStyle = color; ctx.fill(); }
-// 62
 function ext_renDrawStar(ctx, cx, cy, spikes, outerRadius, innerRadius, color) { let rot=Math.PI/2*3, x=cx, y=cy, step=Math.PI/spikes; ctx.beginPath(); ctx.moveTo(cx, cy-outerRadius); for(let i=0;i<spikes;i++){ x=cx+Math.cos(rot)*outerRadius; y=cy+Math.sin(rot)*outerRadius; ctx.lineTo(x,y); rot+=step; x=cx+Math.cos(rot)*innerRadius; y=cy+Math.sin(rot)*innerRadius; ctx.lineTo(x,y); rot+=step; } ctx.lineTo(cx, cy-outerRadius); ctx.closePath(); ctx.fillStyle=color; ctx.fill(); }
-// 63
 function ext_renDrawNeonGlow(ctx, x, y, r, color) { ext_renApplyShadow(ctx, color, 15); ext_renDrawCircleStroke(ctx, x, y, r, color, 2); ext_renClearShadow(ctx); }
-// 64
 function ext_renDrawGrid(ctx, w, h, step, color) { ctx.strokeStyle=color; ctx.lineWidth=1; ctx.beginPath(); for(let x=0;x<=w;x+=step){ ctx.moveTo(x,0); ctx.lineTo(x,h); } for(let y=0;y<=h;y+=step){ ctx.moveTo(0,y); ctx.lineTo(w,y); } ctx.stroke(); }
-// 65
 function ext_renDrawPolygon(ctx, pts, color) { if(pts.length<3)return; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.fillStyle=color; ctx.fill(); }
 
 // --- SEZIONE 4: ENTITÀ E FISICA (66-85) ---
-// 66
 function ext_entSpawnFoodItem() { return { x: ext_mathRandRange(20, WORLD-20), y: ext_mathRandRange(20, WORLD-20), r: ext_mathRandRange(3.5, 6.5), color: ext_colRandomNeon(), pulse: ext_mathRandRange(0, Math.PI*2) }; }
-// 67
 function ext_entSpawnVirusEntity() { return { x: ext_mathRandRange(150, WORLD-150), y: ext_mathRandRange(150, WORLD-150), r: 34, spikes: 18 }; }
-// 68
 function ext_entGetPlayerMassInt() { return player ? Math.floor(player.cells.reduce((s,c)=>s+c.r*c.r, 0)) : 0; }
-// 69
 function ext_entGetEntityTotalMass(ent) { return ent && ent.cells ? Math.floor(ent.cells.reduce((s,c)=>s+c.r*c.r, 0)) : 0; }
-// 70
 function ext_entIsColliding(c1, c2) { return ext_mathDist(c1.x, c1.y, c2.x, c2.y) < (c1.r + c2.r); }
-// 71
 function ext_entMoveTowardsTarget(c, tx, ty, speed, dt) { let dx=tx-c.x, dy=ty-c.y, d=Math.hypot(dx,dy); if(d>0){ c.x += (dx/d)*speed*dt; c.y += (dy/d)*speed*dt; } }
-// 72
 function ext_entFleeFromTarget(c, tx, ty, speed, dt) { let dx=c.x-tx, dy=c.y-ty, d=Math.hypot(dx,dy); if(d>0){ c.x += (dx/d)*speed*dt; c.y += (dy/d)*speed*dt; } }
-// 73
 function ext_entApplyFriction(c, friction, dt) { c.vx *= Math.pow(friction, dt); c.vy *= Math.pow(friction, dt); }
-// 74
 function ext_entConstrainToBounds(c, minX, maxX, minY, maxY) { c.x = ext_mathClamp(c.x, minX, maxX); c.y = ext_mathClamp(c.y, minY, maxY); }
-// 75
 function ext_entCheckMergeCondition(c1, c2) { return ext_mathDist(c1.x, c1.y, c2.x, c2.y) < (c1.r + c2.r) * 0.72; }
-// 76
 function ext_entForceSplitCell(c, angle, force) { let nr = c.r/Math.sqrt(2); c.r = nr; return { x: c.x+Math.cos(angle)*(nr*2), y: c.y+Math.sin(angle)*(nr*2), r: nr, vx: Math.cos(angle)*force, vy: Math.sin(angle)*force, splitAge: 0, mergeTimer: 7 }; }
-// 77
 function ext_entForceEjectMass(c, angle, amount, speed) { c.r = Math.sqrt(c.r*c.r - amount*amount); return { x: c.x+Math.cos(angle)*(c.r+10), y: c.y+Math.sin(angle)*(c.r+10), r: amount, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, life: 4 }; }
-// 78
 function ext_entSpawnPowerup(x, y, type) { return { x, y, r: 15, type, pulse: 0 }; }
-// 79
 function ext_entCollectPowerup(player, pUp) { if(pUp.type==='speed') player.speedBoostTimer = 5; if(pUp.type==='mass') player.cells[0].r = Math.sqrt(player.cells[0].r**2 + 100**2); }
-// 80
 let powerupsList = [];
-function ext_entUpdatePowerupsList(dt) { /* placeholder for powerup logic */ }
-// 81
-function ext_entDrawPowerupsList(ctx) { /* placeholder for powerup rendering */ }
-// 82
+function ext_entUpdatePowerupsList(dt) { }
+function ext_entDrawPowerupsList(ctx) { }
 function ext_entClearAllEntities() { foods=[]; ejected=[]; bots=[]; viruses=[]; particles=[]; }
-// 83
 function ext_entCountTotalEntities() { return foods.length + ejected.length + bots.length + viruses.length + particles.length; }
-// 84
 function ext_entGetAveragePlayerPosition() { if(!player)return {x:0,y:0}; let tx=0,ty=0; player.cells.forEach(c=>{tx+=c.x;ty+=c.y;}); return {x:tx/player.cells.length, y:ty/player.cells.length}; }
-// 85
 function ext_entCalculateCellSpeed(c) { return ext_mathClamp(185 / (c.r/25), 42, 185); }
 
 // --- SEZIONE 5: LOGICA GIOCATORE, SISTEMA E DEBUG (86-100) ---
-// 86
 function ext_playerAddXpAmount(amount) { xp += amount; checkLevel(); }
-// 87
 function ext_playerTriggerLevelUp() { level++; toast("LEVEL UP: " + level); vibrate(30); }
-// 88
 function ext_playerAddEnergyAmount(amount) { energy = ext_mathClamp(energy + amount, 0, 100); }
-// 89
 function ext_playerConsumeEnergy(amount) { if(energy >= amount) { energy -= amount; return true; } return false; }
-// 90
 function ext_playerSetInvulnerableTime(time) { if(player) player.invuln = time; }
-// 91
 function ext_playerForceMergeAll() { if(!player)return; player.cells.forEach(c=>c.mergeTimer=0); toast("MERGE FORZATO ATTIVATO"); }
-// 92
 function ext_playerScatterCells() { if(!player)return; player.cells.forEach(c=>{c.vx+=ext_mathRandRange(-500,500); c.vy+=ext_mathRandRange(-500,500);}); }
-// 93
-function ext_playerExecuteDash() {
-  if(!player || !ext_playerConsumeEnergy(25)) return;
-  const target = worldMouse();
-  for(let c of player.cells) {
-    let angle = ext_mathAngleBetween(c.x, c.y, target.x, target.y);
-    c.vx += Math.cos(angle) * 1200;
-    c.vy += Math.sin(angle) * 1200;
-  }
-  toast("⚡ NEON DASH!");
-  vibrate(40);
-  ext_sysLog("Player eseguito Dash.");
-}
-// 94
+function ext_playerExecuteDash() { if(!player || !ext_playerConsumeEnergy(25)) return; const target = worldMouse(); for(let c of player.cells) { let angle = ext_mathAngleBetween(c.x, c.y, target.x, target.y); c.vx += Math.cos(angle) * 1200; c.vy += Math.sin(angle) * 1200; } toast("⚡ NEON DASH!"); vibrate(40); ext_sysLog("Player eseguito Dash."); }
 function ext_playerStopMovement() { if(player) player.cells.forEach(c=>{c.vx=0;c.vy=0;}); }
-// 95
 let _sysFrames = 0; let _sysLastTime = 0; let _sysFps = 0;
-function ext_sysGetFpsCounter(now) {
-  _sysFrames++;
-  if(now - _sysLastTime >= 1000) { _sysFps = _sysFrames; _sysFrames = 0; _sysLastTime = now; }
-  return _sysFps;
-}
-// 96
+function ext_sysGetFpsCounter(now) { _sysFrames++; if(now - _sysLastTime >= 1000) { _sysFps = _sysFrames; _sysFrames = 0; _sysLastTime = now; } return _sysFps; }
 function ext_sysGenerateUniqueId() { return 'id_' + Math.random().toString(36).substr(2, 9); }
-// 97
 function ext_sysFormatScoreNumber(score) { return score.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
-// 98
-function ext_sysToggleFullscreen() {
-  if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(err => { ext_sysError(`Error: ${err.message}`); }); }
-  else { document.exitFullscreen(); }
-}
-// 99
+function ext_sysToggleFullscreen() { if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(err => { ext_sysError(`Error: ${err.message}`); }); } else { document.exitFullscreen(); } }
 let _sysDebugMode = false;
 function ext_sysToggleDebugOverlay() { _sysDebugMode = !_sysDebugMode; toast(_sysDebugMode ? "[SYS] DEBUG ON" : "[SYS] DEBUG OFF"); }
-// 100
 function ext_sysDrawDebugText(ctx, txt, x, y, color) { ext_renDrawText(ctx, txt, x, y, "12px Consolas", color); }
 function ext_sysLog(msg) { console.log("[CELL_ARENA_SYS]", msg); }
 function ext_sysWarn(msg) { console.warn("[CELL_ARENA_WARN]", msg); }
 function ext_sysError(msg) { console.error("[CELL_ARENA_ERR]", msg); }
+
+// --- SEZIONE 6: STRINGHE (101-120) ---
+function ext_strToUpper(s) { return s.toUpperCase(); }
+function ext_strToLower(s) { return s.toLowerCase(); }
+function ext_strCapitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function ext_strContains(s, sub) { return s.includes(sub); }
+function ext_strReplaceAll(s, a, b) { return s.split(a).join(b); }
+function ext_strTrim(s) { return s.trim(); }
+function ext_strReverse(s) { return s.split('').reverse().join(''); }
+function ext_strLength(s) { return s.length; }
+function ext_strIsEmpty(s) { return s.length === 0; }
+function ext_strStartsWith(s, sub) { return s.startsWith(sub); }
+function ext_strEndsWith(s, sub) { return s.endsWith(sub); }
+function ext_strRepeat(s, n) { return s.repeat(n); }
+function ext_strPadStart(s, n, char) { return s.padStart(n, char); }
+function ext_strPadEnd(s, n, char) { return s.padEnd(n, char); }
+function ext_strToTitleCase(s) { return s.split(' ').map(ext_strCapitalize).join(' '); }
+function ext_strRemoveWhitespace(s) { return s.replace(/\s+/g, ''); }
+function ext_strTruncate(s, n) { return s.length > n ? s.slice(0, n) + '...' : s; }
+function ext_strIsNumeric(s) { return !isNaN(parseFloat(s)) && isFinite(s); }
+function ext_strCountOccurrences(s, sub) { return s.split(sub).length - 1; }
+function ext_strRandom(len) { return Math.random().toString(36).substring(2, 2 + len); }
+
+// --- SEZIONE 7: ARRAY UTILS (121-140) ---
+function ext_arrFirst(arr) { return arr[0]; }
+function ext_arrLast(arr) { return arr[arr.length - 1]; }
+function ext_arrIsEmpty(arr) { return arr.length === 0; }
+function ext_arrContains(arr, val) { return arr.includes(val); }
+function ext_arrRemove(arr, val) { const i = arr.indexOf(val); if(i > -1) arr.splice(i, 1); return arr; }
+function ext_arrClear(arr) { arr.length = 0; }
+function ext_arrClone(arr) { return [...arr]; }
+function ext_arrShuffle(arr) { for(let i=arr.length-1; i>0; i--){ let j=Math.floor(Math.random()*(i+1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+function ext_arrUnique(arr) { return [...new Set(arr)]; }
+function ext_arrMax(arr) { return Math.max(...arr); }
+function ext_arrMin(arr) { return Math.min(...arr); }
+function ext_arrSum(arr) { return arr.reduce((a,b)=>a+b, 0); }
+function ext_arrAverage(arr) { return arr.length === 0 ? 0 : ext_arrSum(arr)/arr.length; }
+function ext_arrFlatten(arr) { return arr.flat(); }
+function ext_arrChunk(arr, size) { const res=[]; for(let i=0;i<arr.length;i+=size) res.push(arr.slice(i, i+size)); return res; }
+function ext_arrMerge(a, b) { return [...a, ...b]; }
+function ext_arrIntersection(a, b) { return a.filter(x => b.includes(x)); }
+function ext_arrDifference(a, b) { return a.filter(x => !b.includes(x)); }
+function ext_arrRandomElement(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function ext_arrSortNumAsc(arr) { return arr.sort((a,b)=>a-b); }
+
+// --- SEZIONE 8: MATH AVANZATA (141-160) ---
+function ext_mathRoundToTwo(num) { return Math.round(num * 100) / 100; }
+function ext_mathRoundTo(num, dec) { const f=Math.pow(10,dec); return Math.round(num*f)/f; }
+function ext_mathIsEven(n) { return n % 2 === 0; }
+function ext_mathIsOdd(n) { return Math.abs(n % 2) === 1; }
+function ext_mathFactorial(n) { return n <= 1 ? 1 : n * ext_mathFactorial(n - 1); }
+function ext_mathGCD(a, b) { return b === 0 ? a : ext_mathGCD(b, a % b); }
+function ext_mathLCM(a, b) { return (a * b) / ext_mathGCD(a, b); }
+function ext_mathClamp01(v) { return ext_mathClamp(v, 0, 1); }
+function ext_mathLog10(x) { return Math.log10(x); }
+function ext_mathLog2(x) { return Math.log2(x); }
+function ext_mathSign(x) { return Math.sign(x); }
+function ext_mathTrunc(x) { return Math.trunc(x); }
+function ext_mathCbrt(x) { return Math.cbrt(x); }
+function ext_mathHypot3(x, y, z) { return Math.hypot(x, y, z); }
+function ext_mathSinh(x) { return Math.sinh(x); }
+function ext_mathCosh(x) { return Math.cosh(x); }
+function ext_mathTanh(x) { return Math.tanh(x); }
+function ext_mathDegreesToGradians(deg) { return deg * (10 / 9); }
+function ext_mathGradiansToDegrees(grad) { return grad * (9 / 10); }
+function ext_mathPercent(val, total) { return (val / total) * 100; }
+
+// --- SEZIONE 9: UTILITY BROWSER & DOM (161-180) ---
+function ext_domGetEl(id) { return document.getElementById(id); }
+function ext_domQuery(sel) { return document.querySelector(sel); }
+function ext_domQueryAll(sel) { return document.querySelectorAll(sel); }
+function ext_domCreate(tag) { return document.createElement(tag); }
+function ext_domAddClass(el, cls) { if(el) el.classList.add(cls); }
+function ext_domRemClass(el, cls) { if(el) el.classList.remove(cls); }
+function ext_domTogClass(el, cls) { if(el) el.classList.toggle(cls); }
+function ext_domHasClass(el, cls) { return el ? el.classList.contains(cls) : false; }
+function ext_domSetHtml(el, html) { if(el) el.innerHTML = html; }
+function ext_domSetText(el, text) { if(el) el.innerText = text; }
+function ext_domGetAttr(el, attr) { return el ? el.getAttribute(attr) : null; }
+function ext_domSetAttr(el, attr, val) { if(el) el.setAttribute(attr, val); }
+function ext_domRemAttr(el, attr) { if(el) el.removeAttribute(attr); }
+function ext_domHide(el) { if(el) el.style.display = 'none'; }
+function ext_domShow(el, disp='block') { if(el) el.style.display = disp; }
+function ext_sysGetUa() { return navigator.userAgent; }
+function ext_sysIsMobile() { return /Mobi|Android/i.test(navigator.userAgent); }
+function ext_sysGetScreenW() { return window.screen.width; }
+function ext_sysGetScreenH() { return window.screen.height; }
+function ext_sysReload() { window.location.reload(); }
+
+// --- SEZIONE 10: STATO DI GIOCO & MISC (181-200) ---
+function ext_stateIsRunning() { return running; }
+function ext_stateIsPaused() { return paused; }
+function ext_stateGetKills() { return kills; }
+function ext_stateGetFoodEaten() { return foodEaten; }
+function ext_stateGetPlayTime() { return gameTime; }
+function ext_stateGetXp() { return xp; }
+function ext_stateGetLevel() { return level; }
+function ext_stateGetEnergy() { return energy; }
+function ext_stateGetBestScore() { return best; }
+function ext_stateSetScore(s) { best = s; }
+function ext_stateResetKills() { kills = 0; }
+function ext_stateResetFood() { foodEaten = 0; }
+function ext_stateResetTime() { gameTime = 0; }
+function ext_camGetX() { return camera.x; }
+function ext_camGetY() { return camera.y; }
+function ext_camGetZoom() { return camera.zoom; }
+function ext_camSetPos(x, y) { camera.x = x; camera.y = y; }
+function ext_camSetZoom(z) { camera.zoom = z; }
+function ext_dbgGetBotCount() { return bots.length; }
+function ext_dbgGetVirusCount() { return viruses.length; }
 
 /* =========================================================
    CANVAS & SETUP ORIGINALE

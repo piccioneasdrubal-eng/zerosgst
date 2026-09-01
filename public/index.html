@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zero The Legend</title>
 <style>
-  /* Grafica in stile Agar.io con sfondo a griglia */
+  /* Grafica in stile Agar.io con sfondo a griglia dinamica */
   body { margin: 0; overflow: hidden; font-family: 'Ubuntu', sans-serif; background-color: #f2fbff; }
   #gameCanvas { 
     display: block; 
+    /* La griglia verrà mossa e scalata da JavaScript per seguire la telecamera */
     background-image: linear-gradient(#d3d3d3 1px, transparent 1px), linear-gradient(90deg, #d3d3d3 1px, transparent 1px); 
     background-size: 50px 50px; 
   }
@@ -18,6 +19,7 @@
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 15px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center;
+    z-index: 10;
   }
   #mainMenu h1 { margin: 0 0 20px 0; font-size: 48px; color: #333; font-weight: bold; }
   .btn { padding: 12px 24px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; font-weight: bold; }
@@ -29,6 +31,7 @@
     position: absolute; top: 0; left: -260px; width: 260px; height: 100%;
     background: rgba(30, 30, 30, 0.9); color: white; padding: 20px;
     box-sizing: border-box; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    z-index: 20;
   }
   #sideMenu.open { left: 0; }
   #toggleMenu {
@@ -38,12 +41,22 @@
   .input-group { margin-bottom: 15px; text-align: left; }
   .input-group label { display: block; font-size: 13px; margin-bottom: 5px; color: #aaa; }
   .input-group input { width: 100%; padding: 8px; border: none; border-radius: 4px; box-sizing: border-box; }
+
+  /* Overlay Punteggio (Inizialmente nascosto) */
+  #scoreBoard {
+    position: absolute; top: 10px; left: 10px;
+    background: rgba(0,0,0,0.5); color: white; padding: 10px 15px;
+    border-radius: 5px; font-size: 18px; display: none; z-index: 5;
+  }
 </style>
 </head>
 <body>
 
   <!-- Canvas del gioco -->
   <canvas id="gameCanvas"></canvas>
+
+  <!-- Punteggio -->
+  <div id="scoreBoard">Punteggio: <span id="scoreValue">0</span></div>
 
   <!-- Menu Laterale -->
   <div id="sideMenu">
@@ -59,11 +72,11 @@
     </div>
     <div class="input-group">
       <label>Massa Iniziale</label>
-      <input type="number" id="startMass" value="10" min="10" max="500">
+      <input type="number" id="startMass" value="25" min="10" max="500">
     </div>
     <div class="input-group">
-      <label>Velocità</label>
-      <input type="number" id="startSpeed" value="5" min="1" max="20">
+      <label>Velocità Base</label>
+      <input type="number" id="startSpeed" value="7" min="1" max="20">
     </div>
     <button class="btn btn-auth" style="width:100%; margin-top:10px;" onclick="applicaImpostazioni()">Applica</button>
   </div>
@@ -81,8 +94,45 @@
 <script>
   // Setup Canvas
   const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+
+  // Variabili Globali di Gioco
+  let ws = null;
+  let myId = null;
+  let gameState = null;
+  let isPlaying = false;
+  
+  let camera = { x: 3000, y: 3000, zoom: 1 }; // Posizione iniziale telecamera (centro mappa)
+  let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+
+  // Connessione WebSocket automatica all'avvio
+  function connect() {
+    const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    // Se stai testando in locale senza server statico, potresti dover specificare: new WebSocket('ws://localhost:3000')
+    ws = new WebSocket(protocol + location.host);
+    
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      
+      if (msg.type === 'welcome') {
+        myId = msg.id;
+      } 
+      else if (msg.type === 'state') {
+        gameState = msg;
+      } 
+      else if (msg.type === 'dead') {
+        isPlaying = false;
+        document.getElementById('mainMenu').style.display = 'block';
+        document.getElementById('scoreBoard').style.display = 'none';
+        alert(`Sei stato mangiato! Punteggio finale: ${msg.score}`);
+      }
+    };
+  }
+  
+  // Inizializza la connessione
+  connect();
 
   // Gestione Menu Laterale
   const sideMenu = document.getElementById('sideMenu');
@@ -90,29 +140,181 @@
     sideMenu.classList.toggle('open');
   });
 
-  // Funzioni UI
-  function login() { alert("Apertura modale di Login per salvare i progressi..."); }
-  function registrati() { alert("Apertura modale di Registrazione..."); }
-  function applicaImpostazioni() { alert("Impostazioni salvate: Massa, Velocità e Bot aggiornati."); }
+  // Funzioni UI Placeholder
+  function login() { alert("Modulo di Login non ancora implementato."); }
+  function registrati() { alert("Modulo di Registrazione non ancora implementato."); }
   
+  // Invia le impostazioni in tempo reale al server
+  function applicaImpostazioni() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    const botCount = document.getElementById('botCount').value;
+    const startMass = document.getElementById('startMass').value;
+    const startSpeed = document.getElementById('startSpeed').value;
+    
+    ws.send(JSON.stringify({
+      type: "settings",
+      botCount: botCount,
+      startMass: startMass,
+      startSpeed: startSpeed
+    }));
+    
+    alert("Impostazioni inviate al server!");
+  }
+  
+  // Avvio partita
   function startGame() {
-    document.getElementById('mainMenu').style.display = 'none';
-    // Qui andrà avviato il loop del tuo gioco
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      alert("Connessione al server non pronta. Attendi qualche istante.");
+      return;
+    }
+    
+    const name = document.getElementById('playerName').value;
+    const botCount = document.getElementById('botCount').value;
+    const startMass = document.getElementById('startMass').value;
+    const startSpeed = document.getElementById('startSpeed').value;
+    
+    ws.send(JSON.stringify({
+      type: "join",
+      name: name,
+      botCount: botCount,
+      startMass: startMass,
+      startSpeed: startSpeed
+    }));
+    
+    document.getElementById('mainMenu').style.display = 'none'; // Nascondi menu principale
+    document.getElementById('scoreBoard').style.display = 'block'; // Mostra punteggio
+    isPlaying = true;
   }
 
-  // Comandi di Gioco (Split e Feed)
+  // --- CONTROLLI INPUT ---
+
+  // Traccia movimento mouse (coordinate a schermo)
+  window.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  });
+
+  // Comandi Tastiera (Split e Feed)
   window.addEventListener('keydown', (e) => {
-    if (document.getElementById('mainMenu').style.display !== 'none') return;
+    if (!isPlaying) return;
     
     if (e.code === 'Space') {
-      console.log("Comando: SPLIT eseguito");
-      // Inserisci logica di split qui
+      ws.send(JSON.stringify({ type: "split" }));
     }
     if (e.key.toLowerCase() === 'w') {
-      console.log("Comando: FEED (Lancia massa) eseguito");
-      // Inserisci logica di feed qui
+      ws.send(JSON.stringify({ type: "eject" }));
     }
   });
+
+  // Loop invio movimento (20 volte al secondo per non sovraccaricare)
+  setInterval(() => {
+    if (!isPlaying || !ws || ws.readyState !== WebSocket.OPEN || !gameState) return;
+    
+    // Converti coordinate schermo in coordinate mondo in base alla telecamera
+    const targetX = (mouse.x - canvas.width / 2) / camera.zoom + camera.x;
+    const targetY = (mouse.y - canvas.height / 2) / camera.zoom + camera.y;
+    
+    ws.send(JSON.stringify({ type: "move", x: targetX, y: targetY }));
+  }, 50);
+
+
+  // --- MOTORE DI RENDERING ---
+
+  function draw() {
+    requestAnimationFrame(draw);
+    if (!gameState) return;
+
+    // 1. Pulisci e prepara la telecamera
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    let me = gameState.players.find(p => p.id === myId);
+    
+    if (me && me.cells.length > 0) {
+      // Aggiorna punteggio UI
+      document.getElementById('scoreValue').innerText = me.score;
+
+      // Calcola il centro della telecamera facendo la media della posizione delle tue cellule
+      let avgX = 0, avgY = 0, totalMass = 0;
+      me.cells.forEach(c => {
+        avgX += c.x;
+        avgY += c.y;
+        totalMass += c.r;
+      });
+      avgX /= me.cells.length;
+      avgY /= me.cells.length;
+      
+      // Movimento fluido telecamera
+      camera.x += (avgX - camera.x) * 0.1;
+      camera.y += (avgY - camera.y) * 0.1;
+      
+      // Adatta lo zoom in base alla massa (più sei grande, più la telecamera si allontana)
+      let targetZoom = Math.max(0.15, 1 - (totalMass / 1500)); 
+      camera.zoom += (targetZoom - camera.zoom) * 0.05;
+    }
+    
+    // Muovi lo sfondo CSS (Griglia) in base alla telecamera
+    canvas.style.backgroundPosition = `${-camera.x * camera.zoom + canvas.width/2}px ${-camera.y * camera.zoom + canvas.height/2}px`;
+    canvas.style.backgroundSize = `${50 * camera.zoom}px ${50 * camera.zoom}px`;
+
+    // 2. Disegna il mondo
+    ctx.save();
+    // Sposta origine al centro dello schermo, applica zoom, e sottrai posizione telecamera
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(camera.zoom, camera.zoom);
+    ctx.translate(-camera.x, -camera.y);
+
+    // Bordi Mappa
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.lineWidth = 10;
+    ctx.strokeRect(0, 0, gameState.world, gameState.world);
+
+    // Disegna Cibo
+    gameState.foods.forEach(f => {
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+      ctx.fillStyle = f.color;
+      ctx.fill();
+    });
+
+    // Disegna Giocatori e Cellule (ordinati per grandezza per disegnare i piccoli sopra)
+    let allCells = [];
+    gameState.players.forEach(p => {
+      p.cells.forEach(c => {
+        allCells.push({ ...c, ownerName: p.name, color: p.color });
+      });
+    });
+    
+    // Ordina dal più piccolo al più grande per Z-index visivo corretto
+    allCells.sort((a, b) => a.r - b.r);
+
+    allCells.forEach(c => {
+      // Bordo
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.fillStyle = c.color;
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(0,0,0,0.2)";
+      ctx.stroke();
+
+      // Testo Nome
+      ctx.fillStyle = "white";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `bold ${Math.max(12, c.r / 3)}px Ubuntu`;
+      // Bordo scuro al testo per leggibilità
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 2;
+      ctx.strokeText(c.ownerName, c.x, c.y);
+      ctx.fillText(c.ownerName, c.x, c.y);
+    });
+
+    ctx.restore();
+  }
+
+  // Avvia il loop di rendering
+  draw();
 
   // Ridimensionamento dinamico
   window.addEventListener('resize', () => {

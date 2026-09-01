@@ -1,12 +1,10 @@
 {
   "name": "cell-arena",
-  "version": "2.0.0",
-  "private": true,
-  "description": "Cell Arena multiplayer game",
+  "version": "1.0.0",
+  "description": "Cell Arena - multiplayer .io game",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

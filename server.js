@@ -12,6 +12,19 @@ const FOOD_COUNT = 850;
 const MAX_PLAYERS = 60;
 const MAX_CHAT_LENGTH = 180;
 
+const VIRUS_COUNT = 18;
+const VIRUS_R = 34;
+const POWERUP_TARGET = 8;
+const POWERUP_R = 15;
+
+const DASH_COST = 25;
+const DASH_IMPULSE = 900;
+const BOOST_SPEED_MULT = 1.55;
+const BOOST_ENERGY_DRAIN = 18; // per second
+const COMBO_WINDOW_MS = 3000;
+const SPAWN_PROTECT_MS = 3000;
+const MERGE_TIME_MS = 9000;
+
 // Variabile globale per la quantità di Bot desiderata
 let targetBotCount = 10; 
 
@@ -28,7 +41,10 @@ const colors = [
 
 const players = new Map();
 const foods = [];
+const viruses = [];
+const powerups = [];
 const chat = [];
+let powerupSpawnTimer = 5000;
 
 function random(a, b) {
   return Math.random() * (b - a) + a;
@@ -63,6 +79,30 @@ function makeFood() {
 
 for (let i = 0; i < FOOD_COUNT; i++) {
   foods.push(makeFood());
+}
+
+function makeVirus() {
+  return {
+    id: randomId(),
+    x: random(150, WORLD - 150),
+    y: random(150, WORLD - 150),
+    r: VIRUS_R,
+    spikes: 18
+  };
+}
+
+for (let i = 0; i < VIRUS_COUNT; i++) {
+  viruses.push(makeVirus());
+}
+
+function makePowerup() {
+  return {
+    id: randomId(),
+    x: random(150, WORLD - 150),
+    y: random(150, WORLD - 150),
+    r: POWERUP_R,
+    type: Math.random() < 0.5 ? "speed" : "mass"
+  };
 }
 
 /* ---------------------------
@@ -117,6 +157,12 @@ function createPlayer(id, name, isBot = false, startMass = 25, startSpeed = 7) {
     lastSplit: 0,
     lastEject: 0,
     lastChat: 0,
+
+    boosting: false,
+    speedBoostUntil: 0,
+    spawnProtectUntil: Date.now() + SPAWN_PROTECT_MS,
+    comboCount: 0,
+    comboUntil: 0,
 
     socket: null
   };
@@ -230,7 +276,8 @@ function ensureCells(player) {
       r: player.r,
       vx: 0,
       vy: 0,
-      boost: 0
+      boost: 0,
+      mergeTimer: 0
     });
   }
 }
@@ -247,6 +294,7 @@ function syncPlayerMainData(player) {
 
 function publicPlayer(player) {
   const cells = getCells(player);
+  const now = Date.now();
 
   return {
     id: player.id,
@@ -254,6 +302,8 @@ function publicPlayer(player) {
     color: player.color,
     score: Math.floor(player.score),
     energy: Math.floor(player.energy),
+    speedBoostMsLeft: Math.max(0, player.speedBoostUntil - now),
+    spawnProtectMsLeft: Math.max(0, player.spawnProtectUntil - now),
 
     cells: cells.map(c => ({
       id: c.id,
@@ -284,6 +334,13 @@ function movePlayer(player) {
 
     // Scala il clamp basandosi sulla velocità base personalizzata
     speed = clamp(speed, 0.75, (player.baseSpeed * 1.15) || 8);
+
+    if (player.speedBoostUntil > Date.now()) speed *= 1.35;
+
+    if (player.boosting && player.energy > 0) {
+      speed *= BOOST_SPEED_MULT;
+      player.energy = clamp(player.energy - BOOST_ENERGY_DRAIN * (TICK / 1000), 0, 100);
+    }
 
     cell.x += (dx / d) * speed;
     cell.y += (dy / d) * speed;
@@ -359,14 +416,139 @@ function splitPlayer(player) {
       r: newRadius,
       vx: Math.cos(angle) * 13,
       vy: Math.sin(angle) * 13,
-      boost: 28
+      boost: 28,
+      mergeTimer: MERGE_TIME_MS
     };
 
+    cell.mergeTimer = MERGE_TIME_MS;
     created.push(child);
   }
 
   player.cells.push(...created);
   syncPlayerMainData(player);
+}
+
+/* ---------------------------
+   MERGE (ricongiunzione cellule dopo split)
+---------------------------- */
+
+function mergeCells(player) {
+  if (player.cells.length < 2) return;
+
+  for (const c of player.cells) {
+    if (c.mergeTimer > 0) c.mergeTimer = Math.max(0, c.mergeTimer - TICK);
+  }
+
+  for (let i = 0; i < player.cells.length; i++) {
+    for (let j = player.cells.length - 1; j > i; j--) {
+      const a = player.cells[i];
+      const b = player.cells[j];
+
+      if (a.mergeTimer > 0 || b.mergeTimer > 0) continue;
+      if (distance(a, b) >= (a.r + b.r) * 0.72) continue;
+
+      const total = a.r * a.r + b.r * b.r;
+      a.x = (a.x * a.r * a.r + b.x * b.r * b.r) / total;
+      a.y = (a.y * a.r * a.r + b.y * b.r * b.r) / total;
+      a.r = Math.sqrt(total);
+
+      player.cells.splice(j, 1);
+    }
+  }
+
+  syncPlayerMainData(player);
+}
+
+/* ---------------------------
+   VIRUS
+---------------------------- */
+
+function virusCollisions() {
+  for (const player of players.values()) {
+    const cells = getCells(player);
+
+    for (let i = cells.length - 1; i >= 0; i--) {
+      const c = cells[i];
+      if (c.r < 55) continue;
+      if (player.cells.length >= 16) continue;
+
+      for (let vi = 0; vi < viruses.length; vi++) {
+        const v = viruses[vi];
+        if (distance(c, v) >= c.r + v.r * 0.35) continue;
+
+        const freeSlots = 16 - player.cells.length + 1;
+        const amount = Math.max(2, Math.min(8, freeSlots));
+        const mass = c.r * c.r;
+        const pieceMass = mass / amount;
+
+        c.r = Math.sqrt(pieceMass);
+        c.mergeTimer = MERGE_TIME_MS;
+
+        const pieces = [];
+        for (let k = 0; k < amount - 1; k++) {
+          const angle = (Math.PI * 2 * k) / (amount - 1);
+          pieces.push({
+            id: randomId(),
+            x: clamp(c.x + Math.cos(angle) * c.r * 2, c.r, WORLD - c.r),
+            y: clamp(c.y + Math.sin(angle) * c.r * 2, c.r, WORLD - c.r),
+            r: c.r,
+            vx: Math.cos(angle) * 15,
+            vy: Math.sin(angle) * 15,
+            boost: 20,
+            mergeTimer: MERGE_TIME_MS
+          });
+        }
+
+        player.cells.push(...pieces);
+        syncPlayerMainData(player);
+
+        viruses.splice(vi, 1);
+        viruses.push(makeVirus());
+        break;
+      }
+    }
+  }
+}
+
+/* ---------------------------
+   POWERUP
+---------------------------- */
+
+function updatePowerups() {
+  powerupSpawnTimer -= TICK;
+  if (powerupSpawnTimer <= 0 && powerups.length < POWERUP_TARGET) {
+    powerups.push(makePowerup());
+    powerupSpawnTimer = random(10000, 18000);
+  }
+
+  for (const player of players.values()) {
+    const cells = getCells(player);
+
+    for (let pi = powerups.length - 1; pi >= 0; pi--) {
+      const p = powerups[pi];
+      let taken = false;
+
+      for (const c of cells) {
+        if (distance(c, p) >= c.r + p.r) continue;
+
+        if (p.type === "speed") {
+          player.speedBoostUntil = Date.now() + 8000;
+        } else {
+          let biggest = cells[0];
+          for (const cc of cells) if (cc.r > biggest.r) biggest = cc;
+          biggest.r = Math.sqrt(biggest.r * biggest.r + 30 * 30);
+          syncPlayerMainData(player);
+        }
+
+        taken = true;
+        break;
+      }
+
+      if (taken) {
+        powerups.splice(pi, 1);
+      }
+    }
+  }
 }
 
 function ejectMass(player) {
@@ -441,8 +623,13 @@ function collisions() {
 
       if (big.cell.r <= small.cell.r * 1.12) continue;
 
+      const now = Date.now();
+      if (small.owner.spawnProtectUntil && small.owner.spawnProtectUntil > now) continue;
+
       big.cell.r = Math.sqrt(big.cell.r * big.cell.r + small.cell.r * small.cell.r * 0.82);
       const owner = small.owner;
+      const victimName = owner.name;
+      const wasLastCell = owner.cells.length <= 1;
 
       if (owner.cells.length > 0) {
         owner.cells = owner.cells.filter(c => c.id !== small.cell.id);
@@ -453,6 +640,25 @@ function collisions() {
 
       big.owner.score += Math.floor(small.cell.r * small.cell.r);
       syncPlayerMainData(big.owner);
+
+      if (wasLastCell) {
+        const killer = big.owner;
+        if (now < killer.comboUntil) killer.comboCount++;
+        else killer.comboCount = 1;
+        killer.comboUntil = now + COMBO_WINDOW_MS;
+
+        try {
+          if (killer.socket && killer.socket.readyState === WebSocket.OPEN) {
+            killer.socket.send(JSON.stringify({
+              type: "kill",
+              combo: killer.comboCount,
+              victim: victimName
+            }));
+          }
+        } catch {}
+
+        addSystemMessage("SYS_ALERT", "#0088ff", "[KILL] " + killer.name + " ha eliminato " + victimName);
+      }
     }
   }
 }
@@ -476,6 +682,22 @@ function addChatMessage(player, text) {
     playerId: player.id,
     name: player.name,
     color: player.color,
+    text,
+    time: new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+  };
+
+  chat.push(message);
+  if (chat.length > 80) chat.splice(0, chat.length - 80);
+  broadcastChat();
+}
+
+// Messaggi di sistema (join/leave/kill): non soggetti al cooldown anti-spam del giocatore
+function addSystemMessage(name, color, text) {
+  const message = {
+    id: randomId(),
+    playerId: null,
+    name,
+    color,
     text,
     time: new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
   };
@@ -514,10 +736,13 @@ function update() {
   for (const player of players.values()) {
     movePlayer(player);
     player.energy = clamp(player.energy + 0.35, 0, 100);
+    mergeCells(player);
   }
 
   eatFood();
   collisions();
+  virusCollisions();
+  updatePowerups();
 }
 
 /* ---------------------------
@@ -529,6 +754,8 @@ function broadcastState() {
     type: "state",
     world: WORLD,
     foods,
+    viruses,
+    powerups,
     players: [...players.values()].map(publicPlayer)
   });
 
@@ -627,6 +854,9 @@ wss.on("connection", socket => {
       if (message.botCount !== undefined) targetBotCount = Number(message.botCount);
 
       player = createPlayer(id, message.name, false, startMass, startSpeed);
+      if (typeof message.color === "string" && /^#[0-9a-fA-F]{6}$/.test(message.color)) {
+        player.color = message.color;
+      }
       player.socket = socket;
       players.set(id, player);
 
@@ -637,7 +867,7 @@ wss.on("connection", socket => {
         playerCount: players.size
       }));
       socket.send(JSON.stringify({ type: "chatHistory", messages: chat }));
-      addChatMessage(player, "è entrato nella partita");
+      addSystemMessage("SYS_LOG", "#0088ff", player.name + " è entrato nella partita");
       broadcastPlayerCount();
       return;
     }
@@ -675,6 +905,25 @@ wss.on("connection", socket => {
       ejectMass(player);
     }
 
+    /* BOOST (E tenuto premuto) */
+    else if (message.type === "boosting") {
+      player.boosting = !!message.value;
+    }
+
+    /* DASH (SHIFT) */
+    else if (message.type === "dash") {
+      if (player.energy >= DASH_COST) {
+        player.energy -= DASH_COST;
+        ensureCells(player);
+        for (const cell of player.cells) {
+          const angle = Math.atan2(player.targetY - cell.y, player.targetX - cell.x);
+          cell.vx = Math.cos(angle) * DASH_IMPULSE;
+          cell.vy = Math.sin(angle) * DASH_IMPULSE;
+          cell.boost = Math.max(cell.boost, 16);
+        }
+      }
+    }
+
     /* CHAT */
     else if (message.type === "chat") {
       addChatMessage(player, message.text);
@@ -689,7 +938,7 @@ wss.on("connection", socket => {
 
   socket.on("close", () => {
     if (player) {
-      addChatMessage(player, "ha lasciato la partita");
+      addSystemMessage("SYS_LOG", "#0088ff", player.name + " ha lasciato la partita");
       players.delete(player.id);
       broadcastPlayerCount();
     }

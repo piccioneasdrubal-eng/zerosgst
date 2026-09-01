@@ -1911,7 +1911,7 @@ function drawPlayer(){
 
 function drawMini(){
 
-  const w=mini.width, h=mini.height;
+  const w=miniCssSize, h=miniCssSize;
 
   ext_renClearCanvas(mctx, w, h, "#000508");
 
@@ -1946,12 +1946,27 @@ function drawMini(){
    e salviamo la preferenza dell'utente. */
 const miniWrap=document.getElementById("miniWrap");
 
+/* Dimensione della minimappa in pixel CSS (logici). Il buffer effettivo del
+   canvas viene invece allocato a miniCssSize*DPR per restare nitido anche
+   sugli schermi ad alta densità (retina/mobile), esattamente come per il
+   canvas principale del gioco. */
+let miniCssSize=150;
+
+function syncMiniBuffer(){
+  const dpr=devicePixelRatio||1;
+  mini.width=Math.round(miniCssSize*dpr);
+  mini.height=Math.round(miniCssSize*dpr);
+  mini.style.width=miniCssSize+"px";
+  mini.style.height=miniCssSize+"px";
+  mctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
 function applyMiniSize(px){
   const size=Math.round(clamp(px,90,320));
   miniWrap.style.width=size+"px";
   miniWrap.style.height=size+"px";
-  mini.width=size;
-  mini.height=size;
+  miniCssSize=size;
+  syncMiniBuffer();
 }
 
 const savedMiniSize=parseInt(localStorage.getItem("cellArenaMiniSize")||"150",10);
@@ -1962,15 +1977,19 @@ if(typeof ResizeObserver!=="undefined"){
   new ResizeObserver(entries=>{
     for(const entry of entries){
       const size=Math.round(entry.contentRect.width);
-      if(size>0 && (mini.width!==size || mini.height!==size)){
-        mini.width=size;
-        mini.height=size;
+      if(size>0 && size!==miniCssSize){
+        miniCssSize=size;
+        syncMiniBuffer();
         clearTimeout(miniResizeTimer);
         miniResizeTimer=setTimeout(()=>localStorage.setItem("cellArenaMiniSize",size),300);
       }
     }
   }).observe(miniWrap);
 }
+
+/* Ricalcola il buffer della minimappa anche quando cambia lo zoom/DPR
+   della pagina o si sposta la finestra su un monitor con densità diversa. */
+addEventListener("resize",syncMiniBuffer);
 
 /* =========================================================
    HUD E LOGICA DEBUG

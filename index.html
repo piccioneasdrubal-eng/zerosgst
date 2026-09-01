@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Zero And Yassine Evolution — Agar Style (Neon Edition)</title>
+<title>Cell Arena — Agar Style (Neon Edition)</title>
 
 <style>
 /* =========================================================
@@ -20,16 +20,31 @@ canvas{position:fixed;inset:0;display:block}
 button,input,select{font:inherit}
 button{border:0;cursor:pointer}
 
-.small{color:#0088ff;font-size:11px}
-
-#rightPanel{
- position:fixed;right:15px;top:15px;z-index:20;
- display:flex;flex-direction:column;gap:12px;align-items:flex-end;
- max-height:calc(100vh - 30px);
+#hud{
+ position:fixed;left:15px;top:15px;z-index:20;
+ min-width:225px;padding:14px;border-radius:12px;
+ background:#01080cee;border:1px solid #00ffff;
+ box-shadow:0 0 15px #00ffff33;backdrop-filter:blur(8px)
 }
+#mass{font-size:19px;text-shadow:0 0 5px #00ffff;}
+.small{color:#0088ff;font-size:11px}
+.bar{
+ width:100%;height:7px;margin-top:8px;background:#002222;
+ border-radius:10px;overflow:hidden;border:1px solid #00ffff44;
+}
+.bar i{
+ display:block;width:0%;height:100%;
+ background:linear-gradient(90deg,#00ffff,#0055ff);
+ box-shadow:0 0 8px #00ffff;
+}
+.stats{
+ display:grid;grid-template-columns:1fr 1fr;
+ gap:5px;margin-top:9px;font-size:11px;color:#00aaaa;
+}
+.stats b{color:#00ffff}
 
 #board{
- width:230px;
+ position:fixed;right:15px;top:15px;z-index:20;width:230px;
  padding:14px;border-radius:12px;background:#01080cee;
  border:1px solid #00ffff;box-shadow:0 0 15px #00ffff33;
  backdrop-filter:blur(8px)
@@ -40,14 +55,12 @@ button{border:0;cursor:pointer}
  font-size:13px
 }
 
-#miniWrap{
- width:150px;height:150px;min-width:90px;min-height:90px;
- max-width:320px;max-height:320px;
- border:1px solid #00ffff;border-radius:12px;background:#000508;
+#mini{
+ position:fixed;right:15px;bottom:15px;z-index:20;
+ width:150px;height:150px;border:1px solid #00ffff;
+ border-radius:12px;background:#000508;
  box-shadow:0 0 15px #00ffff33;
- resize:both;overflow:hidden;padding:0;
 }
-#mini{width:100%;height:100%;display:block}
 
 #userButton{
  position:fixed;right:260px;top:15px;z-index:40;
@@ -75,94 +88,34 @@ button{border:0;cursor:pointer}
 }
 .menuBtn.alt{background:#002233;color:#00ffff;border:1px solid #00ffff;box-shadow:none;}
 
-.skinCell{
- position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;
- border:2px solid #00ffff33;background:#00111a;display:flex;align-items:center;justify-content:center;
- font-size:9px;color:#0088ff;text-align:center;
-}
-.skinCell.locked{opacity:.35;cursor:not-allowed;filter:grayscale(1)}
-.skinCell.equipped{border-color:#00ffff;box-shadow:0 0 8px #00ffff}
-.skinCell img{width:100%;height:100%;object-fit:cover}
-.skinCell .fallback{
- width:70%;height:70%;border-radius:50%;
- background:conic-gradient(from 0deg,#00ffff,#0088ff,#42d392,#00ffff);
- animation:skinspin 3s linear infinite;
-}
-@keyframes skinspin{to{transform:rotate(360deg)}}
-.skinCell.premiumLocked{opacity:.55;filter:none;cursor:pointer}
-.skinCell .priceTag{
- position:absolute;bottom:0;left:0;right:0;background:#000c;color:#ffd24d;
- font-size:9px;font-weight:bold;text-align:center;padding:2px 0;
-}
-
 #chat{
  position:fixed;left:15px;bottom:15px;z-index:30;width:350px;height:320px;
- min-width:280px;min-height:220px;max-width:92vw;max-height:80vh;
- display:flex;flex-direction:column;overflow:auto;border-radius:12px;
+ display:flex;flex-direction:column;overflow:hidden;border-radius:12px;
  background:#01080cee;border:1px solid #00ffff;
- box-shadow:0 0 20px #00ffff33;backdrop-filter:blur(8px);
- resize:both;
+ box-shadow:0 0 20px #00ffff33;backdrop-filter:blur(8px)
 }
 #chatHeader{
  min-height:44px;display:flex;justify-content:space-between;
- align-items:center;padding:0 8px 0 12px;background:#001a22;
- border-bottom:1px solid #00ffff55;flex:0 0 auto;gap:6px;
+ align-items:center;padding:0 12px;background:#001a22;
+ border-bottom:1px solid #00ffff55
 }
-#chatHeaderTitle{display:flex;flex-direction:column;line-height:1.2}
 #chatOnline{color:#00ffff;font-size:10px}
-#chatHeaderIcons{display:flex;align-items:center;gap:4px}
-.chatIconBtn{
- padding:5px 7px;background:#00ffff22;color:#00ffff;border-radius:6px;
- border:1px solid #00ffff55;font-size:12px;line-height:1;
-}
-.chatIconBtn.active{background:#00ffff;color:#000;}
 #chatClose{padding:5px 9px;background:#00ffff33;color:#00ffff;border-radius:6px;border:1px solid #00ffff;}
-#chatMessagesWrap{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;overflow:hidden}
-#chatMessages{flex:1;overflow-y:auto;padding:10px;min-height:0}
+#chatMessages{flex:1;overflow-y:auto;padding:10px}
 .chatMessage{margin-bottom:9px;font-size:12px;line-height:1.35}
-.chatMessage.mentioned{background:#00ffff14;border-left:2px solid #00ffff;padding-left:6px;margin-left:-8px}
-.chatMessage.own{opacity:.85}
 .chatName{font-weight:bold}.chatTime{color:#0088ff;font-size:9px;margin-left:5px}
-.chatText{color:#e0ffff;word-break:break-word}
-.roleBadge{
- display:inline-block;font-size:8px;font-weight:bold;padding:1px 5px;
- border-radius:5px;margin-right:5px;vertical-align:middle;letter-spacing:.5px;
-}
-.role-admin{background:#ff2b4d;color:#fff;box-shadow:0 0 6px #ff2b4d99}
-.role-moderator{background:#b56cff;color:#fff;box-shadow:0 0 6px #b56cff99}
-.role-vip{background:#ffd23f;color:#000;box-shadow:0 0 6px #ffd23f99}
-.role-user{background:#003b44;color:#00ffff}
-#chatNewMsg{
- position:absolute;left:50%;bottom:8px;transform:translateX(-50%);
- padding:5px 12px;border-radius:20px;background:#00ffff;color:#000;
- font-size:11px;font-weight:bold;box-shadow:0 0 10px #00ffff;display:none;
-}
-#chatInputArea{display:flex;gap:6px;padding:7px;background:#000a11;border-top:1px solid #00ffff33;flex:0 0 auto;position:relative}
+.chatText{color:#e0ffff}
+#chatInputArea{display:flex;gap:6px;padding:7px;background:#000a11;border-top:1px solid #00ffff33;}
 #chatInput{
  flex:1;min-width:0;margin:0;padding:9px;border:1px solid #00ffff55;border-radius:6px;
  background:#00111a;color:#00ffff;outline:0;font-family:inherit;
 }
 #chatSend{padding:8px 12px;border-radius:6px;background:#00ffff;color:#000;font-weight:bold;}
-#chatCharCount{position:absolute;right:78px;bottom:-1px;font-size:9px;color:#0088ff88;pointer-events:none}
 #chatOpen{
  position:fixed;left:15px;bottom:15px;z-index:29;padding:10px 14px;
  border-radius:12px;background:#01080cee;color:#00ffff;
  border:1px solid #00ffff;box-shadow:0 0 10px #00ffff33;
 }
-#chatUnread{
- display:none;position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;
- padding:0 3px;border-radius:10px;background:#ff2b4d;color:#fff;font-size:10px;
- line-height:16px;text-align:center;box-shadow:0 0 6px #ff2b4d;
-}
-#emojiPanel{
- display:none;position:absolute;left:7px;bottom:52px;width:270px;max-height:170px;
- overflow-y:auto;grid-template-columns:repeat(6,1fr);gap:4px;padding:8px;
- background:#01080cf7;border:1px solid #00ffff;border-radius:8px;
- box-shadow:0 0 20px #00ffff55;z-index:35;
-}
-#emojiPanel.show{display:grid}
-.emojiBtn{font-size:18px;padding:4px 0;border-radius:6px;background:transparent;text-align:center}
-.emojiBtn:hover{background:#00ffff22}
 
 #power{
  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
@@ -183,7 +136,7 @@ button{border:0;cursor:pointer}
 }
 
 #powerupPanel{
- position:fixed;left:15px;top:15px;z-index:20;
+ position:fixed;left:15px;top:165px;z-index:20;
  display:flex;flex-direction:column;gap:6px;
 }
 #powerupPanel:empty{display:none}
@@ -283,12 +236,13 @@ button{border:0;cursor:pointer}
 }
 
 @media(max-width:700px){
- #rightPanel{top:65px}
- #board{width:175px}
+ #board{width:175px;top:65px}
  #userButton{right:14px;top:14px}
  #userMenu{right:14px;top:62px}
  #chat{width:calc(100vw - 30px);height:270px}
- #miniWrap{width:105px;height:105px}
+ #mini{width:105px;height:105px}
+ #hud{min-width:165px;padding:11px}
+ #hud .stats{display:none}
  #power{display:none}
 }
 </style>
@@ -301,12 +255,23 @@ button{border:0;cursor:pointer}
 <div id="connection">[SYS] Modalità locale · 1 entity online</div>
 <div id="toast"></div>
 
-<div id="rightPanel">
-  <div id="board">
-    <h3 data-i18n="leaderboard_title">[ CLASSIFICA ]</h3>
-    <div id="rows"></div>
+<div id="hud">
+  <div id="mass" data-i18n="mass_display">MASS: 25</div>
+  <div>LVL <b id="level">1</b> | XP <span id="xp">0</span></div>
+  <div class="bar"><i id="xpbar"></i></div>
+  <div class="small">PWR: <span id="energy">100</span>%</div>
+
+  <div class="stats">
+    <div>[K] Kill <b id="kills">0</b></div>
+    <div>[F] Food <b id="foodCount">0</b></div>
+    <div>[T] Time <b id="time">0:00</b></div>
+    <div>[R] Record <b id="best">25</b></div>
   </div>
-  <div id="miniWrap"><canvas id="mini" width="150" height="150"></canvas></div>
+</div>
+
+<div id="board">
+  <h3 data-i18n="leaderboard_title">[ CLASSIFICA ]</h3>
+  <div id="rows"></div>
 </div>
 
 <button id="userButton">USR_ <span id="userNameButton">Player</span></button>
@@ -327,7 +292,6 @@ button{border:0;cursor:pointer}
     <option value="ru">Русский (RU)</option>
     <option value="pt">Português (PT)</option>
     <option value="hi">हिन्दी (HI)</option>
-    <option value="ar">العربية (AR)</option>
   </select>
 
   <label data-i18n="lbl_player_id">ID_GIOCATORE</label>
@@ -346,78 +310,28 @@ button{border:0;cursor:pointer}
   </select>
 
   <button class="menuBtn" id="saveName" data-i18n="btn_save">SALVA_DATI</button>
-
-  <div style="margin-top:14px;border-top:1px solid #00ffff33;padding-top:12px;">
-    <h3 data-i18n="lbl_account" style="font-size:14px;">[ ACCOUNT ]</h3>
-    <div class="green" id="accountStatus" data-i18n="status_guest">Ospite (dati solo locali)</div>
-
-    <div id="authForms">
-      <label data-i18n="lbl_username">Username</label>
-      <input id="authUsername" maxlength="20" autocomplete="username">
-      <label data-i18n="lbl_password">Password</label>
-      <input id="authPassword" type="password" maxlength="64" autocomplete="current-password">
-      <div style="display:flex;gap:6px;">
-        <button class="menuBtn" id="btnLogin" data-i18n="btn_login" style="flex:1;">ACCEDI</button>
-        <button class="menuBtn alt" id="btnRegister" data-i18n="btn_register" style="flex:1;">REGISTRATI</button>
-      </div>
-      <div id="authError" style="color:#ff6680;font-size:11px;margin-top:6px;"></div>
-
-      <div class="small" data-i18n="lbl_or_social" style="margin-top:10px;">oppure accedi con</div>
-      <div id="socialButtons" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">
-        <a class="menuBtn alt" href="/auth/google" style="text-align:center;text-decoration:none;">Google</a>
-        <a class="menuBtn alt" href="/auth/facebook" style="text-align:center;text-decoration:none;">Facebook</a>
-        <a class="menuBtn alt" href="/auth/apple" style="text-align:center;text-decoration:none;">Apple</a>
-        <a class="menuBtn alt" href="/auth/discord" style="text-align:center;text-decoration:none;">Discord</a>
-        <a class="menuBtn alt" href="/auth/twitter" style="text-align:center;text-decoration:none;grid-column:1/3;">X (Twitter)</a>
-      </div>
-    </div>
-
-    <button class="menuBtn alt hidden" id="btnLogout" data-i18n="btn_logout" style="width:100%;margin-top:8px;">ESCI DALL'ACCOUNT</button>
-  </div>
-
-  <div style="margin-top:14px;border-top:1px solid #00ffff33;padding-top:12px;">
-    <h3 style="font-size:14px;"><span data-i18n="lbl_coins">Monete</span>: <span id="menuCoins">0</span> · <span data-i18n="lbl_skins">Skin</span>: <span id="menuSkinCount">1</span>/<span id="menuSkinTotal">100</span></h3>
-    <div id="skinGallery" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;max-height:160px;overflow-y:auto;"></div>
-  </div>
-
-  <div style="margin-top:14px;border-top:1px solid #00ffff33;padding-top:12px;">
-    <h3 style="font-size:14px;" data-i18n="lbl_premium_shop">🌟 Skin Premium</h3>
-    <div id="premiumSkinGallery" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;max-height:200px;overflow-y:auto;"></div>
-  </div>
-
-  <button class="menuBtn alt" id="openSettings" data-i18n="btn_config" style="width:100%;margin-top:10px;">SYS_CONFIG</button>
+  <button class="menuBtn alt" id="openSettings" data-i18n="btn_config">SYS_CONFIG</button>
   <button class="menuBtn alt" id="closeUser" data-i18n="btn_exit">ESCI</button>
 </div>
 
 <div id="chat">
   <div id="chatHeader">
-    <div id="chatHeaderTitle">
-      LOG_CHAT
-      <span id="chatOnline">● LOCALE</span>
-    </div>
-    <div id="chatHeaderIcons">
-      <button class="chatIconBtn" id="chatSoundBtn" title="Suono notifiche">🔔</button>
-      <button class="chatIconBtn" id="chatTimeBtn" title="Mostra/nascondi orario">🕒</button>
-      <button id="chatClose">−</button>
-    </div>
+    <div>LOG_CHAT <span id="chatOnline">● LOCALE</span></div>
+    <button id="chatClose">−</button>
   </div>
 
-  <div id="chatMessagesWrap">
-    <div id="chatMessages"></div>
-    <button id="chatNewMsg" type="button">▼ Nuovi messaggi</button>
-  </div>
+  <div id="chatMessages"></div>
 
   <div id="chatInputArea">
-    <button class="chatIconBtn" id="emojiBtn" type="button" title="Emoticon">😊</button>
-    <div id="emojiPanel"></div>
     <input id="chatInput" maxlength="180" autocomplete="off"
-           data-i18n="chat_placeholder" placeholder="> Inserisci comando o /help...">
+           data-i18n="chat_placeholder" placeholder="> Inserisci comando...">
     <button id="chatSend" data-i18n="chat_send">EXEC</button>
-    <span id="chatCharCount">0/180</span>
   </div>
 </div>
 
-<button id="chatOpen" class="hidden">LOG_CHAT<span id="chatUnread">0</span></button>
+<button id="chatOpen" class="hidden">LOG_CHAT</button>
+
+<canvas id="mini" width="150" height="150"></canvas>
 
 <div id="power">
   <div class="p">SPACE: SPLIT</div>
@@ -436,7 +350,7 @@ button{border:0;cursor:pointer}
 
 <div id="menu">
   <div class="card">
-    <h1 style="font-size:26px;">ZERO_AND_YASSINE_EVOLUTION<br><span style="font-size:18px;color:#0088ff;" data-i18n="game_subtitle">// NEON EDITION</span></h1>
+    <h1>CELL_ARENA<br><span style="font-size:18px;color:#0088ff;" data-i18n="game_subtitle">// NEON EDITION</span></h1>
 
     <p data-i18n="game_desc">
       Esegui l'assorbimento delle particelle. Elimina le entità inferiori.<br>
@@ -526,10 +440,7 @@ const i18n_dict = {
     lbl_paused: "[ SISTEMA IN PAUSA ]", paused_desc: "Flusso temporale arrestato.", lbl_resume: "RIPRENDI", lbl_hub: "TORNA ALL'HUB",
     lbl_over: "[ CRITICO: ENTITÀ DISTRUTTA ]", btn_reboot: "REBOOT", lbl_render: "Render Particelle", lbl_shadow: "Ombreggiatura Neon",
     lbl_haptic: "Feedback Aptico", lbl_ai: "IA Aggressiva", btn_apply: "APPLICA",
-    go_mass: "Massa finale", go_absorbed: "Assorbimenti", go_time: "Tempo attivo", go_record: "Record Max",
-    lbl_account: "[ ACCOUNT ]", lbl_username: "Username", lbl_password: "Password", lbl_email: "Email",
-    btn_login: "ACCEDI", btn_register: "REGISTRATI", btn_logout: "ESCI DALL'ACCOUNT", lbl_or_social: "oppure accedi con",
-    lbl_coins: "Monete", lbl_skins: "Skin", status_guest: "Ospite (dati solo locali)"
+    go_mass: "Massa finale", go_absorbed: "Assorbimenti", go_time: "Tempo attivo", go_record: "Record Max"
   },
   en: {
     mass_display: "MASS: ", leaderboard_title: "[ LEADERBOARD ]", profile_title: "[ PROFILE ]", lbl_lang: "LANGUAGE",
@@ -541,10 +452,7 @@ const i18n_dict = {
     lbl_paused: "[ SYSTEM PAUSED ]", paused_desc: "Time flow halted.", lbl_resume: "RESUME", lbl_hub: "RETURN TO HUB",
     lbl_over: "[ CRITICAL: ENTITY DESTROYED ]", btn_reboot: "REBOOT", lbl_render: "Particle Render", lbl_shadow: "Neon Shadows",
     lbl_haptic: "Haptic Feedback", lbl_ai: "Aggressive AI", btn_apply: "APPLY",
-    go_mass: "Final Mass", go_absorbed: "Absorbed", go_time: "Active Time", go_record: "Max Record",
-    lbl_account: "[ ACCOUNT ]", lbl_username: "Username", lbl_password: "Password", lbl_email: "Email",
-    btn_login: "LOG IN", btn_register: "REGISTER", btn_logout: "LOG OUT", lbl_or_social: "or sign in with",
-    lbl_coins: "Coins", lbl_skins: "Skins", status_guest: "Guest (local data only)"
+    go_mass: "Final Mass", go_absorbed: "Absorbed", go_time: "Active Time", go_record: "Max Record"
   },
   es: {
     mass_display: "MASA: ", leaderboard_title: "[ CLASIFICACIÓN ]", profile_title: "[ PERFIL ]", lbl_lang: "IDIOMA",
@@ -641,21 +549,6 @@ const i18n_dict = {
     lbl_over: "[ गंभीर: इकाई नष्ट ]", btn_reboot: "रीबूट", lbl_render: "कण रेंडर", lbl_shadow: "नियॉन शैडो",
     lbl_haptic: "हैप्टिक फ़ीडबैक", lbl_ai: "आक्रामक AI", btn_apply: "लागू करें",
     go_mass: "अंतिम द्रव्यमान", go_absorbed: "अवशोषित", go_time: "सक्रिय समय", go_record: "अधिकतम रिकॉर्ड"
-  },
-  ar: {
-    mass_display: "الكتلة: ", leaderboard_title: "[ لوحة الصدارة ]", profile_title: "[ الملف الشخصي ]", lbl_lang: "اللغة",
-    lbl_player_id: "معرّف_اللاعب", lbl_hex: "لون HEX", btn_save: "حفظ_البيانات", btn_config: "إعدادات_النظام", btn_exit: "خروج",
-    chat_placeholder: "> أدخل أمرًا...", chat_send: "تنفيذ", game_subtitle: "// إصدار النيون",
-    game_desc: "امتص الجسيمات. أزل الكيانات الأضعف.<br><b>W</b> = تغذية | <b>مسافة</b> = انقسام | <b>SHIFT</b> = اندفاع.",
-    lbl_protocol: "البروتوكول", prot_classic: "قياسي (كلاسيكي)", prot_survival: "صعب (بقاء)", prot_chaos: "زائد (فوضى)",
-    btn_play: "تهيئة", game_controls: "> الأوامر: الفأرة/اللمس · مسافة=انقسام · W=تغذية · E=اندفاع · SHIFT=دفعة · F=ملء الشاشة · \\=تصحيح · ESC=إيقاف",
-    lbl_paused: "[ النظام متوقف ]", paused_desc: "تم إيقاف تدفق الوقت.", lbl_resume: "استئناف", lbl_hub: "العودة إلى المركز",
-    lbl_over: "[ حرج: تم تدمير الكيان ]", btn_reboot: "إعادة التشغيل", lbl_render: "عرض الجسيمات", lbl_shadow: "ظلال النيون",
-    lbl_haptic: "الاستجابة اللمسية", lbl_ai: "ذكاء اصطناعي عدواني", btn_apply: "تطبيق",
-    go_mass: "الكتلة النهائية", go_absorbed: "ممتص", go_time: "الوقت النشط", go_record: "الرقم القياسي",
-    lbl_account: "[ الحساب ]", lbl_username: "اسم المستخدم", lbl_password: "كلمة المرور", lbl_email: "البريد الإلكتروني",
-    btn_login: "تسجيل الدخول", btn_register: "إنشاء حساب", btn_logout: "تسجيل الخروج", lbl_or_social: "أو سجّل الدخول عبر",
-    lbl_coins: "العملات", lbl_skins: "الأشكال", status_guest: "ضيف (بيانات محلية فقط)"
   }
 };
 
@@ -664,10 +557,7 @@ let currentLang = localStorage.getItem("cellArenaLang") || "it";
 function applyTranslation(lang) {
   currentLang = lang;
   document.getElementById("langSelect").value = lang;
-
-  document.documentElement.lang = lang;
-  document.documentElement.dir = (lang === "ar") ? "rtl" : "ltr";
-
+  
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (i18n_dict[lang] && i18n_dict[lang][key]) {
@@ -785,30 +675,14 @@ function ext_entCollectPowerup(player, pUp) { if(pUp.type==='speed') player.spee
 let powerupsList = [];
 function ext_entUpdatePowerupsList(dt) { }
 function ext_entDrawPowerupsList(ctx) { }
-function ext_entClearAllEntities() { foods=[]; ejected=[]; bots=[]; viruses=[]; particles=[]; powerups=[]; }
+function ext_entClearAllEntities() { foods=[]; ejected=[]; bots=[]; viruses=[]; particles=[]; }
 function ext_entCountTotalEntities() { return foods.length + ejected.length + bots.length + viruses.length + particles.length; }
 function ext_entGetAveragePlayerPosition() { if(!player)return {x:0,y:0}; let tx=0,ty=0; player.cells.forEach(c=>{tx+=c.x;ty+=c.y;}); return {x:tx/player.cells.length, y:ty/player.cells.length}; }
 function ext_entCalculateCellSpeed(c) { return ext_mathClamp(185 / (c.r/25), 42, 185); }
 
 // --- SEZIONE 5: LOGICA GIOCATORE, SISTEMA E DEBUG (86-100) ---
 function ext_playerAddXpAmount(amount) { xp += amount; checkLevel(); }
-function ext_playerTriggerLevelUp() {
-  level = Math.min(level + 1, MAX_LEVEL);
-  toast("LEVEL UP: " + level);
-  vibrate(30);
-
-  if (level % SKIN_EVERY === 0) {
-    const skin = SKIN_CATALOG.find(s => s.level === level);
-    coins += 0; // ricompensa in monete fissata a 0, come richiesto
-    if (skin && !unlockedSkins.includes(skin.id)) {
-      unlockedSkins.push(skin.id);
-      toast("🎁 LIVELLO " + level + ": nuova skin sbloccata!");
-    }
-    saveProgressLocal();
-    renderSkinGallery();
-    syncProgressToServer();
-  }
-}
+function ext_playerTriggerLevelUp() { level++; toast("LEVEL UP: " + level); vibrate(30); }
 function ext_playerAddEnergyAmount(amount) { energy = ext_mathClamp(energy + amount, 0, 100); }
 function ext_playerConsumeEnergy(amount) { if(energy >= amount) { energy -= amount; return true; } return false; }
 function ext_playerSetInvulnerableTime(time) { if(player) player.invuln = time; }
@@ -824,9 +698,9 @@ function ext_sysToggleFullscreen() { if (!document.fullscreenElement) { document
 let _sysDebugMode = false;
 function ext_sysToggleDebugOverlay() { _sysDebugMode = !_sysDebugMode; toast(_sysDebugMode ? "[SYS] DEBUG ON" : "[SYS] DEBUG OFF"); }
 function ext_sysDrawDebugText(ctx, txt, x, y, color) { ext_renDrawText(ctx, txt, x, y, "12px Consolas", color); }
-function ext_sysLog(msg) { console.log("[ZAY_EVOLUTION_SYS]", msg); }
-function ext_sysWarn(msg) { console.warn("[ZAY_EVOLUTION_WARN]", msg); }
-function ext_sysError(msg) { console.error("[ZAY_EVOLUTION_ERR]", msg); }
+function ext_sysLog(msg) { console.log("[CELL_ARENA_SYS]", msg); }
+function ext_sysWarn(msg) { console.warn("[CELL_ARENA_WARN]", msg); }
+function ext_sysError(msg) { console.error("[CELL_ARENA_ERR]", msg); }
 
 // --- SEZIONE 6: STRINGHE (101-120) ---
 function ext_strToUpper(s) { return s.toUpperCase(); }
@@ -1050,44 +924,12 @@ const BOT_NAMES=[
 ========================================================= */
 
 let foods=[];
-let ejected=[]; // non più popolato (l'eject ora è gestito dal server come cibo istantaneo)
-let bots=[];    // ogni altro giocatore/bot connesso alla room condivisa
+let ejected=[];
+let bots=[];
 let viruses=[];
 let particles=[];
-let powerups=[]; // potenziamenti raccoglibili (velocità / massa) - sincronizzati dal server
 
 let player=null;
-
-let gameMode="classic";
-let powerupSpawnTimer=6;
-
-let comboCount=0;             // streak di uccisioni (badge #comboBadge)
-let comboTimer=0;
-
-/* =========================================================
-   RETE / MULTIPLAYER
-========================================================= */
-
-// Se la pagina è servita direttamente da server.js (cartella /public) basta
-// collegarsi alla stessa origine. In sviluppo locale via file:// si usa localhost:3000.
-const WS_URL = (location.protocol === "file:")
-  ? "ws://localhost:3000"
-  : ((location.protocol === "https:" ? "wss://" : "ws://") + location.host);
-
-let ws=null;
-let netId=null;
-let netConnected=false;
-let netPlayers=new Map(); // id -> ultimo dato pubblico ricevuto dal server
-let lastMoveSentAt=0;
-let lastScore=0;
-
-// NUOVO: differenze reali tra le modalità Classic/Survival/Chaos
-// (prima la select "PROTOCOLLO" nel menu era puramente decorativa)
-const MODE_CONFIG={
-  classic:  { botMul:1,   virusMul:1,   invuln:3, energyRegen:1,   startMass:25 },
-  survival: { botMul:1.4, virusMul:1.6, invuln:1, energyRegen:0.6, startMass:20 },
-  chaos:    { botMul:2,   virusMul:0.4, invuln:2, energyRegen:1.3, startMass:32 }
-};
 
 let running=false;
 let paused=false;
@@ -1095,47 +937,6 @@ let paused=false;
 let xp=0;
 let level=1;
 let energy=100;
-
-const MAX_LEVEL=1000;
-const SKIN_EVERY=10; // ogni 10 livelli: skin nuova (0 monete, come richiesto)
-
-let coins=Number(localStorage.getItem("cellArenaCoins")||0);
-let unlockedSkins=JSON.parse(localStorage.getItem("cellArenaSkins")||'["default"]');
-let equippedSkin=localStorage.getItem("cellArenaEquippedSkin")||"default";
-
-// Elenco delle 100 skin sbloccabili (liv. 10, 20, ... 1000).
-// I file .gif non sono inclusi: mettili in public/skins/skin_<livello>.gif
-// Finché il file non esiste, viene mostrato un placeholder animato via CSS.
-const SKIN_CATALOG=[];
-for(let lv=SKIN_EVERY; lv<=MAX_LEVEL; lv+=SKIN_EVERY){
-  SKIN_CATALOG.push({ id:"skin_"+lv, level:lv, gif:"skins/skin_"+lv+".gif", label:"Skin Lv."+lv });
-}
-
-// Monete guadagnate per ogni eliminazione (alimentano lo shop skin premium)
-const COINS_PER_KILL=5;
-
-// Skin premium: GIF animate acquistabili con le monete, indipendenti dal livello.
-// I file .gif non sono inclusi: mettili in public/skins/premium_<id>.gif
-const PREMIUM_SKIN_CATALOG=[
-  { id:"premium_inferno",   gif:"skins/premium_inferno.gif",   label:"Inferno",    price:150  },
-  { id:"premium_glacier",   gif:"skins/premium_glacier.gif",   label:"Glacier",    price:150  },
-  { id:"premium_toxic",     gif:"skins/premium_toxic.gif",     label:"Toxic",      price:200  },
-  { id:"premium_galaxy",    gif:"skins/premium_galaxy.gif",    label:"Galaxy",     price:250  },
-  { id:"premium_gold",      gif:"skins/premium_gold.gif",      label:"Gold Rush",  price:300  },
-  { id:"premium_neonwave",  gif:"skins/premium_neonwave.gif",  label:"Neon Wave",  price:300  },
-  { id:"premium_phantom",   gif:"skins/premium_phantom.gif",   label:"Phantom",    price:350  },
-  { id:"premium_dragon",    gif:"skins/premium_dragon.gif",    label:"Dragon",     price:400  },
-  { id:"premium_matrix",    gif:"skins/premium_matrix.gif",    label:"Matrix",     price:400  },
-  { id:"premium_royal",     gif:"skins/premium_royal.gif",     label:"Royal",      price:500  },
-  { id:"premium_void",      gif:"skins/premium_void.gif",      label:"Void",       price:600  },
-  { id:"premium_legend",    gif:"skins/premium_legend.gif",    label:"Legend",     price:800  }
-];
-
-function saveProgressLocal(){
-  localStorage.setItem("cellArenaCoins",coins);
-  localStorage.setItem("cellArenaSkins",JSON.stringify(unlockedSkins));
-  localStorage.setItem("cellArenaEquippedSkin",equippedSkin);
-}
 
 let kills=0;
 let foodEaten=0;
@@ -1272,18 +1073,52 @@ function worldMouse(){
 }
 
 /* =========================================================
-   WORLD / CONNESSIONE ALLA ROOM CONDIVISA
+   WORLD CREATION
 ========================================================= */
 
-// Prepara lo stato locale e apre la connessione al server condiviso.
-// Tutti i giocatori che si collegano finiscono nella stessa room/chat.
+function createFood(){
+  return ext_entSpawnFoodItem();
+}
+
+function createVirus(){
+  return ext_entSpawnVirusEntity();
+}
+
+function createBot(i){
+  const r=rand(22,58);
+
+  return {
+    id: ext_sysGenerateUniqueId(),
+    name:BOT_NAMES[i%BOT_NAMES.length],
+    color:randomColor(),
+    cells:[{
+      x:rand(250,WORLD-250),
+      y:rand(250,WORLD-250),
+      r
+    }],
+    targetX:rand(0,WORLD),
+    targetY:rand(0,WORLD),
+    change:rand(1,4),
+    state:"wander",
+    splitCooldown:rand(1,5)
+  };
+}
+
 function resetWorld(){
 
-  foods=[]; viruses=[]; powerups=[]; particles=[]; ejected=[]; bots=[];
-  netPlayers=new Map();
+  ext_entClearAllEntities();
 
-  gameMode=(document.getElementById("mode").value)||"classic";
-  const cfg=MODE_CONFIG[gameMode]||MODE_CONFIG.classic;
+  for(let i=0;i<FOOD_TARGET;i++){
+    foods.push(createFood());
+  }
+
+  for(let i=0;i<BOT_TARGET;i++){
+    bots.push(createBot(i));
+  }
+
+  for(let i=0;i<VIRUS_TARGET;i++){
+    viruses.push(createVirus());
+  }
 
   const name=
     document.getElementById("name").value.trim().slice(0,16)
@@ -1292,14 +1127,20 @@ function resetWorld(){
   const color=
     localStorage.getItem("cellArenaColor")||"#00ffff";
 
-  // Placeholder locale finché non arriva il "welcome" dal server
   player={
-    id:null,
+    id:"player",
     name,
     color,
-    cells:[{ x:WORLD/2, y:WORLD/2, r:cfg.startMass, vx:0, vy:0 }],
-    invuln:cfg.invuln,
-    speedBoostTimer:0
+    cells:[{
+      x:WORLD/2,
+      y:WORLD/2,
+      r:25,
+      vx:0,
+      vy:0,
+      splitAge:0,
+      mergeTimer:0
+    }],
+    invuln:3
   };
 
   camera.x=WORLD/2;
@@ -1312,153 +1153,6 @@ function resetWorld(){
   kills=0;
   foodEaten=0;
   gameTime=0;
-  lastScore=0;
-
-  comboCount=0;
-  comboTimer=0;
-  const badge=document.getElementById("comboBadge");
-  if(badge) badge.classList.remove("show");
-
-  connectToServer(name, color, cfg.startMass);
-}
-
-function disconnectFromServer(){
-  netConnected=false;
-  if(ws){
-    try{ ws.onclose=null; ws.close(); }catch(e){}
-    ws=null;
-  }
-}
-
-function connectToServer(name, color, startMass){
-
-  if(ws){
-    try{ ws.onclose=null; ws.close(); }catch(e){}
-  }
-  netConnected=false;
-  updateStatusBar();
-
-  try{
-    ws=new WebSocket(WS_URL);
-  }catch(e){
-    toast("[ERR] Impossibile collegarsi al server");
-    return;
-  }
-
-  ws.onopen=()=>{
-    ws.send(JSON.stringify({
-      type:"join",
-      name,
-      color,
-      startMass,
-      startSpeed:7,
-      token:authToken||null
-    }));
-  };
-
-  ws.onclose=()=>{
-    netConnected=false;
-    updateStatusBar();
-    if(running){
-      toast("[ERR] Connessione al server persa");
-    }
-  };
-
-  ws.onerror=()=>{};
-
-  ws.onmessage=(ev)=>{
-    let msg;
-    try{ msg=JSON.parse(ev.data); }catch(e){ return; }
-    handleServerMessage(msg);
-  };
-}
-
-const renderedChatIds=new Set();
-
-function handleServerMessage(msg){
-
-  if(msg.type==="welcome"){
-    netId=msg.id;
-    player.id=netId;
-    netConnected=true;
-    updateStatusBar();
-  }
-
-  else if(msg.type==="error"){
-    toast("[ERR] "+(msg.message||"Errore server"));
-  }
-
-  else if(msg.type==="playerCount"){
-    onlineCount=msg.count;
-    updateStatusBar();
-  }
-
-  else if(msg.type==="chatHistory"){
-    for(const m of msg.messages){
-      if(renderedChatIds.has(m.id))continue;
-      renderedChatIds.add(m.id);
-      addChat(m);
-    }
-  }
-
-  else if(msg.type==="kill"){
-    kills++;
-    coins+=COINS_PER_KILL;
-    saveProgressLocal();
-    triggerCombo(msg.combo);
-    if(player&&player.cells.length){
-      const c=player.cells[0];
-      particleBurst(c.x,c.y,player.color,18);
-    }
-  }
-
-  else if(msg.type==="dead"){
-    gameOver();
-  }
-
-  else if(msg.type==="state"){
-    applyServerState(msg);
-  }
-}
-
-let onlineCount=1;
-
-function applyServerState(msg){
-
-  foods=msg.foods||[];
-  viruses=(msg.viruses||[]).map(v=>({...v, spikes:v.spikes||18}));
-  // il pulse locale delle stelle powerup si anima lato client, il resto arriva dal server
-  const oldPulses=new Map(powerups.map(p=>[p.id,p.pulse]));
-  powerups=(msg.powerups||[]).map(p=>({...p, pulse:oldPulses.get(p.id)||0}));
-
-  const newBots=[];
-
-  for(const p of (msg.players||[])){
-    if(p.id===netId){
-      // giocatore locale: dati autoritativi dal server
-      player.name=p.name;
-      player.color=p.color;
-      player.cells=p.cells.map(c=>({x:c.x,y:c.y,r:c.r}));
-      player.invuln=Math.max(0,(p.spawnProtectMsLeft||0)/1000);
-      player.speedBoostTimer=Math.max(0,(p.speedBoostMsLeft||0)/1000);
-      energy=p.energy;
-      foodEaten=p.score;
-
-      if(p.score>lastScore){
-        ext_playerAddXpAmount(p.score-lastScore);
-      }
-      lastScore=p.score;
-    }else{
-      newBots.push({
-        id:p.id,
-        name:p.name,
-        color:p.color,
-        cells:p.cells.map(c=>({x:c.x,y:c.y,r:c.r}))
-      });
-    }
-  }
-
-  bots=newBots;
 }
 
 /* =========================================================
@@ -1519,14 +1213,12 @@ function cellSpeed(c){
 }
 
 /* =========================================================
-   PLAYER MOVEMENT (predizione locale, il server è autoritativo)
+   PLAYER MOVEMENT
 ========================================================= */
-
-const BASE_SPEED=7; // deve combaciare con lo startSpeed inviato al join
 
 function updatePlayer(dt){
 
-  if(!player||!player.cells.length)return;
+  if(!player)return;
 
   const target=worldMouse();
 
@@ -1543,98 +1235,85 @@ function updatePlayer(dt){
     const d=Math.hypot(dx,dy);
 
     if(d>3){
-      // Stessa formula di velocità del server (in px/tick -> px/sec, TICK=30ms)
-      let speed=BASE_SPEED*Math.pow(25/Math.max(c.r,1),0.43);
-      speed=clamp(speed,0.75,BASE_SPEED*1.15)*(1000/30);
 
-      if(player.speedBoostTimer>0)speed*=1.35;
-      if(energy>0&&boosting)speed*=1.55;
+      let speed=cellSpeed(c);
+
+      if(energy>0&&boosting){
+        speed*=1.55;
+        energy-=dt*18;
+      }
 
       c.x+=dx/d*speed*dt;
       c.y+=dy/d*speed*dt;
     }
 
     ext_entConstrainToBounds(c, c.r, WORLD-c.r, c.r, WORLD-c.r);
+
+    c.splitAge+=dt;
+    c.mergeTimer=Math.max(0,c.mergeTimer-dt);
+  }
+
+  eatFood();
+  eatEjected();
+}
+
+/* =========================================================
+   FOOD
+========================================================= */
+
+function eatFood(){
+
+  for(const c of player.cells){
+
+    for(let i=foods.length-1;i>=0;i--){
+
+      const f=foods[i];
+
+      if(ext_entIsColliding(c, f)){
+
+        const old=c.r;
+
+        c.r=Math.sqrt(c.r*c.r+f.r*f.r*.85);
+
+        foods.splice(i,1);
+        foods.push(createFood());
+
+        foodEaten++;
+        ext_playerAddXpAmount(2);
+
+        particleBurst(f.x,f.y,f.color,4);
+
+        if(c.r>old*1.02){
+          best=Math.max(best,Math.floor(totalMass(player)));
+        }
+      }
+    }
   }
 }
 
 /* =========================================================
-   INVIO INPUT AL SERVER
+   EJECTED FOOD
 ========================================================= */
 
-function sendMove(){
-  if(!ws||ws.readyState!==WebSocket.OPEN)return;
+function eatEjected(){
 
-  const now=performance.now();
-  if(now-lastMoveSentAt<45)return; // ~22Hz, sufficiente per il tick server di 30ms
-  lastMoveSentAt=now;
+  for(const c of player.cells){
 
-  const target=worldMouse();
-  let tx=target.x, ty=target.y;
+    for(let i=ejected.length-1;i>=0;i--){
 
-  if(joystick.active&&player&&player.cells.length){
-    const c=player.cells[0];
-    tx=c.x+joystick.x*400;
-    ty=c.y+joystick.y*400;
+      const e=ejected[i];
+
+      if(ext_entIsColliding(c, e)){
+
+        c.r=Math.sqrt(c.r*c.r+e.r*e.r);
+
+        particleBurst(e.x,e.y,e.color,5);
+
+        ejected.splice(i,1);
+        ext_playerAddXpAmount(3);
+      }
+    }
   }
-
-  ws.send(JSON.stringify({ type:"move", x:tx, y:ty }));
-}
-
-/* =========================================================
-   POWERUP (raccolta gestita dal server, qui solo animazione)
-========================================================= */
-
-function updatePowerupsVisual(dt){
-  for(const p of powerups)p.pulse=(p.pulse||0)+dt;
-}
-
-function drawPowerups(){
-  for(const p of powerups){
-    const s=screen(p.x,p.y);
-    if(s.x<-30||s.x>SW+30||s.y<-30||s.y>SH+30)continue;
-
-    const pulse=1+ext_mathSinWave(performance.now(),1/300,0.12);
-    const color=p.type==="speed"?"#ffe66d":"#b875ff";
-    const r=p.r*camera.zoom*pulse;
-
-    if(settings.shadows)ext_renApplyShadow(ctx,color,14);
-    ext_renDrawStar(ctx,s.x,s.y,5,r,r*0.5,color);
-    if(settings.shadows)ext_renClearShadow(ctx);
-  }
-}
-
-function updatePowerupPanel(){
-  const panel=document.getElementById("powerupPanel");
-  if(!panel)return;
-
-  if(!player||player.speedBoostTimer<=0){
-    panel.innerHTML="";
-    return;
-  }
-
-  const pct=Math.min(100,player.speedBoostTimer/8*100);
-  panel.innerHTML=
-    `<div class="buffChip">
-       <span class="buffIcon">⚡</span>
-       <div class="buffBarWrap"><i class="buffBar" style="width:${pct}%;background:#ffe66d"></i></div>
-     </div>`;
-}
-
-/* =========================================================
-   STATUS BAR LIVE
-========================================================= */
-
-function updateStatusBar(){
-  const online=onlineCount||1;
-
-  const conn=document.getElementById("connection");
-  if(conn)conn.textContent=netConnected
-    ? `[SYS] Connesso alla room condivisa · ${online} online`
-    : `[SYS] Connessione al server in corso...`;
-
-  const chatOnline=document.getElementById("chatOnline");
-  if(chatOnline)chatOnline.textContent=netConnected?`● ${online} ONLINE`:"● CONNESSIONE...";
 }
 
 /* =========================================================
@@ -1643,80 +1322,427 @@ function updateStatusBar(){
 
 function checkLevel(){
 
-  while(level<MAX_LEVEL && xp>=level*50){
+  while(xp>=level*50){
     xp-=level*50;
     ext_playerTriggerLevelUp();
+    
+    addChat({
+      name:"SYS_ADMIN",
+      color:"#00ffff",
+      text:"[UPGRADE] "+player.name+" ha raggiunto il livello "+level
+    });
   }
-  if(level>=MAX_LEVEL) xp=0;
 }
 
 /* =========================================================
-   SPLIT / FEED / BOOST / DASH (azioni inviate al server)
+   SPLIT
 ========================================================= */
 
 function split(){
-  if(!running||paused||!player||!ws||ws.readyState!==WebSocket.OPEN)return;
-  ws.send(JSON.stringify({ type:"split" }));
 
-  if(player.cells.length){
-    const c=player.cells[0];
-    particleBurst(c.x,c.y,player.color,8);
+  if(!running||paused||!player)return;
+
+  const maxCells=16;
+
+  if(player.cells.length>=maxCells){
+    toast("[WARN] Limite divisione cellulare raggiunto");
+    return;
   }
+
+  const source=[...player.cells];
+
+  for(const c of source){
+
+    if(player.cells.length>=maxCells)break;
+    if(c.r<24)continue;
+    if(c.splitAge<.35)continue;
+
+    const target=worldMouse();
+    let angle = ext_mathAngleBetween(c.x, c.y, target.x, target.y);
+    
+    const nc = ext_entForceSplitCell(c, angle, 520);
+    nc.x = clamp(nc.x, nc.r, WORLD-nc.r);
+    nc.y = clamp(nc.y, nc.r, WORLD-nc.r);
+
+    player.cells.push(nc);
+
+    particleBurst(nc.x,nc.y,player.color,8);
+  }
+
   vibrate(25);
 }
 
+/* =========================================================
+   FEED
+========================================================= */
+
 function eject(){
-  if(!running||paused||!player||!ws||ws.readyState!==WebSocket.OPEN)return;
-  ws.send(JSON.stringify({ type:"eject" }));
-  vibrate(10);
-}
 
-let boosting=false;
+  if(!running||paused||!player||energy<8)return;
 
-function setBoosting(value){
-  if(boosting===value)return;
-  boosting=value;
-  if(ws&&ws.readyState===WebSocket.OPEN){
-    ws.send(JSON.stringify({ type:"boosting", value }));
+  let fired=false;
+
+  for(const c of player.cells){
+
+    if(c.r<15)continue;
+
+    const target=worldMouse();
+    let angle = ext_mathAngleBetween(c.x, c.y, target.x, target.y);
+
+    const amount=Math.min(5,c.r*.18);
+    if(c.r*c.r-amount*amount<100)continue;
+
+    const e = ext_entForceEjectMass(c, angle, amount, 330);
+    e.color = player.color;
+
+    ejected.push(e);
+    fired=true;
   }
-}
 
-function dash(){
-  if(!running||paused||!ws||ws.readyState!==WebSocket.OPEN)return;
-  ws.send(JSON.stringify({ type:"dash" }));
-  toast("⚡ NEON DASH!");
-  vibrate(40);
+  if(fired){
+    energy-=8;
+    vibrate(10);
+  }
 }
 
 /* =========================================================
-   COMBO STREAK (conteggio autoritativo dal server)
+   BOOST
 ========================================================= */
 
-function triggerCombo(count){
-  comboCount=count;
-  comboTimer=3;
+let boosting=false;
 
-  const badge=document.getElementById("comboBadge");
-  if(!badge)return;
-
-  if(comboCount>=2){
-    badge.textContent="⚡ COMBO x"+comboCount;
-    badge.classList.add("show");
-    if(comboCount>=4)vibrate(35);
+function updateBoost(dt){
+  if(!boosting){
+    ext_playerAddEnergyAmount(dt*7);
   }
 }
 
-function updateCombo(dt){
-  if(comboTimer<=0)return;
+/* =========================================================
+   PHYSICS
+========================================================= */
 
-  comboTimer-=dt;
-  if(comboTimer<=0){
-    comboCount=0;
-    const badge=document.getElementById("comboBadge");
-    if(badge)badge.classList.remove("show");
+function updatePhysics(dt){
+
+  for(const c of player.cells){
+
+    if(c.vx||c.vy){
+      c.x+=c.vx*dt;
+      c.y+=c.vy*dt;
+
+      ext_entApplyFriction(c, 0.035, dt);
+      ext_entConstrainToBounds(c, c.r, WORLD-c.r, c.r, WORLD-c.r);
+
+      if(Math.abs(c.vx)<5)c.vx=0;
+      if(Math.abs(c.vy)<5)c.vy=0;
+    }
+  }
+
+  for(const e of ejected){
+
+    e.x+=e.vx*dt;
+    e.y+=e.vy*dt;
+    ext_entApplyFriction(e, 0.025, dt);
+    e.life-=dt;
+
+    ext_entConstrainToBounds(e, 5, WORLD-5, 5, WORLD-5);
+  }
+
+  ejected=ejected.filter(e=>e.life>0);
+}
+
+/* =========================================================
+   MERGE
+========================================================= */
+
+function updateMerge(){
+
+  if(player.cells.length<2)return;
+
+  for(let i=0;i<player.cells.length;i++){
+    for(let j=player.cells.length-1;j>i;j--){
+
+      const a=player.cells[i];
+      const b=player.cells[j];
+
+      if(a.mergeTimer>0||b.mergeTimer>0)continue;
+
+      if(ext_entCheckMergeCondition(a, b)){
+
+        const total=a.r*a.r+b.r*b.r;
+
+        a.x=(a.x*a.r*a.r+b.x*b.r*b.r)/total;
+        a.y=(a.y*a.r*a.r+b.y*b.r*b.r)/total;
+        a.r=Math.sqrt(total);
+
+        particleBurst(a.x,a.y,player.color,10);
+
+        player.cells.splice(j,1);
+      }
+    }
   }
 }
 
+/* =========================================================
+   BOT AI
+========================================================= */
+
+function nearestFood(c){
+
+  let bestFood=null;
+  let bestDist=Infinity;
+
+  for(const f of foods){
+    const d=ext_mathDistSq(f.x, f.y, c.x, c.y);
+    if(d<bestDist){
+      bestDist=d;
+      bestFood=f;
+    }
+  }
+  return bestFood;
+}
+
+function nearestThreat(bot){
+
+  if(!player)return null;
+
+  let threat=null;
+  let dBest=Infinity;
+
+  for(const pc of player.cells){
+    if(pc.r>bot.cells[0].r*1.12){
+      const d=dist(pc,bot.cells[0]);
+      if(d<dBest){
+        dBest=d;
+        threat=pc;
+      }
+    }
+  }
+  return threat;
+}
+
+function nearestVictim(bot){
+
+  if(!player)return null;
+
+  let victim=null;
+  let dBest=Infinity;
+
+  for(const pc of player.cells){
+    if(bot.cells[0].r>pc.r*1.15){
+      const d=dist(pc,bot.cells[0]);
+      if(d<dBest){
+        dBest=d;
+        victim=pc;
+      }
+    }
+  }
+  return victim;
+}
+
+function updateBots(dt){
+
+  for(const bot of bots){
+
+    const c=bot.cells[0];
+
+    bot.change-=dt;
+    bot.splitCooldown-=dt;
+
+    const threat=settings.aggressive?nearestThreat(bot):null;
+    const victim=settings.aggressive?nearestVictim(bot):null;
+
+    if(threat){
+
+      bot.state="flee";
+      let angle = ext_mathAngleBetween(threat.x, threat.y, c.x, c.y);
+      bot.targetX=clamp(c.x+Math.cos(angle)*500,0,WORLD);
+      bot.targetY=clamp(c.y+Math.sin(angle)*500,0,WORLD);
+
+    }else if(victim){
+
+      bot.state="hunt";
+      bot.targetX=victim.x;
+      bot.targetY=victim.y;
+
+      if(bot.splitCooldown<=0 && c.r>35 && dist(c,victim)<c.r*5){
+        botSplit(bot,victim);
+        bot.splitCooldown=7;
+      }
+
+    }else{
+
+      bot.state="food";
+      const f=nearestFood(c);
+      if(f){
+        bot.targetX=f.x;
+        bot.targetY=f.y;
+      }
+
+      if(bot.change<=0){
+        bot.change=rand(1,4);
+        if(Math.random()<.35){
+          bot.targetX=rand(100,WORLD-100);
+          bot.targetY=rand(100,WORLD-100);
+        }
+      }
+    }
+
+    ext_entMoveTowardsTarget(c, bot.targetX, bot.targetY, cellSpeed(c) * (bot.state==="flee"?0.66:(bot.state==="hunt"?0.59:0.55)), dt);
+    ext_entConstrainToBounds(c, c.r, WORLD-c.r, c.r, WORLD-c.r);
+
+    for(let i=foods.length-1;i>=0;i--){
+      const f=foods[i];
+      if(ext_entIsColliding(c, f)){
+        c.r=Math.sqrt(c.r*c.r+f.r*f.r*.65);
+        foods.splice(i,1);
+        foods.push(createFood());
+      }
+    }
+
+    for(let i=ejected.length-1;i>=0;i--){
+      const e=ejected[i];
+      if(ext_entIsColliding(c, e)){
+        c.r=Math.sqrt(c.r*c.r+e.r*e.r);
+        ejected.splice(i,1);
+      }
+    }
+  }
+}
+
+function botSplit(bot,target){
+  const c=bot.cells[0];
+  let angle = ext_mathAngleBetween(c.x, c.y, target.x, target.y);
+  
+  const nc = ext_entForceSplitCell(c, angle, 430);
+  bot.cells.push(nc);
+}
+
+/* =========================================================
+   COLLISIONS
+========================================================= */
+
+function canEat(big,small,d){
+  return (big.r>small.r*1.12 && d<big.r*.72);
+}
+
+function playerBotCollisions(){
+
+  if(!player)return;
+
+  for(let pi=player.cells.length-1;pi>=0;pi--){
+    const pc=player.cells[pi];
+
+    for(let bi=bots.length-1;bi>=0;bi--){
+      const bot=bots[bi];
+
+      for(const bc of bot.cells){
+        const d=dist(pc,bc);
+
+        if(canEat(pc,bc,d)){
+          pc.r=Math.sqrt(pc.r*pc.r+bc.r*bc.r);
+          kills++;
+          ext_playerAddXpAmount(25);
+          particleBurst(bc.x,bc.y,bot.color,18);
+
+          addChat({
+            name:"SYS_ALERT",
+            color:"#0088ff",
+            text:"[KILL] "+player.name+" ha distrutto "+bot.name
+          });
+
+          bots.splice(bi,1);
+          setTimeout(()=>{
+            if(running) bots.push(createBot(ext_mathRandomInt(0,10000)));
+          },900);
+          break;
+        }
+
+        if(player.invuln<=0 && canEat(bc,pc,d)){
+          gameOver();
+          return;
+        }
+      }
+    }
+  }
+}
+
+/* =========================================================
+   CELL VS CELL
+========================================================= */
+
+function playerCellCollision(){
+
+  if(!player)return;
+
+  for(let i=0;i<player.cells.length;i++){
+    const a=player.cells[i];
+
+    for(let j=i+1;j<player.cells.length;j++){
+      const b=player.cells[j];
+      const d=dist(a,b);
+
+      if(d<(a.r+b.r)*.45){
+        const overlap=(a.r+b.r)*.45-d;
+
+        if(d>0){
+          const nx=(b.x-a.x)/d;
+          const ny=(b.y-a.y)/d;
+
+          a.x-=nx*overlap*.5;
+          a.y-=ny*overlap*.5;
+          b.x+=nx*overlap*.5;
+          b.y+=ny*overlap*.5;
+        }
+      }
+    }
+  }
+}
+
+/* =========================================================
+   VIRUSES
+========================================================= */
+
+function virusCollision(){
+
+  for(let i=player.cells.length-1;i>=0;i--){
+    const c=player.cells[i];
+
+    if(c.r<55)continue;
+
+    for(const v of viruses){
+      if(dist(c,v)<c.r+v.r*.35){
+
+        if(player.cells.length>=16)break;
+
+        const pieces=[];
+        const amount=Math.min(8,player.cells.length?8:1);
+        const mass=c.r*c.r;
+        const pieceMass=mass/amount;
+
+        c.r=Math.sqrt(pieceMass);
+
+        for(let k=0;k<amount-1;k++){
+          const angle=Math.PI*2*k/(amount-1);
+          pieces.push({
+            x:clamp(c.x+Math.cos(angle)*c.r*2,c.r,WORLD-c.r),
+            y:clamp(c.y+Math.sin(angle)*c.r*2,c.r,WORLD-c.r),
+            r:c.r,
+            vx:Math.cos(angle)*500,
+            vy:Math.sin(angle)*500,
+            splitAge:0,
+            mergeTimer:10
+          });
+        }
+
+        player.cells.push(...pieces);
+        particleBurst(c.x,c.y,"#00ffaa",30);
+        toast("[ERR] Infezione rilevata. Frammentazione eseguita.");
+        vibrate(50);
+        break;
+      }
+    }
+  }
+}
 
 /* =========================================================
    CAMERA
@@ -1798,7 +1824,9 @@ function drawFood(){
     const pulse=1+ext_mathSinWave(performance.now(), 1/500, 0.08) + f.pulse*0;
     const r=f.r*camera.zoom*pulse;
 
+    if(settings.shadows) ext_renApplyShadow(ctx, f.color, 7);
     ext_renDrawCircleFill(ctx, p.x, p.y, r, f.color);
+    if(settings.shadows) ext_renClearShadow(ctx);
   }
 }
 
@@ -1911,15 +1939,14 @@ function drawPlayer(){
 
 function drawMini(){
 
-  const w=mini.width, h=mini.height;
+  const w=150, h=150;
 
   ext_renClearCanvas(mctx, w, h, "#000508");
 
   const scale=w/WORLD;
-  const foodSize=Math.max(2, w/150);
 
   for(const f of foods){
-    ext_renDrawRectFill(mctx, f.x*scale, f.y*scale, foodSize, foodSize, "#8affff");
+    ext_renDrawRectFill(mctx, f.x*scale, f.y*scale, 1, 1, "#ffffff35");
   }
 
   for(const v of viruses){
@@ -1941,47 +1968,29 @@ function drawMini(){
   ext_renDrawRectStroke(mctx, 0, 0, w, h, "#00ffff", 1);
 }
 
-/* Ridimensionamento minimappa: la casella (#miniWrap) è CSS-resizable,
-   qui sincronizziamo il buffer di disegno del canvas con la nuova dimensione
-   e salviamo la preferenza dell'utente. */
-const miniWrap=document.getElementById("miniWrap");
-
-function applyMiniSize(px){
-  const size=Math.round(clamp(px,90,320));
-  miniWrap.style.width=size+"px";
-  miniWrap.style.height=size+"px";
-  mini.width=size;
-  mini.height=size;
-}
-
-const savedMiniSize=parseInt(localStorage.getItem("cellArenaMiniSize")||"150",10);
-applyMiniSize(savedMiniSize);
-
-if(typeof ResizeObserver!=="undefined"){
-  let miniResizeTimer=null;
-  new ResizeObserver(entries=>{
-    for(const entry of entries){
-      const size=Math.round(entry.contentRect.width);
-      if(size>0 && (mini.width!==size || mini.height!==size)){
-        mini.width=size;
-        mini.height=size;
-        clearTimeout(miniResizeTimer);
-        miniResizeTimer=setTimeout(()=>localStorage.setItem("cellArenaMiniSize",size),300);
-      }
-    }
-  }).observe(miniWrap);
-}
-
 /* =========================================================
    HUD E LOGICA DEBUG
 ========================================================= */
 
 function updateHUD(){
+
   if(!player)return;
-  // Il pannello statistiche (MASSA/LVL/XP/Kill/Food/Tempo/Record) è stato rimosso
-  // su richiesta; manteniamo qui solo il tracciamento del record per il game-over.
+
   const mass=ext_entGetPlayerMassInt();
-  best=Math.max(best,mass);
+  const massLabel = i18n_dict[currentLang] ? (i18n_dict[currentLang].mass_display || "MASS: ") : "MASS: ";
+
+  document.getElementById("mass").textContent = massLabel + ext_sysFormatScoreNumber(mass);
+  document.getElementById("level").textContent=level;
+  document.getElementById("xp").textContent=ext_sysFormatScoreNumber(xp);
+  document.getElementById("energy").textContent=Math.floor(energy);
+
+  document.getElementById("kills").textContent=kills;
+  document.getElementById("foodCount").textContent=ext_sysFormatScoreNumber(foodEaten);
+  document.getElementById("time").textContent=formatTime(gameTime);
+  document.getElementById("best").textContent=ext_sysFormatScoreNumber(best);
+
+  const percent=xp/Math.max(level*50,1)*100;
+  document.getElementById("xpbar").style.width=Math.min(100,percent)+"%";
 }
 
 function drawDebugOverlay(now) {
@@ -2028,132 +2037,17 @@ function updateLeaderboard(){
    CHAT
 ========================================================= */
 
-const chatEl=document.getElementById("chat");
-const chatMessagesWrap=document.getElementById("chatMessagesWrap");
 const chatMessages=document.getElementById("chatMessages");
-const chatNewMsgBtn=document.getElementById("chatNewMsg");
-const chatUnreadBadge=document.getElementById("chatUnread");
-const chatCharCount=document.getElementById("chatCharCount");
-const emojiBtn=document.getElementById("emojiBtn");
-const emojiPanel=document.getElementById("emojiPanel");
-
-/* =========================================================
-   RUOLI CHAT (Admin / Moderatore / Vip user / User)
-========================================================= */
-const ROLE_LABELS={ admin:"ADMIN", moderator:"MOD", vip:"VIP", user:"" };
-function roleBadgeHTML(role){
-  const r=(role||"user").toLowerCase();
-  if(r==="user"||!ROLE_LABELS[r])return "";
-  return `<span class="roleBadge role-${r}">${ROLE_LABELS[r]}</span>`;
-}
-
-/* =========================================================
-   NUOVA FUNZIONE 1/10: Ignora utenti (mute lato client)
-========================================================= */
-let ignoredUsers=new Set(JSON.parse(localStorage.getItem("cellArenaIgnored")||"[]"));
-function ignoreUser(name){
-  if(!name)return;
-  ignoredUsers.add(name.toLowerCase());
-  localStorage.setItem("cellArenaIgnored",JSON.stringify([...ignoredUsers]));
-}
-function unignoreUser(name){
-  if(!name)return;
-  ignoredUsers.delete(name.toLowerCase());
-  localStorage.setItem("cellArenaIgnored",JSON.stringify([...ignoredUsers]));
-}
-function isIgnored(name){ return ignoredUsers.has((name||"").toLowerCase()); }
-
-/* =========================================================
-   NUOVA FUNZIONE 2/10: Notifica sonora nuovi messaggi
-========================================================= */
-let chatSoundOn=localStorage.getItem("cellArenaChatSound")!=="0";
-function toggleChatSound(){
-  chatSoundOn=!chatSoundOn;
-  localStorage.setItem("cellArenaChatSound",chatSoundOn?"1":"0");
-  document.getElementById("chatSoundBtn").classList.toggle("active",chatSoundOn);
-}
-let _chatAudioCtx=null;
-function playChatPing(){
-  if(!chatSoundOn)return;
-  try{
-    _chatAudioCtx=_chatAudioCtx||new (window.AudioContext||window.webkitAudioContext)();
-    const osc=_chatAudioCtx.createOscillator();
-    const gain=_chatAudioCtx.createGain();
-    osc.type="sine"; osc.frequency.value=880;
-    gain.gain.setValueAtTime(0.05,_chatAudioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001,_chatAudioCtx.currentTime+0.18);
-    osc.connect(gain); gain.connect(_chatAudioCtx.destination);
-    osc.start(); osc.stop(_chatAudioCtx.currentTime+0.18);
-  }catch(e){}
-}
-
-/* =========================================================
-   NUOVA FUNZIONE 3/10: Mostra/nascondi orario messaggi
-========================================================= */
-let chatShowTime=localStorage.getItem("cellArenaChatTime")!=="0";
-function toggleChatTimestamps(){
-  chatShowTime=!chatShowTime;
-  localStorage.setItem("cellArenaChatTime",chatShowTime?"1":"0");
-  document.getElementById("chatTimeBtn").classList.toggle("active",chatShowTime);
-  chatMessages.querySelectorAll(".chatTime").forEach(el=>{
-    el.style.display=chatShowTime?"":"none";
-  });
-}
-
-/* =========================================================
-   NUOVA FUNZIONE 4/10: Badge messaggi non letti mentre chat è chiusa
-========================================================= */
-let unreadCount=0;
-function bumpUnread(){
-  if(chatEl.classList.contains("hidden")){
-    unreadCount++;
-    chatUnreadBadge.textContent=unreadCount>99?"99+":unreadCount;
-    chatUnreadBadge.style.display="block";
-  }
-}
-function clearUnread(){
-  unreadCount=0;
-  chatUnreadBadge.style.display="none";
-}
-
-/* =========================================================
-   NUOVA FUNZIONE 5/10: Autoscroll intelligente + pulsante "nuovi messaggi"
-========================================================= */
-function isNearChatBottom(){
-  return chatMessages.scrollHeight-chatMessages.scrollTop-chatMessages.clientHeight<40;
-}
-function scrollChatToBottom(){
-  chatMessages.scrollTop=chatMessages.scrollHeight;
-  chatNewMsgBtn.style.display="none";
-}
-chatMessages.addEventListener("scroll",()=>{
-  if(isNearChatBottom())chatNewMsgBtn.style.display="none";
-});
-chatNewMsgBtn.onclick=scrollChatToBottom;
-
-/* =========================================================
-   NUOVA FUNZIONE 6/10: Evidenzia le menzioni al tuo nome
-========================================================= */
-function textMentionsMe(text){
-  const myName=(player&&player.name||"").trim().toLowerCase();
-  if(!myName||myName.length<2)return false;
-  return (text||"").toLowerCase().includes(myName);
-}
 
 function addChat(msg){
 
-  if(isIgnored(msg.name))return;
-
-  const wasNearBottom=isNearChatBottom();
-  const mentioned=textMentionsMe(msg.text);
-
   const div=document.createElement("div");
-  div.className="chatMessage"+(mentioned?" mentioned":"");
+  div.className="chatMessage";
   div.innerHTML=`
-    ${roleBadgeHTML(msg.role)}<span class="chatName" style="color:${msg.color||"#00ffff"}">
+    <span class="chatName" style="color:${msg.color||"#00ffff"}">
       ${escapeHTML(msg.name||"SYS_LOG")}
     </span>
-    <span class="chatTime" style="display:${chatShowTime?"":"none"}">${escapeHTML(msg.time||"")}</span>
+    <span class="chatTime">${escapeHTML(msg.time||"")}</span>
     <br>
     <span class="chatText">>> ${escapeHTML(msg.text||"")}</span>
   `;
@@ -2163,109 +2057,17 @@ function addChat(msg){
   while(chatMessages.children.length>100){
     chatMessages.removeChild(chatMessages.firstChild);
   }
-
-  if(wasNearBottom){
-    scrollChatToBottom();
-  }else{
-    chatNewMsgBtn.style.display="block";
-  }
-
-  if(msg.playerId!==undefined && msg.playerId!==netId){
-    playChatPing();
-    bumpUnread();
-    if(mentioned)vibrate(60);
-  }
+  chatMessages.scrollTop=chatMessages.scrollHeight;
 }
-
-/* =========================================================
-   NUOVA FUNZIONE 7/10: Comandi chat locali (/help, /clear, /ignore...)
-========================================================= */
-function handleLocalChatCommand(text){
-  const parts=text.slice(1).trim().split(/\s+/);
-  const cmd=(parts.shift()||"").toLowerCase();
-  const arg=parts.join(" ");
-
-  if(cmd==="clear"){
-    clearChatLocal();
-    return true;
-  }
-  if(cmd==="ignore"){
-    if(arg){ ignoreUser(arg); addChat({name:"SYS_LOG",color:"#0088ff",text:"Hai ignorato "+arg+".",time:""}); }
-    return true;
-  }
-  if(cmd==="unignore"){
-    if(arg){ unignoreUser(arg); addChat({name:"SYS_LOG",color:"#0088ff",text:"Non ignori più "+arg+".",time:""}); }
-    return true;
-  }
-  if(cmd==="help"){
-    addChat({name:"SYS_LOG",color:"#0088ff",text:"Comandi locali: /clear, /ignore <nome>, /unignore <nome>. Comandi Staff (Admin/Mod): /kick <nome>, /mute <nome>, /unmute <nome>.",time:""});
-    return true;
-  }
-  return false; // non è un comando locale: verrà inviato al server (es. /kick, /mute, /role)
-}
-
-/* =========================================================
-   NUOVA FUNZIONE 8/10: Pulisce la chat solo localmente
-========================================================= */
-function clearChatLocal(){
-  chatMessages.innerHTML="";
-  renderedChatIds.clear();
-}
-
-/* =========================================================
-   NUOVA FUNZIONE 9/10: Contatore caratteri live
-========================================================= */
-function updateCharCounter(){
-  const input=document.getElementById("chatInput");
-  chatCharCount.textContent=input.value.length+"/180";
-}
-
-/* =========================================================
-   NUOVA FUNZIONE 10/10: Selettore emoticon (30 emoji)
-========================================================= */
-const EMOJI_LIST=["😀","😂","😅","😎","😍","🤩","😜","🤔","😱","😡","🥶","🤯","😴","🤝","👍","👎","👏","🙌","💪","🔥","⚡","💯","🎯","🏆","💀","👻","🤖","👽","❤️","💔"];
-function buildEmojiPanel(){
-  emojiPanel.innerHTML=EMOJI_LIST.map(em=>`<button type="button" class="emojiBtn">${em}</button>`).join("");
-  emojiPanel.querySelectorAll(".emojiBtn").forEach(btn=>{
-    btn.onclick=()=>{
-      const input=document.getElementById("chatInput");
-      input.value=(input.value+btn.textContent).slice(0,180);
-      updateCharCounter();
-      input.focus();
-    };
-  });
-}
-buildEmojiPanel();
-function toggleEmojiPanel(){
-  emojiPanel.classList.toggle("show");
-  emojiBtn.classList.toggle("active",emojiPanel.classList.contains("show"));
-}
-emojiBtn.onclick=toggleEmojiPanel;
-document.addEventListener("click",e=>{
-  if(!emojiPanel.contains(e.target) && e.target!==emojiBtn){
-    emojiPanel.classList.remove("show");
-    emojiBtn.classList.remove("active");
-  }
-});
 
 function sendChat(){
   const input=document.getElementById("chatInput");
   const text=input.value.replace(/\s+/g," ").trim().slice(0,180);
   if(!text)return;
 
-  if(text.startsWith("/") && handleLocalChatCommand(text)){
-    input.value="";
-    updateCharCounter();
-    return;
-  }
-
-  if(ws&&ws.readyState===WebSocket.OPEN){
-    ws.send(JSON.stringify({ type:"chat", text }));
-  }else{
-    addChat({ name:"SYS_ERR", color:"#ff6680", text:"Non connesso al server.", time:"" });
-  }
+  const time=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  addChat({ name:player?player.name:"Player", color:player?player.color:"#00ffff", text, time });
   input.value="";
-  updateCharCounter();
 }
 
 document.getElementById("chatSend").onclick=sendChat;
@@ -2274,250 +2076,16 @@ document.getElementById("chatInput").addEventListener("keydown",e=>{
   if(e.key==="Enter"){ e.preventDefault(); sendChat(); }
   e.stopPropagation();
 });
-document.getElementById("chatInput").addEventListener("input",updateCharCounter);
-
-document.getElementById("chatSoundBtn").onclick=toggleChatSound;
-document.getElementById("chatSoundBtn").classList.toggle("active",chatSoundOn);
-document.getElementById("chatTimeBtn").onclick=toggleChatTimestamps;
-document.getElementById("chatTimeBtn").classList.toggle("active",chatShowTime);
 
 document.getElementById("chatClose").onclick=()=>{
-  chatEl.classList.add("hidden");
+  document.getElementById("chat").classList.add("hidden");
   document.getElementById("chatOpen").classList.remove("hidden");
 };
 
 document.getElementById("chatOpen").onclick=()=>{
-  chatEl.classList.remove("hidden");
+  document.getElementById("chat").classList.remove("hidden");
   document.getElementById("chatOpen").classList.add("hidden");
-  clearUnread();
-  scrollChatToBottom();
 };
-
-/* Ridimensionamento chat: #chat è CSS-resizable (resize:both), qui
-   salviamo e ripristiniamo la dimensione scelta dall'utente. */
-(function setupChatResize(){
-  const savedW=localStorage.getItem("cellArenaChatW");
-  const savedH=localStorage.getItem("cellArenaChatH");
-  if(savedW)chatEl.style.width=savedW+"px";
-  if(savedH)chatEl.style.height=savedH+"px";
-
-  if(typeof ResizeObserver!=="undefined"){
-    let chatResizeTimer=null;
-    new ResizeObserver(entries=>{
-      for(const entry of entries){
-        clearTimeout(chatResizeTimer);
-        chatResizeTimer=setTimeout(()=>{
-          localStorage.setItem("cellArenaChatW",Math.round(entry.contentRect.width));
-          localStorage.setItem("cellArenaChatH",Math.round(entry.contentRect.height));
-        },300);
-      }
-    }).observe(chatEl);
-  }
-})();
-
-/* =========================================================
-   ACCOUNT (registrazione / login / login sociale)
-========================================================= */
-
-let authToken=localStorage.getItem("cellArenaToken")||null;
-let currentUser=null; // popolato da /api/me quando loggati
-
-function apiFetch(path, opts={}){
-  const headers=Object.assign({"Content-Type":"application/json"}, opts.headers||{});
-  if(authToken) headers.Authorization="Bearer "+authToken;
-  return fetch(path, Object.assign({}, opts, { headers })).then(async r=>{
-    const data=await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(data.error||"Errore di rete");
-    return data;
-  });
-}
-
-function setAuthError(msg){
-  document.getElementById("authError").textContent=msg||"";
-}
-
-function applyLoggedInUI(user){
-  currentUser=user;
-  const roleTag=user.role && user.role!=="user" ? " "+roleBadgeHTML(user.role).replace(/"/g,"'") : "";
-  document.getElementById("accountStatus").innerHTML = "@" + escapeHTML(user.username) + (user.provider!=="local" ? " ("+escapeHTML(user.provider)+")" : "") + roleTag;
-  document.getElementById("authForms").classList.add("hidden");
-  document.getElementById("btnLogout").classList.remove("hidden");
-
-  // Il progresso salvato sul server ha priorità su quello locale al login,
-  // così i livelli/monete/skin seguono l'account su qualsiasi dispositivo.
-  level=Math.max(1,Math.min(MAX_LEVEL, user.level||1));
-  xp=user.xp||0;
-  coins=user.coins||0;
-  unlockedSkins=user.skins&&user.skins.length?user.skins:["default"];
-  equippedSkin=user.equippedSkin||"default";
-  saveProgressLocal();
-  updateHUD();
-  renderSkinGallery();
-}
-
-function applyLoggedOutUI(){
-  currentUser=null;
-  document.getElementById("accountStatus").setAttribute("data-i18n","status_guest");
-  applyTranslation(currentLang);
-  document.getElementById("authForms").classList.remove("hidden");
-  document.getElementById("btnLogout").classList.add("hidden");
-}
-
-function doLogin(){
-  setAuthError("");
-  const username=document.getElementById("authUsername").value.trim();
-  const password=document.getElementById("authPassword").value;
-  apiFetch("/api/login",{ method:"POST", body:JSON.stringify({username,password}) })
-    .then(({token,user})=>{
-      authToken=token;
-      localStorage.setItem("cellArenaToken",token);
-      applyLoggedInUI(user);
-    })
-    .catch(err=>setAuthError(err.message));
-}
-
-function doRegister(){
-  setAuthError("");
-  const username=document.getElementById("authUsername").value.trim();
-  const password=document.getElementById("authPassword").value;
-  apiFetch("/api/register",{ method:"POST", body:JSON.stringify({username,password}) })
-    .then(({token,user})=>{
-      authToken=token;
-      localStorage.setItem("cellArenaToken",token);
-      applyLoggedInUI(user);
-      toast("✅ Account creato!");
-    })
-    .catch(err=>setAuthError(err.message));
-}
-
-function doLogout(){
-  apiFetch("/api/logout",{method:"POST"}).catch(()=>{});
-  authToken=null;
-  localStorage.removeItem("cellArenaToken");
-  applyLoggedOutUI();
-}
-
-function syncProgressToServer(){
-  if(!authToken) return; // ospite: resta solo su localStorage
-  apiFetch("/api/progress",{
-    method:"POST",
-    body:JSON.stringify({ level, xp, coins, skins:unlockedSkins, equippedSkin })
-  }).catch(()=>{ /* offline: va bene, riproveremo al prossimo evento */ });
-}
-
-function boostrapSession(){
-  // Se torniamo da un login social, il server passa ?token=...&welcome=...
-  const params=new URLSearchParams(location.search);
-  if(params.get("token")){
-    authToken=params.get("token");
-    localStorage.setItem("cellArenaToken",authToken);
-    history.replaceState({}, "", location.pathname);
-  }
-  if(params.get("authError")){
-    setAuthError("Errore login social: " + params.get("authError"));
-    history.replaceState({}, "", location.pathname);
-  }
-
-  if(authToken){
-    apiFetch("/api/me").then(({user})=>applyLoggedInUI(user)).catch(()=>{
-      authToken=null; localStorage.removeItem("cellArenaToken"); applyLoggedOutUI();
-    });
-  } else {
-    applyLoggedOutUI();
-  }
-}
-
-/* =========================================================
-   GALLERIA SKIN
-========================================================= */
-
-function renderSkinGallery(){
-  const grid=document.getElementById("skinGallery");
-  document.getElementById("menuCoins").textContent=ext_sysFormatScoreNumber(coins);
-  document.getElementById("menuSkinCount").textContent=unlockedSkins.length;
-  document.getElementById("menuSkinTotal").textContent=SKIN_CATALOG.length+1;
-
-  const all=[{id:"default",level:0,gif:null,label:"Default"}, ...SKIN_CATALOG];
-  grid.innerHTML="";
-
-  all.forEach(skin=>{
-    const owned=unlockedSkins.includes(skin.id);
-    const cell=document.createElement("div");
-    cell.className="skinCell"+(owned?"":" locked")+(equippedSkin===skin.id?" equipped":"");
-    cell.title=owned ? skin.label : skin.label+" — sblocca al liv. "+skin.level;
-
-    if(skin.gif){
-      const img=document.createElement("img");
-      img.src=skin.gif;
-      img.alt=skin.label;
-      img.onerror=()=>{ img.remove(); const f=document.createElement("div"); f.className="fallback"; cell.appendChild(f); };
-      cell.appendChild(img);
-    } else {
-      const f=document.createElement("div"); f.className="fallback"; cell.appendChild(f);
-    }
-
-    if(owned){
-      cell.onclick=()=>{
-        equippedSkin=skin.id;
-        saveProgressLocal();
-        syncProgressToServer();
-        renderSkinGallery();
-      };
-    }
-    grid.appendChild(cell);
-  });
-
-  renderPremiumShop();
-}
-
-function renderPremiumShop(){
-  const grid=document.getElementById("premiumSkinGallery");
-  if(!grid)return;
-  grid.innerHTML="";
-
-  PREMIUM_SKIN_CATALOG.forEach(skin=>{
-    const owned=unlockedSkins.includes(skin.id);
-    const cell=document.createElement("div");
-    cell.className="skinCell"+(owned?"":" locked premiumLocked")+(equippedSkin===skin.id?" equipped":"");
-    cell.title=owned ? skin.label : skin.label+" — "+skin.price+" monete";
-
-    const img=document.createElement("img");
-    img.src=skin.gif;
-    img.alt=skin.label;
-    img.onerror=()=>{ img.remove(); const f=document.createElement("div"); f.className="fallback"; cell.appendChild(f); };
-    cell.appendChild(img);
-
-    if(!owned){
-      const tag=document.createElement("div");
-      tag.className="priceTag";
-      tag.textContent="💰"+skin.price;
-      cell.appendChild(tag);
-    }
-
-    cell.onclick=()=>{
-      if(owned){
-        equippedSkin=skin.id;
-        saveProgressLocal();
-        syncProgressToServer();
-        renderSkinGallery();
-        return;
-      }
-      if(coins<skin.price){
-        toast("❌ Monete insufficienti: ti servono "+skin.price+" 💰");
-        return;
-      }
-      coins-=skin.price;
-      unlockedSkins.push(skin.id);
-      equippedSkin=skin.id;
-      saveProgressLocal();
-      syncProgressToServer();
-      toast("✨ Skin premium sbloccata: "+skin.label);
-      renderSkinGallery();
-    };
-
-    grid.appendChild(cell);
-  });
-}
 
 /* =========================================================
    USER MENU & SETTINGS
@@ -2528,13 +2096,6 @@ const userMenu=document.getElementById("userMenu");
 document.getElementById("userButton").onclick=()=>{ userMenu.classList.toggle("hidden"); };
 document.getElementById("closeUser").onclick=()=>{ userMenu.classList.add("hidden"); };
 document.getElementById("saveName").onclick=()=>{ saveProfile(); userMenu.classList.add("hidden"); };
-
-document.getElementById("btnLogin").onclick=doLogin;
-document.getElementById("btnRegister").onclick=doRegister;
-document.getElementById("btnLogout").onclick=doLogout;
-
-boostrapSession();
-renderSkinGallery();
 
 document.getElementById("name").addEventListener("input",e=>{
   const name=e.target.value.slice(0,16)||"Player";
@@ -2580,14 +2141,12 @@ document.getElementById("menuButton").onclick=()=>{
   running=false; paused=false;
   document.getElementById("pause").classList.add("hidden");
   document.getElementById("menu").classList.remove("hidden");
-  disconnectFromServer();
 };
 
 document.getElementById("overMenu").onclick=()=>{
   running=false;
   document.getElementById("over").classList.add("hidden");
   document.getElementById("menu").classList.remove("hidden");
-  disconnectFromServer();
 };
 
 /* =========================================================
@@ -2626,11 +2185,11 @@ addEventListener("keydown",e=>{
 
   if(e.code==="Space"){ e.preventDefault(); split(); }
   if(e.code==="KeyW"){ e.preventDefault(); eject(); }
-  if(e.code==="KeyE"){ e.preventDefault(); setBoosting(true); }
-
+  if(e.code==="KeyE"){ e.preventDefault(); boosting=true; }
+  
   if(e.code==="ShiftLeft" || e.code==="ShiftRight"){
     e.preventDefault();
-    dash();
+    ext_playerExecuteDash(); // Nuova funzione 93
   }
 
   if(e.code==="KeyF"){
@@ -2652,7 +2211,7 @@ addEventListener("keydown",e=>{
 });
 
 addEventListener("keyup",e=>{
-  if(e.code==="KeyE"){ setBoosting(false); }
+  if(e.code==="KeyE"){ boosting=false; }
 });
 
 /* =========================================================
@@ -2722,21 +2281,24 @@ function loop(now){
 
     gameTime+=dt;
 
+    if(player){ player.invuln=Math.max(0,player.invuln-dt); }
+
+    updateBoost(dt);
     updatePlayer(dt);
-    sendMove();
-    updatePowerupsVisual(dt);
-    updateCombo(dt);
+    updateBots(dt);
+    updatePhysics(dt);
+    updateMerge();
+    playerCellCollision();
+    playerBotCollisions();
+    virusCollision();
     updateParticles(dt);
     updateCamera(dt);
 
     updateHUD();
     updateLeaderboard();
-    updatePowerupPanel();
-    updateStatusBar();
 
     drawBackground();
     drawFood();
-    drawPowerups();
     drawEjected();
 
     for(const v of viruses){ drawVirus(v); }

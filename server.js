@@ -7,6 +7,31 @@ const WebSocket = require("ws");
 const PORT = process.env.PORT || 3000;
 const SITE_URL = process.env.SITE_URL || `http://localhost:${PORT}`;
 
+/* ---------------------------
+   RUOLI: Admin / Moderatore / Vip user / User
+   Assegna account admin/moderatore tramite variabili d'ambiente
+   (elenco username separati da virgola), oppure impostando
+   manualmente il campo "role" in data/users.json.
+---------------------------- */
+const ADMIN_USERNAMES = (process.env.ADMIN_USERNAMES || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+const MODERATOR_USERNAMES = (process.env.MODERATOR_USERNAMES || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+const ROLE_ORDER = { user: 0, vip: 1, moderator: 2, admin: 3 };
+
+function roleForUser(user) {
+  if (!user) return "user";
+  const uname = (user.username || "").toLowerCase();
+  if (user.role === "admin" || ADMIN_USERNAMES.includes(uname)) return "admin";
+  if (user.role === "moderator" || MODERATOR_USERNAMES.includes(uname)) return "moderator";
+  if (user.role === "vip") return "vip";
+  return "user";
+}
+
+function roleAtLeast(role, min) {
+  return (ROLE_ORDER[role] || 0) >= (ROLE_ORDER[min] || 0);
+}
+
+const mutedNames = new Set();
+
 const WORLD = 6000;
 const TICK = 30;
 
@@ -302,6 +327,7 @@ function publicPlayer(player) {
     id: player.id,
     name: player.name,
     color: player.color,
+    role: player.role || "user",
     score: Math.floor(player.score),
     energy: Math.floor(player.energy),
     speedBoostMsLeft: Math.max(0, player.speedBoostUntil - now),
@@ -679,11 +705,22 @@ function addChatMessage(player, text) {
   text = cleanMessage(text);
   if (!text) return;
 
+  if (text.startsWith("/")) {
+    handleChatCommand(player, text);
+    return;
+  }
+
+  if (mutedNames.has(player.name.toLowerCase())) {
+    sendSystemToPlayer(player, "Sei silenziato da uno Staff member e non puoi scrivere in chat.");
+    return;
+  }
+
   const message = {
     id: randomId(),
     playerId: player.id,
     name: player.name,
     color: player.color,
+    role: player.role || "user",
     text,
     time: new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
   };
@@ -691,6 +728,74 @@ function addChatMessage(player, text) {
   chat.push(message);
   if (chat.length > 80) chat.splice(0, chat.length - 80);
   broadcastChat();
+}
+
+// Invia un messaggio di sistema visibile solo a un giocatore (non salvato nella history condivisa)
+function sendSystemToPlayer(player, text) {
+  if (!player.socket || player.socket.readyState !== WebSocket.OPEN) return;
+  const localMsg = {
+    id: randomId(),
+    playerId: null,
+    name: "SYS_STAFF",
+    color: "#ff6680",
+    role: "admin",
+    text,
+    time: new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+  };
+  try {
+    player.socket.send(JSON.stringify({ type: "chatHistory", messages: [...chat, localMsg] }));
+  } catch {}
+}
+
+function findPlayerByName(name) {
+  const low = (name || "").toLowerCase();
+  for (const p of players.values()) {
+    if (p.name.toLowerCase() === low) return p;
+  }
+  return null;
+}
+
+// Comandi chat riservati allo Staff (Admin / Moderatore): /kick /mute /unmute, + /help per tutti
+function handleChatCommand(player, text) {
+  const parts = text.slice(1).trim().split(/\s+/);
+  const cmd = (parts.shift() || "").toLowerCase();
+  const arg = parts.join(" ");
+
+  if (cmd === "help") {
+    const staffHelp = roleAtLeast(player.role, "moderator")
+      ? " Comandi Staff: /kick <nome>, /mute <nome>, /unmute <nome>."
+      : "";
+    sendSystemToPlayer(player, "Comandi disponibili: /help." + staffHelp);
+    return;
+  }
+
+  if (!["kick", "mute", "unmute"].includes(cmd)) return;
+
+  if (!roleAtLeast(player.role, "moderator")) {
+    sendSystemToPlayer(player, "Non hai i permessi per usare questo comando (richiede ruolo Moderatore o Admin).");
+    return;
+  }
+
+  if (!arg) {
+    sendSystemToPlayer(player, "Uso: /" + cmd + " <nome giocatore>");
+    return;
+  }
+
+  if (cmd === "kick") {
+    const target = findPlayerByName(arg);
+    if (target && target.socket) {
+      try { target.socket.close(); } catch {}
+      addSystemMessage("SYS_MOD", "#ff6680", player.name + " ha espulso " + target.name + " dalla partita.");
+    } else {
+      sendSystemToPlayer(player, "Giocatore \"" + arg + "\" non trovato.");
+    }
+  } else if (cmd === "mute") {
+    mutedNames.add(arg.toLowerCase());
+    addSystemMessage("SYS_MOD", "#ff6680", player.name + " ha silenziato " + arg + ".");
+  } else if (cmd === "unmute") {
+    mutedNames.delete(arg.toLowerCase());
+    addSystemMessage("SYS_MOD", "#ff6680", player.name + " ha riattivato la chat di " + arg + ".");
+  }
 }
 
 // Messaggi di sistema (join/leave/kill): non soggetti al cooldown anti-spam del giocatore
@@ -818,13 +923,17 @@ function createSession(username) {
   return token;
 }
 
-function getSessionUser(req) {
-  const auth = req.headers["authorization"] || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+function getUserByToken(token) {
   if (!token || !sessions.has(token)) return null;
   const users = loadUsers();
   const username = sessions.get(token);
   return users[username] ? { username, ...users[username] } : null;
+}
+
+function getSessionUser(req) {
+  const auth = req.headers["authorization"] || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  return getUserByToken(token);
 }
 
 function publicUser(u) {
@@ -832,6 +941,7 @@ function publicUser(u) {
     username: u.username,
     email: u.email || null,
     provider: u.provider || "local",
+    role: roleForUser(u),
     level: u.level || 1,
     xp: u.xp || 0,
     coins: u.coins || 0,
@@ -893,6 +1003,7 @@ async function handleApiRegister(req, res) {
     email: email || null,
     provider: "local",
     passwordHash: hashPassword(password),
+    role: "user",
     level: 1,
     xp: 0,
     coins: 0,
@@ -1043,6 +1154,7 @@ async function findOrCreateSocialUser(provider, profile) {
       email: profile.email || null,
       provider,
       socialKey: key,
+      role: "user",
       level: 1,
       xp: 0,
       coins: 0,
@@ -1277,6 +1389,11 @@ wss.on("connection", socket => {
       if (typeof message.color === "string" && /^#[0-9a-fA-F]{6}$/.test(message.color)) {
         player.color = message.color;
       }
+
+      const accountUser = typeof message.token === "string" ? getUserByToken(message.token) : null;
+      player.role = roleForUser(accountUser);
+      player.accountUsername = accountUser ? accountUser.username : null;
+
       player.socket = socket;
       players.set(id, player);
 

@@ -4,278 +4,116 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Cell Arena — Agar Style (Neon Edition)</title>
-
 <style>
-/* =========================================================
-   THEME: TOTAL BLACK & NEON CYAN / ELECTRIC BLUE
-========================================================= */
 *{box-sizing:border-box}
-html,body{
-  margin:0;width:100%;height:100%;overflow:hidden;
-  background:#000000;color:#00ffff;font-family:"Consolas", "Courier New", monospace;
-  user-select:none
-}
+html,body{ margin:0;width:100%;height:100%;overflow:hidden; background:#000000;color:#00ffff;font-family:"Consolas", "Courier New", monospace; user-select:none }
 canvas{position:fixed;inset:0;display:block}
 .hidden{display:none!important}
 button,input,select{font:inherit}
 button{border:0;cursor:pointer}
 
-#hud{
- position:fixed;left:15px;top:15px;z-index:20;
- min-width:225px;padding:14px;border-radius:12px;
- background:#01080cee;border:1px solid #00ffff;
- box-shadow:0 0 15px #00ffff33;backdrop-filter:blur(8px)
-}
+#hud{ position:fixed;left:15px;top:15px;z-index:20; min-width:225px;padding:14px;border-radius:12px; background:#01080cee;border:1px solid #00ffff; box-shadow:0 0 15px #00ffff33;backdrop-filter:blur(8px) }
 #mass{font-size:19px;text-shadow:0 0 5px #00ffff;}
 .small{color:#0088ff;font-size:11px}
-.bar{
- width:100%;height:7px;margin-top:8px;background:#002222;
- border-radius:10px;overflow:hidden;border:1px solid #00ffff44;
-}
-.bar i{
- display:block;width:0%;height:100%;
- background:linear-gradient(90deg,#00ffff,#0055ff);
- box-shadow:0 0 8px #00ffff;
-}
-.stats{
- display:grid;grid-template-columns:1fr 1fr;
- gap:5px;margin-top:9px;font-size:11px;color:#00aaaa;
-}
-.stats b{color:#00ffff}
+.bar{ width:100%;height:7px;margin-top:8px;background:#002222; border-radius:10px;overflow:hidden;border:1px solid #00ffff44; }
+.bar i{ display:block;width:0%;height:100%; background:linear-gradient(90deg,#00ffff,#0055ff); box-shadow:0 0 8px #00ffff; }
+.stats{ display:grid;grid-template-columns:1fr 1fr; gap:5px;margin-top:9px;font-size:11px;color:#00aaaa; }
 
-#board{
- position:fixed;right:15px;top:15px;z-index:20;width:230px;
- padding:14px;border-radius:12px;background:#01080cee;
- border:1px solid #00ffff;box-shadow:0 0 15px #00ffff33;
- backdrop-filter:blur(8px)
-}
+#board{ position:fixed;right:15px;top:15px;z-index:20;width:230px; padding:14px;border-radius:12px;background:#01080cee; border:1px solid #00ffff;box-shadow:0 0 15px #00ffff33; }
 #board h3{margin:0 0 10px;text-shadow:0 0 5px #00ffff;}
-.row{
- display:flex;justify-content:space-between;padding:5px 0;
- font-size:13px
-}
+.row{ display:flex;justify-content:space-between;padding:5px 0; font-size:13px }
 
-#mini{
- position:fixed;right:15px;bottom:15px;z-index:20;
- width:150px;height:150px;border:1px solid #00ffff;
- border-radius:12px;background:#000508;
- box-shadow:0 0 15px #00ffff33;
-}
+#mini{ position:fixed;right:15px;bottom:15px;z-index:20; width:150px;height:150px;border:1px solid #00ffff; border-radius:12px;background:#000508; box-shadow:0 0 15px #00ffff33; }
 
-#userButton{
- position:fixed;right:260px;top:15px;z-index:40;
- padding:10px 14px;border-radius:12px;
- background:#01080cee;border:1px solid #00ffff;color:#00ffff;
- box-shadow:0 0 10px #00ffff33;
-}
-#userMenu{
- position:fixed;right:260px;top:62px;z-index:50;width:270px;
- padding:18px;border-radius:12px;background:#01080cf5;
- border:1px solid #00ffff;box-shadow:0 0 25px #00ffff55;
-}
+#userButton{ position:fixed;right:260px;top:15px;z-index:40; padding:10px 14px;border-radius:12px; background:#01080cee;border:1px solid #00ffff;color:#00ffff; box-shadow:0 0 10px #00ffff33; }
+#userMenu{ position:fixed;right:260px;top:62px;z-index:50;width:270px; padding:18px;border-radius:12px;background:#01080cf5; border:1px solid #00ffff;box-shadow:0 0 25px #00ffff55; }
 #userMenu h3{margin:0 0 12px;text-shadow:0 0 5px #00ffff;}
-#userMenu input,#userMenu select{
- width:100%;padding:11px;border-radius:8px;
- border:1px solid #00ffff55;background:#00111a;
- color:#00ffff;outline:0;font-family:inherit;
- margin-bottom: 5px;
-}
-.green{color:#00ffff;font-size:12px;text-shadow:0 0 3px #00ffff;}
-.menuBtn{
- width:100%;margin-top:9px;padding:11px;border-radius:8px;
- background:#00ffff;color:#000;font-weight:bold;
- box-shadow:0 0 8px #00ffff;text-transform:uppercase;
-}
+#userMenu input,#userMenu select{ width:100%;padding:11px;border-radius:8px; border:1px solid #00ffff55;background:#00111a; color:#00ffff;outline:0;font-family:inherit; margin-bottom: 5px; }
+
+.menuBtn{ width:100%;margin-top:9px;padding:11px;border-radius:8px; background:#00ffff;color:#000;font-weight:bold; box-shadow:0 0 8px #00ffff;text-transform:uppercase; }
 .menuBtn.alt{background:#002233;color:#00ffff;border:1px solid #00ffff;box-shadow:none;}
 
-#chat{
- position:fixed;left:15px;bottom:15px;z-index:30;width:350px;height:320px;
- display:flex;flex-direction:column;overflow:hidden;border-radius:12px;
- background:#01080cee;border:1px solid #00ffff;
- box-shadow:0 0 20px #00ffff33;backdrop-filter:blur(8px)
-}
-#chatHeader{
- min-height:44px;display:flex;justify-content:space-between;
- align-items:center;padding:0 12px;background:#001a22;
- border-bottom:1px solid #00ffff55
-}
-#chatOnline{color:#00ffff;font-size:10px}
+#chat{ position:fixed;left:15px;bottom:15px;z-index:30;width:350px;height:320px; display:flex;flex-direction:column;overflow:hidden;border-radius:12px; background:#01080cee;border:1px solid #00ffff; }
+#chatHeader{ min-height:44px;display:flex;justify-content:space-between; align-items:center;padding:0 12px;background:#001a22; border-bottom:1px solid #00ffff55 }
 #chatClose{padding:5px 9px;background:#00ffff33;color:#00ffff;border-radius:6px;border:1px solid #00ffff;}
 #chatMessages{flex:1;overflow-y:auto;padding:10px;word-break:break-all;}
 .chatMessage{margin-bottom:9px;font-size:12px;line-height:1.35}
 .chatName{font-weight:bold}.chatTime{color:#0088ff;font-size:9px;margin-left:5px}
-.chatText{color:#e0ffff}
 #chatInputArea{display:flex;gap:6px;padding:7px;background:#000a11;border-top:1px solid #00ffff33;}
-#chatInput{
- flex:1;min-width:0;margin:0;padding:9px;border:1px solid #00ffff55;border-radius:6px;
- background:#00111a;color:#00ffff;outline:0;font-family:inherit;
-}
+#chatInput{ flex:1;padding:9px;border:1px solid #00ffff55;border-radius:6px; background:#00111a;color:#00ffff;outline:0;font-family:inherit; }
 #chatSend{padding:8px 12px;border-radius:6px;background:#00ffff;color:#000;font-weight:bold;}
-#chatOpen{
- position:fixed;left:15px;bottom:15px;z-index:29;padding:10px 14px;
- border-radius:12px;background:#01080cee;color:#00ffff;
- border:1px solid #00ffff;box-shadow:0 0 10px #00ffff33;
-}
+#chatOpen{ position:fixed;left:15px;bottom:15px;z-index:29;padding:10px 14px; border-radius:12px;background:#01080cee;color:#00ffff; border:1px solid #00ffff; }
 
-#power{
- position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
- z-index:20;display:flex;gap:7px;flex-wrap:wrap;
- justify-content:center
-}
-.p{
- padding:8px 12px;border-radius:8px;background:#0088ff;
- color:#fff;font-weight:bold;font-size:12px;border:1px solid #00ffff;
- box-shadow:0 0 8px #0088ff;
-}
+#power{ position:fixed;left:50%;bottom:18px;transform:translateX(-50%); z-index:20;display:flex;gap:7px;flex-wrap:wrap; justify-content:center }
+.p{ padding:8px 12px;border-radius:8px;background:#0088ff; color:#fff;font-weight:bold;font-size:12px;border:1px solid #00ffff; box-shadow:0 0 8px #0088ff; }
 
-#connection{
- position:fixed;left:50%;top:12px;transform:translateX(-50%);
- z-index:100;padding:7px 14px;border-radius:12px;
- background:#01080cee;border:1px solid #00ffff;
- font-size:11px;color:#00ffff;box-shadow:0 0 10px #00ffff33;
-}
-
-#toast{
- position:fixed;left:50%;top:65px;transform:translateX(-50%);
- z-index:150;padding:10px 18px;border-radius:8px;
- background:#01080cf5;border:1px solid #00ffff;color:#00ffff;
- opacity:0;pointer-events:none;transition:.25s;
- box-shadow:0 0 20px #00ffff55;
-}
+#connection,#toast{ position:fixed;left:50%;transform:translateX(-50%); z-index:100;padding:10px 18px;border-radius:8px; background:#01080cee;border:1px solid #00ffff;color:#00ffff; }
+#connection{top:12px;font-size:11px;}
+#toast{top:65px;opacity:0;pointer-events:none;transition:.25s;}
 #toast.show{opacity:1}
 
-#menu,#pause,#over,#settings{
- position:fixed;inset:0;z-index:200;display:flex;
- justify-content:center;align-items:center;
- background:radial-gradient(circle at center,#002233ee,#000000fa)
-}
-.card{
- width:min(480px,92vw);max-height:92vh;overflow:auto;
- padding:30px;border-radius:12px;
- background:#01080cf7;border:1px solid #00ffff;
- box-shadow:0 0 40px #00ffff44
-}
+#menu,#over{ position:fixed;inset:0;z-index:200;display:flex; justify-content:center;align-items:center; background:radial-gradient(circle at center,#002233ee,#000000fa) }
+.card{ width:min(500px,92vw);padding:30px;border-radius:12px; background:#01080cf7;border:1px solid #00ffff; box-shadow:0 0 40px #00ffff44 }
 .card h1{margin:0 0 8px;font-size:38px;color:#00ffff;text-shadow:0 0 10px #00ffff;}
-.card h2{margin-top:0;color:#00ffff;}
 .card p{color:#00aaaa;line-height:1.5}
-.card label{
- display:block;color:#0088ff;font-size:12px;margin-top:12px
-}
-.card input,.card select{
- width:100%;padding:12px;margin-top:6px;border:1px solid #00ffff55;
- border-radius:8px;background:#00111a;color:#00ffff;outline:0;font-family:inherit;
-}
-.play{
- width:100%;padding:14px;margin-top:14px;border-radius:8px;
- background:#00ffff;color:#000;font-weight:bold;font-size:16px;
- box-shadow:0 0 15px #00ffff;text-transform:uppercase;
-}
-.secondary{
- width:100%;padding:12px;margin-top:9px;border-radius:8px;
- background:#002233;color:#00ffff;border:1px solid #00ffff;
-}
-.settingRow{
- display:flex;justify-content:space-between;align-items:center;
- padding:10px 0;border-bottom:1px solid #00ffff33
-}
-.settingRow label{margin:0}
-.switch{
- width:44px;height:24px;border-radius:20px;background:#003333;
- position:relative;border:1px solid #00ffff55;
-}
-.switch i{
- position:absolute;width:18px;height:18px;top:2px;left:3px;
- border-radius:50%;background:#0088ff;transition:.2s
-}
-.switch.on{background:#00ffff;box-shadow:0 0 8px #00ffff;}
-.switch.on i{left:21px;background:#000;}
+.card label{ display:block;color:#0088ff;font-size:12px;margin-top:12px }
+.card input,.card select{ width:100%;padding:12px;margin-top:6px;border:1px solid #00ffff55; border-radius:8px;background:#00111a;color:#00ffff;outline:0;font-family:inherit; }
+.play{ width:100%;padding:14px;margin-top:14px;border-radius:8px; background:#00ffff;color:#000;font-weight:bold;font-size:16px; box-shadow:0 0 15px #00ffff; }
 
-#touch{
- position:fixed;inset:0;z-index:10;pointer-events:none
-}
-.touchBtn{
- position:absolute;width:65px;height:65px;border-radius:50%;
- background:#00ffff33;border:1px solid #00ffff;color:#00ffff;
- font-weight:bold;pointer-events:auto;backdrop-filter:blur(8px);
- box-shadow:0 0 15px #00ffff33;
-}
-#splitBtn{right:25px;bottom:105px}
+#touch{ position:fixed;inset:0;z-index:10;pointer-events:none }
+.touchBtn{ position:absolute;width:65px;height:65px;border-radius:50%; background:#00ffff33;border:1px solid #00ffff;color:#00ffff; font-weight:bold;pointer-events:auto;backdrop-filter:blur(8px); box-shadow:0 0 15px #00ffff33; }
+#dashBtn{right:185px;bottom:45px}
 #feedBtn{right:105px;bottom:45px}
+#splitBtn{right:25px;bottom:105px}
 
-#joystick{
- position:absolute;left:25px;bottom:35px;width:125px;height:125px;
- border-radius:50%;background:#00ffff11;border:1px solid #00ffff55;
- pointer-events:auto;box-shadow:inset 0 0 15px #00ffff22;
-}
-#stick{
- position:absolute;width:48px;height:48px;border-radius:50%;
- background:#00ffff88;left:38px;top:38px;box-shadow:0 0 10px #00ffff;
-}
+#joystick{ position:absolute;left:25px;bottom:35px;width:125px;height:125px; border-radius:50%;background:#00ffff11;border:1px solid #00ffff55; pointer-events:auto;box-shadow:inset 0 0 15px #00ffff22; }
+#stick{ position:absolute;width:48px;height:48px;border-radius:50%; background:#00ffff88;left:38px;top:38px;box-shadow:0 0 10px #00ffff; }
 
-@media(max-width:700px){
- #board{width:175px;top:65px}
- #userButton{right:14px;top:14px}
- #userMenu{right:14px;top:62px}
- #chat{width:calc(100vw - 30px);height:270px}
- #mini{width:105px;height:105px}
- #hud{min-width:165px;padding:11px}
- #hud .stats{display:none}
- #power{display:none}
-}
+@media(max-width:700px){ #board{width:175px;top:65px} #userButton{right:14px;top:14px} #userMenu{right:14px;top:62px} #chat{width:calc(100vw - 30px);height:270px} #mini{width:105px;height:105px} #hud{min-width:165px;padding:11px} #power{display:none} }
 </style>
 </head>
 <body>
 
 <canvas id="game"></canvas>
 
-<div id="connection">[SYS] Modalità Multiplayer · Disconnesso</div>
+<div id="connection">[SYS] Disconnesso</div>
 <div id="toast"></div>
 
 <div id="hud">
-  <div id="mass" data-i18n="mass_display">MASS: 25</div>
+  <div id="mass">MASS: 25</div>
   <div>LVL <b id="level">1</b> | XP <span id="xp">0</span></div>
   <div class="bar"><i id="xpbar"></i></div>
   <div class="small">PWR: <span id="energy">100</span>%</div>
 </div>
 
 <div id="board">
-  <h3 data-i18n="leaderboard_title">[ CLASSIFICA ]</h3>
+  <h3>[ CLASSIFICA ]</h3>
   <div id="rows"></div>
 </div>
 
 <button id="userButton">USR_ <span id="userNameButton">Player</span></button>
-
 <div id="userMenu" class="hidden">
-  <h3 data-i18n="profile_title">[ PROFILO ]</h3>
-  
-  <label data-i18n="lbl_player_id">ID_GIOCATORE</label>
-  <input id="userNameInput" maxlength="16" value="Player">
-
-  <label data-i18n="lbl_hex">HEX_COLOR</label>
-  <select id="colorInput">
-    <option value="#00ffff">Neon Cyan</option>
-    <option value="#0088ff">Electric Blue</option>
-    <option value="#42d392">Matrix Green</option>
-    <option value="#ffe66d">Warning Yellow</option>
-    <option value="#ff6680">Cyber Pink</option>
-    <option value="#b875ff">Deep Purple</option>
-    <option value="#ff9d4d">Reactor Orange</option>
-    <option value="#ffffff">Pure White</option>
+  <h3>[ PROFILO ]</h3>
+  <label>ID_GIOCATORE</label><input id="userNameInput" maxlength="16" value="Player">
+  <label>COLORE NEON</label>
+  <select id="userColorInput">
+    <option value="#00ffff">Neon Cyan</option><option value="#0088ff">Electric Blue</option>
+    <option value="#42d392">Matrix Green</option><option value="#ffe66d">Warning Yellow</option>
+    <option value="#ff6680">Cyber Pink</option><option value="#b875ff">Deep Purple</option>
   </select>
-
-  <button class="menuBtn" id="saveName" data-i18n="btn_save">SALVA_DATI</button>
-  <button class="menuBtn alt" id="closeUser" data-i18n="btn_exit">ESCI</button>
+  <hr style="border:1px solid #00ffff33;margin:15px 0">
+  <label>BOT NEL SERVER</label><input type="number" id="userBotCount" min="0" max="60" value="15">
+  
+  <button class="menuBtn" id="saveName">SALVA & APPLICA</button>
+  <button class="menuBtn alt" id="closeUser">ESCI</button>
 </div>
 
 <div id="chat">
-  <div id="chatHeader">
-    <div>LOG_CHAT <span id="chatOnline">● ONLINE</span></div>
-    <button id="chatClose">−</button>
-  </div>
+  <div id="chatHeader"><div>LOG_CHAT</div><button id="chatClose">−</button></div>
   <div id="chatMessages"></div>
   <div id="chatInputArea">
-    <input id="chatInput" maxlength="180" autocomplete="off" placeholder="> Inserisci comando...">
-    <button id="chatSend" data-i18n="chat_send">EXEC</button>
+    <input id="chatInput" maxlength="180" autocomplete="off" placeholder="> Messaggio...">
+    <button id="chatSend">EXEC</button>
   </div>
 </div>
 <button id="chatOpen" class="hidden">LOG_CHAT</button>
@@ -283,47 +121,53 @@ button{border:0;cursor:pointer}
 <canvas id="mini" width="150" height="150"></canvas>
 
 <div id="power">
+  <div class="p">SHIFT/E: DASH NEON</div>
   <div class="p">SPACE: SPLIT</div>
   <div class="p">W: FEED</div>
 </div>
 
 <div id="touch">
   <div id="joystick"><div id="stick"></div></div>
-  <button class="touchBtn" id="splitBtn">SPLIT</button>
+  <button class="touchBtn" id="dashBtn">DASH</button>
   <button class="touchBtn" id="feedBtn">FEED</button>
+  <button class="touchBtn" id="splitBtn">SPLIT</button>
 </div>
 
 <div id="menu">
   <div class="card">
-    <h1>CELL_ARENA<br><span style="font-size:18px;color:#0088ff;" data-i18n="game_subtitle">// MULTIPLAYER NEON</span></h1>
-    <p data-i18n="game_desc">
-      Esegui l'assorbimento delle particelle. Elimina le entità inferiori.<br>
-      <b>W</b> = Feed | <b>SPACE</b> = Split.
-    </p>
+    <h1>CELL_ARENA</h1>
+    <p>Assorbi materia. Elimina entità inferiori.<br><b>W</b> = Feed | <b>SPACE</b> = Split | <b>SHIFT</b> = Dash</p>
+    
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <div style="flex:1"><label>NOME ENTITÀ</label><input id="name" maxlength="16" value="Player"></div>
+      <div style="flex:1">
+        <label>COLORE</label>
+        <select id="colorInput">
+          <option value="#00ffff">Cyan</option><option value="#0088ff">Blue</option>
+          <option value="#42d392">Green</option><option value="#ff6680">Pink</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:5px;">
+      <div style="flex:1"><label>BOT SERVER</label><input id="menuBotCount" type="number" min="0" max="60" value="15"></div>
+      <div style="flex:1"><label>START MASS</label><input id="menuStartMass" type="number" min="10" max="150" value="25"></div>
+    </div>
 
-    <label data-i18n="lbl_player_id">NOME ENTITÀ</label>
-    <input id="name" maxlength="16" value="Player">
-
-    <button class="play" id="playButton" data-i18n="btn_play">INIZIALIZZA CONNESSIONE</button>
+    <button class="play" id="playButton">INIZIALIZZA CONNESSIONE</button>
   </div>
 </div>
 
 <div id="over" class="hidden">
-  <div class="card">
-    <h2 data-i18n="lbl_over">[ CRITICO: ENTITÀ DISTRUTTA ]</h2>
-    <p id="result"></p>
-    <button class="play" id="retryButton" data-i18n="btn_reboot">REBOOT</button>
-  </div>
+  <div class="card"><h2>[ CRITICO: DISTRUTTO ]</h2><p id="result"></p><button class="play" id="retryButton">REBOOT</button></div>
 </div>
 
 <script>
 "use strict";
 
-/* LIBRERIE EXT (Render, Math) */
 function ext_mathClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function ext_mathLerp(a, b, t) { return a + (b - a) * t; }
-function ext_colHexToRgb(hex) { let bigint = parseInt(hex.replace('#',''), 16); return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 }; }
-function ext_colHexToRgba(hex, alpha) { let c = ext_colHexToRgb(hex); return `rgba(${c.r},${c.g},${c.b},${alpha})`; }
+function ext_colHexToRgb(h) { let i = parseInt(h.replace('#',''), 16); return { r: (i>>16)&255, g: (i>>8)&255, b: i&255 }; }
+function ext_colHexToRgba(h, a) { let c = ext_colHexToRgb(h); return `rgba(${c.r},${c.g},${c.b},${a})`; }
 function ext_renDrawCircleFill(ctx, x, y, r, color) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill(); }
 function ext_renDrawCircleStroke(ctx, x, y, r, color, w) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke(); }
 function ext_renDrawRectStroke(ctx, x, y, w, h, color, lw) { ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.strokeRect(x, y, w, h); }
@@ -333,296 +177,132 @@ function ext_renApplyShadow(ctx, color, blur) { ctx.shadowColor = color; ctx.sha
 function ext_renClearShadow(ctx) { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; }
 function ext_renDrawNeonGlow(ctx, x, y, r, color) { ext_renApplyShadow(ctx, color, 15); ext_renDrawCircleStroke(ctx, x, y, r, color, 2); ext_renClearShadow(ctx); }
 function ext_renDrawGrid(ctx, w, h, step, color) { ctx.strokeStyle=color; ctx.lineWidth=1; ctx.beginPath(); for(let x=0;x<=w;x+=step){ ctx.moveTo(x,0); ctx.lineTo(x,h); } for(let y=0;y<=h;y+=step){ ctx.moveTo(0,y); ctx.lineTo(w,y); } ctx.stroke(); }
-function escapeHTML(text){ return String(text).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
-function toast(text){ const t=document.getElementById("toast"); t.textContent=text; t.classList.add("show"); clearTimeout(toast.timer); toast.timer=setTimeout(()=>{ t.classList.remove("show"); }, 1800); }
+function escapeHTML(t){ return String(t).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
+function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.remove("show"), 1800); }
 
-/* SISTEMA E UI */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const mctx = document.getElementById("mini").getContext("2d");
-
 let SW=innerWidth, SH=innerHeight;
-window.addEventListener("resize", () => {
-  SW=innerWidth; SH=innerHeight;
-  canvas.width=SW; canvas.height=SH;
-});
+window.addEventListener("resize", () => { SW=innerWidth; SH=innerHeight; canvas.width=SW; canvas.height=SH; });
 canvas.width=SW; canvas.height=SH;
 
 let camera = { x: 3000, y: 3000, zoom: 1 };
-let mouse = { x: SW/2, y: SH/2 };
-let joystick = { active: false, x: 0, y: 0 };
-let running = false;
-let level = 1;
-
-/* GESTIONE WEBSOCKET MULTIPLAYER */
-let ws = null;
-let myId = null;
-let WORLD = 6000;
+let mouse = { x: SW/2, y: SH/2 }, joystick = { active: false, x: 0, y: 0 };
+let running = false, level = 1, ws = null, myId = null, WORLD = 6000;
 let serverState = { foods: [], players: [] };
 
 function connectServer() {
-  const protocol = location.protocol === "https:" ? "wss://" : "ws://";
-  ws = new WebSocket(protocol + location.host);
-
-  ws.onopen = () => {
-    document.getElementById("connection").textContent = "[SYS] Server Online · Connesso";
-    document.getElementById("connection").style.color = "#42d392";
-  };
-
+  ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host);
+  ws.onopen = () => { document.getElementById("connection").textContent="[SYS] Server Online"; document.getElementById("connection").style.color="#42d392"; };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
-    
     if (msg.type === "welcome") {
-      myId = msg.id;
-      WORLD = msg.world;
-      document.getElementById("menu").classList.add("hidden");
-      document.getElementById("over").classList.add("hidden");
-      running = true;
-      toast("Sincronizzazione completata.");
+      myId = msg.id; WORLD = msg.world;
+      document.getElementById("menu").classList.add("hidden"); document.getElementById("over").classList.add("hidden");
+      running = true; toast("Sincronizzazione completata.");
     } 
-    else if (msg.type === "state") {
-      serverState.foods = msg.foods;
-      serverState.players = msg.players;
-      updateUI();
-    } 
-    else if (msg.type === "chatHistory") {
-      renderChat(msg.messages);
-    } 
-    else if (msg.type === "dead") {
-      running = false;
-      document.getElementById("over").classList.remove("hidden");
-      document.getElementById("result").innerHTML = `L'entità è stata annientata.<br><br>Punteggio finale: ${msg.score}`;
-    }
-    else if (msg.type === "error") {
-      toast("ERRORE: " + msg.message);
-    }
+    else if (msg.type === "state") { serverState.foods = msg.foods; serverState.players = msg.players; updateUI(); }
+    else if (msg.type === "chatHistory") { renderChat(msg.messages); }
+    else if (msg.type === "dead") { running = false; document.getElementById("over").classList.remove("hidden"); document.getElementById("result").innerHTML = `L'entità è stata annientata.<br>Score: ${msg.score}`; }
   };
-
-  ws.onclose = () => {
-    document.getElementById("connection").textContent = "[SYS] Disconnesso · Riconnessione in corso...";
-    document.getElementById("connection").style.color = "#ff6680";
-    setTimeout(connectServer, 3000);
-  };
+  ws.onclose = () => { document.getElementById("connection").textContent="[SYS] Riconnessione..."; document.getElementById("connection").style.color="#ff6680"; setTimeout(connectServer, 3000); };
 }
-connectServer(); // Inizia la connessione
+connectServer();
 
-/* INVIO COMANDI SERVER */
 setInterval(() => {
   if (!running || !ws || ws.readyState !== WebSocket.OPEN) return;
-  
-  let tx = camera.x + (mouse.x - SW/2) / camera.zoom;
-  let ty = camera.y + (mouse.y - SH/2) / camera.zoom;
-  
-  if (joystick.active) {
-    tx = camera.x + joystick.x * 300;
-    ty = camera.y + joystick.y * 300;
-  }
+  let tx = camera.x + (mouse.x - SW/2) / camera.zoom, ty = camera.y + (mouse.y - SH/2) / camera.zoom;
+  if (joystick.active) { tx = camera.x + joystick.x * 300; ty = camera.y + joystick.y * 300; }
   ws.send(JSON.stringify({ type: "move", x: tx, y: ty }));
 }, 40);
 
-/* INPUT UI E GIOCO */
 document.getElementById("playButton").addEventListener("click", () => {
-  const name = document.getElementById("name").value;
-  const color = document.getElementById("colorInput").value;
-  if(ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: "join", name, color }));
-  } else {
-    toast("Connessione assente.");
-  }
+  const name = document.getElementById("name").value, color = document.getElementById("colorInput").value;
+  const botCount = document.getElementById("menuBotCount").value, startMass = document.getElementById("menuStartMass").value;
+  document.getElementById("userNameInput").value = name; document.getElementById("userColorInput").value = color; document.getElementById("userBotCount").value = botCount;
+  if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "join", name, color, botCount, startMass }));
 });
-
-document.getElementById("retryButton").addEventListener("click", () => {
-  document.getElementById("over").classList.add("hidden");
-  document.getElementById("menu").classList.remove("hidden");
-});
-
+document.getElementById("retryButton").addEventListener("click", () => { document.getElementById("over").classList.add("hidden"); document.getElementById("menu").classList.remove("hidden"); });
 document.getElementById("saveName").addEventListener("click", () => {
-  const name = document.getElementById("userNameInput").value;
-  const color = document.getElementById("colorInput").value;
-  document.getElementById("userNameButton").textContent = name;
-  document.getElementById("name").value = name;
-  localStorage.setItem("cellArenaName", name);
-  localStorage.setItem("cellArenaColor", color);
-  
-  if(ws && ws.readyState === WebSocket.OPEN) {
-     ws.send(JSON.stringify({ type: "updateProfile", name, color }));
-  }
+  const name = document.getElementById("userNameInput").value, color = document.getElementById("userColorInput").value, botCount = document.getElementById("userBotCount").value;
+  document.getElementById("userNameButton").textContent = name; document.getElementById("name").value = name; document.getElementById("colorInput").value = color; document.getElementById("menuBotCount").value = botCount;
+  if(ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type: "updateProfile", name, color })); ws.send(JSON.stringify({ type: "settings", botCount })); }
   toast("Dati aggiornati!");
 });
 
-/* PANNELLI CHAT E MENU */
 document.getElementById("userButton").addEventListener("click", () => document.getElementById("userMenu").classList.remove("hidden"));
 document.getElementById("closeUser").addEventListener("click", () => document.getElementById("userMenu").classList.add("hidden"));
 document.getElementById("chatClose").addEventListener("click", () => { document.getElementById("chat").classList.add("hidden"); document.getElementById("chatOpen").classList.remove("hidden"); });
 document.getElementById("chatOpen").addEventListener("click", () => { document.getElementById("chat").classList.remove("hidden"); document.getElementById("chatOpen").classList.add("hidden"); });
-
 document.getElementById("chatSend").addEventListener("click", sendChat);
 document.getElementById("chatInput").addEventListener("keypress", (e) => { if(e.key === "Enter") sendChat(); });
-function sendChat() {
-  const text = document.getElementById("chatInput").value;
-  if (text.trim() && ws) {
-    ws.send(JSON.stringify({ type: "chat", text }));
-    document.getElementById("chatInput").value = "";
-  }
-}
 
-function renderChat(msgs) {
-  const box = document.getElementById("chatMessages");
-  box.innerHTML = msgs.map(m => `
-    <div class="chatMessage">
-      <span class="chatName" style="color:${m.color}">${escapeHTML(m.name)}</span>
-      <span class="chatTime">${m.time}</span><br>
-      <span class="chatText">${escapeHTML(m.text)}</span>
-    </div>
-  `).join("");
-  box.scrollTop = box.scrollHeight;
-}
+function sendChat() { const t = document.getElementById("chatInput").value; if (t.trim() && ws) { ws.send(JSON.stringify({ type: "chat", text:t })); document.getElementById("chatInput").value = ""; } }
+function renderChat(m) { const b = document.getElementById("chatMessages"); b.innerHTML = m.map(x => `<div class="chatMessage"><span class="chatName" style="color:${x.color}">${escapeHTML(x.name)}</span><span class="chatTime">${x.time}</span><br><span class="chatText">${escapeHTML(x.text)}</span></div>`).join(""); b.scrollTop = b.scrollHeight; }
 
-/* CARICAMENTO PROFILO LOCALE SALVATO */
-window.addEventListener("DOMContentLoaded", () => {
-   const svName = localStorage.getItem("cellArenaName");
-   const svColor = localStorage.getItem("cellArenaColor");
-   if(svName) {
-      document.getElementById("name").value = svName;
-      document.getElementById("userNameInput").value = svName;
-      document.getElementById("userNameButton").textContent = svName;
-   }
-   if(svColor) {
-      document.getElementById("colorInput").value = svColor;
-   }
-});
-
-/* CONTROLLI TASTIERA & MOUSE */
 addEventListener("mousemove", e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 addEventListener("keydown", e => {
   if (!running || document.activeElement.tagName === "INPUT") return;
   if (e.key === " ") ws.send(JSON.stringify({ type: "split" }));
   if (e.key.toLowerCase() === "w") ws.send(JSON.stringify({ type: "eject" }));
+  if (e.key.toLowerCase() === "e" || e.key === "Shift") ws.send(JSON.stringify({ type: "dash" }));
 });
 
-/* JOYSTICK MOBILE */
-const jZone = document.getElementById("joystick");
-const stick = document.getElementById("stick");
-function handleJoy(e) {
-  e.preventDefault();
-  const rect = jZone.getBoundingClientRect();
-  const t = e.touches[0];
-  let dx = t.clientX - (rect.left + rect.width/2);
-  let dy = t.clientY - (rect.top + rect.height/2);
-  const dist = Math.hypot(dx, dy);
-  const maxR = rect.width/2 - 24;
-  if (dist > maxR) { dx = (dx/dist)*maxR; dy = (dy/dist)*maxR; }
-  stick.style.transform = `translate(${dx}px, ${dy}px)`;
-  joystick.active = true;
-  joystick.x = dx / maxR;
-  joystick.y = dy / maxR;
-}
-jZone.addEventListener("touchstart", handleJoy, {passive: false});
-jZone.addEventListener("touchmove", handleJoy, {passive: false});
-jZone.addEventListener("touchend", () => {
-  stick.style.transform = "translate(0,0)";
-  joystick.active = false; joystick.x = 0; joystick.y = 0;
-});
+const jZone = document.getElementById("joystick"), stick = document.getElementById("stick");
+function handleJoy(e) { e.preventDefault(); const r = jZone.getBoundingClientRect(), t = e.touches[0]; let dx = t.clientX - (r.left + r.width/2), dy = t.clientY - (r.top + r.height/2); const dist = Math.hypot(dx, dy), maxR = r.width/2 - 24; if (dist > maxR) { dx = (dx/dist)*maxR; dy = (dy/dist)*maxR; } stick.style.transform = `translate(${dx}px, ${dy}px)`; joystick.active = true; joystick.x = dx / maxR; joystick.y = dy / maxR; }
+jZone.addEventListener("touchstart", handleJoy, {passive: false}); jZone.addEventListener("touchmove", handleJoy, {passive: false}); jZone.addEventListener("touchend", () => { stick.style.transform = "translate(0,0)"; joystick.active = false; joystick.x = 0; joystick.y = 0; });
+
 document.getElementById("splitBtn").addEventListener("touchstart", (e) => { e.preventDefault(); if(ws) ws.send(JSON.stringify({ type: "split" })); });
 document.getElementById("feedBtn").addEventListener("touchstart", (e) => { e.preventDefault(); if(ws) ws.send(JSON.stringify({ type: "eject" })); });
+document.getElementById("dashBtn").addEventListener("touchstart", (e) => { e.preventDefault(); if(ws) ws.send(JSON.stringify({ type: "dash" })); });
 
-/* AGGIORNAMENTO UI INFO */
 function updateUI() {
   const me = serverState.players.find(p => p.id === myId);
   if (me) {
-    let mass = Math.floor(me.cells.reduce((s, c) => s + c.r * c.r, 0)/10);
-    document.getElementById("mass").textContent = `MASS: ${mass}`;
+    document.getElementById("mass").textContent = `MASS: ${Math.floor(me.cells.reduce((s, c) => s + c.r * c.r, 0)/10)}`;
     document.getElementById("energy").textContent = me.energy;
-    
-    // Level mock calculation dal server score
-    let totalScore = me.score;
-    let newLevel = Math.floor(Math.sqrt(totalScore/10)) + 1;
-    let xpLvl = totalScore % 100;
-    
-    if(newLevel > level) {
-       toast(`[UPGRADE] Livello ${newLevel} Raggiunto!`);
-       level = newLevel;
-    }
-    document.getElementById("level").textContent = level;
-    document.getElementById("xp").textContent = totalScore;
-    document.getElementById("xpbar").style.width = `${xpLvl}%`;
+    let nl = Math.floor(Math.sqrt(me.score/10)) + 1; if(nl > level) { toast(`Livello ${nl} Raggiunto!`); level = nl; }
+    document.getElementById("level").textContent = level; document.getElementById("xp").textContent = me.score; document.getElementById("xpbar").style.width = `${me.score % 100}%`;
   }
-  
-  // Leaderboard
-  const sorted = [...serverState.players].sort((a,b) => b.score - a.score).slice(0, 10);
-  document.getElementById("rows").innerHTML = sorted.map((p, i) => `
-    <div class="row">
-      <span style="color:${p.color}">${i+1}. ${escapeHTML(p.name)}</span>
-      <span>${p.score}</span>
-    </div>
-  `).join("");
+  document.getElementById("rows").innerHTML = [...serverState.players].sort((a,b) => b.score - a.score).slice(0, 10).map((p, i) => `<div class="row"><span style="color:${p.color}">${i+1}. ${escapeHTML(p.name)}</span><span>${p.score}</span></div>`).join("");
 }
 
-/* LOOP DI RENDER CANVAS */
 function render() {
   requestAnimationFrame(render);
   ext_renClearCanvas(ctx, SW, SH, "#000000");
-
   if (!running) return;
 
   const me = serverState.players.find(p => p.id === myId);
   if (me && me.cells.length > 0) {
-    let cx = 0, cy = 0;
-    me.cells.forEach(c => { cx += c.x; cy += c.y; });
-    cx /= me.cells.length;
-    cy /= me.cells.length;
-
-    camera.x = ext_mathLerp(camera.x, cx, 0.1);
-    camera.y = ext_mathLerp(camera.y, cy, 0.1);
-
-    let maxR = Math.max(...me.cells.map(c => c.r));
-    let targetZoom = ext_mathClamp(1.5 - (maxR / 120), 0.3, 1.2);
-    camera.zoom = ext_mathLerp(camera.zoom, targetZoom, 0.05);
+    let cx = 0, cy = 0; me.cells.forEach(c => { cx += c.x; cy += c.y; }); cx /= me.cells.length; cy /= me.cells.length;
+    camera.x = ext_mathLerp(camera.x, cx, 0.1); camera.y = ext_mathLerp(camera.y, cy, 0.1);
+    camera.zoom = ext_mathLerp(camera.zoom, ext_mathClamp(1.5 - (Math.max(...me.cells.map(c => c.r)) / 120), 0.3, 1.2), 0.05);
   }
 
-  ctx.save();
-  ctx.translate(SW/2, SH/2);
-  ctx.scale(camera.zoom, camera.zoom);
-  ctx.translate(-camera.x, -camera.y);
+  ctx.save(); ctx.translate(SW/2, SH/2); ctx.scale(camera.zoom, camera.zoom); ctx.translate(-camera.x, -camera.y);
+  ext_renDrawGrid(ctx, WORLD, WORLD, 100, "#00ffff11"); ext_renDrawRectStroke(ctx, 0, 0, WORLD, WORLD, "#00ffff55", 5);
 
-  ext_renDrawGrid(ctx, WORLD, WORLD, 100, "#00ffff11");
-  ext_renDrawRectStroke(ctx, 0, 0, WORLD, WORLD, "#00ffff55", 5);
+  serverState.foods.forEach(f => { ext_renDrawNeonGlow(ctx, f.x, f.y, f.r, f.color); ext_renDrawCircleFill(ctx, f.x, f.y, f.r, f.color); });
 
-  // Cibo
-  serverState.foods.forEach(f => {
-    ext_renDrawNeonGlow(ctx, f.x, f.y, f.r, f.color);
-    ext_renDrawCircleFill(ctx, f.x, f.y, f.r, f.color);
-  });
-
-  // Giocatori (ordinati dai più piccoli ai più grandi per overlap)
-  let allCells = [];
-  serverState.players.forEach(p => {
-    p.cells.forEach(c => allCells.push({ ...c, owner: p }));
-  });
-  allCells.sort((a,b) => a.r - b.r);
-
-  allCells.forEach(c => {
+  let allCells = []; serverState.players.forEach(p => p.cells.forEach(c => allCells.push({ ...c, owner: p })));
+  allCells.sort((a,b) => a.r - b.r).forEach(c => {
     const p = c.owner;
+    // RENDERING EFFETTO DASH NEON SE c.boost > 0
+    if (c.boost > 0) {
+      ext_renDrawNeonGlow(ctx, c.x, c.y, c.r + (c.boost * 2.5), p.color);
+      ext_renDrawCircleFill(ctx, c.x, c.y, c.r + c.boost, ext_colHexToRgba(p.color, 0.4));
+    }
+    
     ext_renDrawNeonGlow(ctx, c.x, c.y, c.r, p.color);
     ext_renDrawCircleFill(ctx, c.x, c.y, c.r, ext_colHexToRgba(p.color, 0.75));
     ext_renDrawCircleStroke(ctx, c.x, c.y, c.r, p.color, 3);
-    
-    if (c.r > 15) {
-      ext_renDrawTextCentered(ctx, p.name, c.x, c.y, `bold ${Math.max(10, c.r/3.5)}px Consolas`, "#ffffff");
-    }
+    if (c.r > 15) ext_renDrawTextCentered(ctx, p.name, c.x, c.y, `bold ${Math.max(10, c.r/3.5)}px Consolas`, "#ffffff");
   });
-
   ctx.restore();
 
-  // Minimappa
   ext_renClearCanvas(mctx, 150, 150, "#000508");
-  serverState.players.forEach(p => {
-    p.cells.forEach(c => {
-      let mx = (c.x / WORLD) * 150;
-      let my = (c.y / WORLD) * 150;
-      ext_renDrawCircleFill(mctx, mx, my, Math.max(1.5, c.r/15), p.id === myId ? "#ffffff" : p.color);
-    });
-  });
+  serverState.players.forEach(p => p.cells.forEach(c => ext_renDrawCircleFill(mctx, (c.x/WORLD)*150, (c.y/WORLD)*150, Math.max(1.5, c.r/15), p.id === myId ? "#ffffff" : p.color)));
 }
 render();
 </script>

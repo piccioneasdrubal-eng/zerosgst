@@ -1274,7 +1274,7 @@ function handleAppleAuthStart(req, res) {
    HTTP SERVER
 ---------------------------- */
 
-const publicDir = path.join(__dirname, "public");
+const publicDir = __dirname;
 
 const server = http.createServer((req, res) => {
   const fullUrl = new URL(req.url, SITE_URL);

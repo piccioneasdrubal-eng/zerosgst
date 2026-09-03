@@ -1,7 +1,7 @@
 {
   "name": "agar-server",
-  "version": "2.2.0",
-  "description": "Standalone multiplayer .io game backend with WebSocket and optimized crowded-room support.",
+  "version": "2.0.0",
+  "description": "Gioco multiplayer .io-like con 120 funzioni: gameplay base, PvP, Shop/Coins, Admin/Bot e diagnostica.",
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
@@ -21,6 +21,6 @@
     "ws": "^8.18.0"
   },
   "engines": {
-    "node": ">=20 <25"
+    "node": ">=18"
   }
 }

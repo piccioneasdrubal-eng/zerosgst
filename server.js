@@ -12,8 +12,6 @@ const { GameServer, CONFIG } = require('./game');
 
 const game = new GameServer();
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const AUTH_API_URL = String(process.env.AUTH_API_URL || '').trim();
-const API_SECRET = String(process.env.API_SECRET || '').trim();
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -27,21 +25,6 @@ const MIME = {
 function clampInt(v, lo, hi, dflt) {
   const n = Number.parseInt(v, 10);
   return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
-}
-
-const MAX_BOT_ROOM_SLOTS = Math.min(
-  CONFIG.BOTS.MAX_COUNT,
-  Math.max(0, Math.floor(CONFIG.SERVER.MAX_PLAYERS * 0.35)),
-);
-
-function activeBotCount() {
-  let n = 0;
-  for (const p of game.world.players.values()) if (p.isBot) n += 1;
-  return n;
-}
-
-function roomHasHumanSlot() {
-  return game.world.players.size < CONFIG.SERVER.MAX_PLAYERS;
 }
 
 function sendJson(res, status, data, cache = 'no-store') {
@@ -88,11 +71,6 @@ const server = http.createServer((req, res) => {
       powerups: game.world.powerups.length,
       zones: game.world.zones.length,
       projectiles: game.world.virusProjectiles.length,
-      maxPlayers: CONFIG.SERVER.MAX_PLAYERS,
-      bots: activeBotCount(),
-      maxBots: MAX_BOT_ROOM_SLOTS,
-      paused: game.paused,
-      tickMs: game.lastTickDuration,
     });
   }
 
@@ -121,21 +99,14 @@ const server = http.createServer((req, res) => {
   }
 
   if (url.pathname === '/api/spawn-bot') {
-    const current = activeBotCount();
-    const botSlots = Math.max(0, MAX_BOT_ROOM_SLOTS - current);
-    const roomSlots = Math.max(0, CONFIG.SERVER.MAX_PLAYERS - game.world.players.size);
-    const requested = clampInt(url.searchParams.get('count'), 1, CONFIG.BOTS.MAX_COUNT, CONFIG.BOTS.DEFAULT_COUNT);
-    const count = Math.min(requested, botSlots, roomSlots);
-    if (count <= 0) {
-      return sendJson(res, 409, {
-        ok: false,
-        error: 'Nessuno slot bot disponibile: i posti giocatore vengono riservati agli utenti.',
-        bots: current,
-        maxBots: MAX_BOT_ROOM_SLOTS,
-        players: game.world.players.size,
-        maxPlayers: CONFIG.SERVER.MAX_PLAYERS,
-      });
-    }
+    const current = [...game.world.players.values()].filter((p) => p.isBot).length;
+    const slots = Math.max(0, CONFIG.BOTS.MAX_COUNT - current);
+    const count = Math.min(
+      clampInt(url.searchParams.get('count'), 1, CONFIG.BOTS.MAX_COUNT, CONFIG.BOTS.DEFAULT_COUNT),
+      slots,
+      Math.max(0, CONFIG.SERVER.MAX_PLAYERS - game.world.players.size),
+    );
+    if (count <= 0) return sendJson(res, 409, { ok: false, error: 'Server/bot limit raggiunto.' });
 
     const mass = clampInt(url.searchParams.get('mass'), 5, 5000, CONFIG.BOTS.DEFAULT_MASS);
     const prefix = (url.searchParams.get('name') || 'BOT')
@@ -201,35 +172,14 @@ function safeSend(ws, payload) {
   }
 }
 
-async function verifyAuthToken(token) {
-  if (!AUTH_API_URL) return { user: null, premium: false };
-  if (!token || !API_SECRET) return null;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-  try {
-    const response = await fetch(AUTH_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Api-Secret': API_SECRET },
-      body: JSON.stringify({ action: 'verify', token }),
-      signal: controller.signal,
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.ok || !data.user) return null;
-    return { user: data.user, premium: data.premium === true };
-  } catch (_) {
-    return null;
-  } finally {
-    clearTimeout(timeout);
+wss.on('connection', (ws) => {
+  if (wss.clients.size > CONFIG.SERVER.MAX_PLAYERS) {
+    try { ws.close(1013, 'Server full'); } catch (_) {}
+    return;
   }
-}
 
-wss.on('connection', (ws, req) => {
   ws.isAlive = true;
   ws.joined = false;
-  ws.fullNoticeSent = false;
-  ws.closedByServer = false;
-  ws.authenticating = false;
-  ws.requestIp = req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || '';
   ws.lastTargetAt = 0;
   ws.lastChatAt = 0;
   ws.lastAbilityAt = 0;
@@ -238,7 +188,7 @@ wss.on('connection', (ws, req) => {
   let player = null;
   socketPlayers.set(ws, null);
 
-  ws.on('message', async (raw) => {
+  ws.on('message', (raw) => {
     if (raw.length > CONFIG.SERVER.MAX_MESSAGE_LENGTH) return;
 
     let msg;
@@ -248,46 +198,15 @@ wss.on('connection', (ws, req) => {
     if (!player) {
       if (msg.type !== 'join') return;
       if (ws.joined) return;
-      if (ws.authenticating) return;
-      ws.authenticating = true;
-      const auth = await verifyAuthToken(String(msg.token || ''));
-      ws.authenticating = false;
-      if (!auth) {
-        safeSend(ws, JSON.stringify({ type: 'auth-error', error: 'Sessione non valida o autenticazione non configurata.' }));
-        try { ws.close(1008, 'Authentication required'); } catch (_) {}
-        return;
-      }
-      if (!roomHasHumanSlot()) {
-        ws.fullNoticeSent = true;
-        safeSend(ws, JSON.stringify({ type: 'room-full', players: game.world.players.size, maxPlayers: CONFIG.SERVER.MAX_PLAYERS, retryAfter: 5000 }));
-        setTimeout(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.closedByServer = true;
-            try { ws.close(1013, 'Room full'); } catch (_) {}
-          }
-        }, 150);
-        return;
-      }
       const name = String(msg.name || 'Player').replace(/[<>]/g, '').trim().slice(0, 16) || 'Player';
       if (game.bannedNames.has(name.toLowerCase())) { try { ws.close(1008, 'Banned'); } catch (_) {} return; }
       const team = Number.isInteger(msg.team) && msg.team >= 0 && msg.team < CONFIG.TEAMS.COLORS.length ? msg.team : null;
       player = game.addPlayer(name, false, team);
-      player.authUser = auth.user;
-      player.premium = auth.premium;
-      player.isAdmin = auth.user ? auth.user.is_admin === 1 : false;
       if (typeof msg.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(msg.color)) player.color = msg.color;
       player.ws = ws;
       ws.joined = true;
       socketPlayers.set(ws, player);
-      return safeSend(ws, JSON.stringify({
-        type: 'welcome',
-        id: player.id,
-        world: CONFIG.WORLD,
-        teams: CONFIG.TEAMS,
-        premium: player.premium,
-        isAdmin: player.isAdmin,
-        room: { players: game.world.players.size, maxPlayers: CONFIG.SERVER.MAX_PLAYERS, bots: activeBotCount(), maxBots: MAX_BOT_ROOM_SLOTS },
-      }));
+      return safeSend(ws, JSON.stringify({ type: 'welcome', id: player.id, world: CONFIG.WORLD, teams: CONFIG.TEAMS }));
     }
 
     switch (msg.type) {
@@ -417,47 +336,17 @@ wss.on('connection', (ws, req) => {
   ws.on('error', () => {});
 });
 
-let lastTickErrorAt = 0;
-function safeGameTick() {
-  try {
-    game.tick();
-  } catch (err) {
-    const now = Date.now();
-    if (now - lastTickErrorAt > 2000) {
-      lastTickErrorAt = now;
-      console.error('[GAME TICK ERROR]', err && err.stack ? err.stack : err);
-    }
-    game.lastTickError = String(err?.message || err || 'unknown');
-  }
-}
-const gameTimer = setInterval(safeGameTick, CONFIG.TICK);
-let leaderboardCache = [];
-let leaderboardCacheAt = 0;
+const gameTimer = setInterval(() => game.tick(), CONFIG.TICK);
 const broadcastTimer = setInterval(() => {
-  const now = Date.now();
-  if (now - leaderboardCacheAt >= 500) { leaderboardCache = game.leaderboard(); leaderboardCacheAt = now; }
+  const leaderboard = game.leaderboard();
   for (const ws of wss.clients) {
-    if (ws.readyState !== WebSocket.OPEN) continue;
+    if (ws.readyState !== WebSocket.OPEN || ws.bufferedAmount > CONFIG.NETWORK.MAX_BUFFERED_AMOUNT) continue;
     const player = socketPlayers.get(ws);
     if (!player) continue;
-    if (ws.nextStateAt && now < ws.nextStateAt) continue;
-    const wait = game.networkInterval();
-    ws.nextStateAt = now + wait;
-    if (ws.bufferedAmount > CONFIG.NETWORK.MAX_BUFFERED_AMOUNT) {
-      ws.nextStateAt = now + Math.max(wait, 500);
-      continue;
-    }
-    let payload;
-    try {
-      const snap = game.snapshotFor(player);
-      payload = JSON.stringify({ type: 'state', ...snap, leaderboard: leaderboardCache });
-    } catch (err) {
-      console.error('[SNAPSHOT ERROR]', err && err.stack ? err.stack : err);
-      return;
-    }
-    safeSend(ws, payload);
+    const snap = game.snapshotFor(player);
+    safeSend(ws, JSON.stringify({ type: 'state', ...snap, leaderboard }));
   }
-}, 25);
+}, CONFIG.NET_TICK);
 
 const heartbeat = setInterval(() => {
   for (const ws of wss.clients) {
@@ -479,17 +368,10 @@ const flushAndClose = () => {
 process.once('SIGINT', flushAndClose);
 process.once('SIGTERM', flushAndClose);
 
-server.on('error', (err) => {
-  console.error('[HTTP SERVER ERROR]', err && err.stack ? err.stack : err);
-});
-wss.on('error', (err) => {
-  console.error('[WEBSOCKET SERVER ERROR]', err && err.stack ? err.stack : err);
-});
-
 const HOST = process.env.HOST || '0.0.0.0';
 server.listen(CONFIG.PORT, HOST, () => {
   const initial = clampInt(process.env.INITIAL_BOTS, 0, CONFIG.BOTS.MAX_COUNT, CONFIG.BOTS.DEFAULT_COUNT);
-  const allowed = Math.min(initial, MAX_BOT_ROOM_SLOTS, Math.max(0, CONFIG.SERVER.MAX_PLAYERS - game.world.players.size));
+  const allowed = Math.min(initial, CONFIG.BOTS.MAX_COUNT, Math.max(0, CONFIG.SERVER.MAX_PLAYERS - game.world.players.size));
   for (let i = 0; i < allowed; i++) {
     const p = game.addPlayer(`Bot${i + 1}`, true);
     if (p.cells[0]) p.cells[0].mass = CONFIG.BOTS.DEFAULT_MASS;

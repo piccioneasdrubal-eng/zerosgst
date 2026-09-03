@@ -217,8 +217,8 @@
 
           <div id="loginFormContainer">
               <div class="form-group">
-                  <label>Email</label>
-                  <input type="email" id="loginUser" placeholder="Inserisci email" autocomplete="email">
+                  <label>Username</label>
+                  <input type="text" id="loginUser" placeholder="Inserisci username">
               </div>
               <div class="form-group">
                   <label>Password</label>
@@ -230,16 +230,12 @@
 
           <div id="registerFormContainer" style="display: none;">
               <div class="form-group">
-                  <label>Email</label>
-                  <input type="email" id="regUser" placeholder="La tua email" autocomplete="email">
-              </div>
-              <div class="form-group">
-                  <label>Nome</label>
-                  <input type="text" id="regName" placeholder="Il tuo nome" autocomplete="name">
+                  <label>Scegli Username</label>
+                  <input type="text" id="regUser" placeholder="Il tuo username">
               </div>
               <div class="form-group">
                   <label>Scegli Password</label>
-                  <input type="password" id="regPass" placeholder="Minimo 8 caratteri" autocomplete="new-password">
+                  <input type="password" id="regPass" placeholder="******">
               </div>
               <button class="portal-btn" onclick="eseguiRegistrazione()">Crea Account</button>
               <div id="regError" class="error-msg">Errore durante la registrazione!</div>
@@ -369,8 +365,6 @@
       <option value="3">🟡 GIALLI</option>
       <option value="4">🟣 VIOLA</option>
     </select>
-    <input id="server-url" type="url" placeholder="Server multiplayer: https://tuo-server.example" autocomplete="url" style="width:100%;box-sizing:border-box;margin:8px 0;" />
-    <small style="display:block;color:#aaa;margin-bottom:8px;">Backend WebSocket (non usare il vecchio indirizzo Render)</small>
     <button id="play">Gioca</button>
     <div class="hint">
       <span>🖱️ Mouse = muoviti</span>
@@ -381,7 +375,6 @@
     </div>
   </div>
 
-  <script src="game-config.js"></script>
   <script src="client.js"></script>
 
   <!-- OVERLAY MENU AVANZATO, ZERO SHOP E BOT (PREMENDO ESC) -->
@@ -473,7 +466,6 @@
         const n = Number.parseInt(v, 10);
         return Number.isFinite(n) ? n : fallback;
     };
-    const authApiUrl = String(window.AUTH_API_URL || '').trim().replace(/\/$/, '');
     let userCoins = Math.max(0, safeInt(localStorage.getItem('zeroCoins'), 1000));
     let keybinds = { split: ' ', feed: 'w', virus: 'q' };
     let botStates = { follow: false, farm: false };
@@ -508,78 +500,58 @@
         tabs[1].classList.toggle('active', !isLogin);
     }
 
-    async function authRequest(action, payload) {
-        if (!authApiUrl) throw new Error('AUTH_API_URL non configurato.');
-        const response = await fetch(authApiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, ...payload }),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.ok) throw new Error(data.error || `Errore HTTP ${response.status}`);
-        return data;
-    }
-
-    function salvaSessioneAuth(data) {
-        if (!data || typeof data.token !== 'string' || !data.user) throw new Error('Risposta auth non valida.');
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('currentUser', data.user.name || data.user.email);
-    }
-
-    async function eseguiRegistrazione() {
+    function eseguiRegistrazione() {
         const userEl = document.getElementById('regUser');
-        const nameEl = document.getElementById('regName');
         const passEl = document.getElementById('regPass');
         const err = document.getElementById('regError');
         const succ = document.getElementById('regSuccess');
-        if (!userEl || !nameEl || !passEl || !err || !succ) return;
-        const email = userEl.value.trim();
-        const name = nameEl.value.trim().slice(0, 32);
-        const pass = passEl.value;
+        if (!userEl || !passEl || !err || !succ) return;
+        const user = userEl.value.trim().slice(0, 32);
+        const pass = passEl.value.trim();
         err.style.display = 'none';
         succ.style.display = 'none';
-        if (!email.includes('@') || name.length < 3 || pass.length < 8) {
-            err.textContent = 'Inserisci una email valida, un nome di almeno 3 caratteri e una password di almeno 8 caratteri.';
+        if (user.length < 3 || pass.length < 4) {
+            err.textContent = 'Username minimo 3 caratteri e password minimo 4.';
             err.style.display = 'block';
             return;
         }
-        try {
-            const data = await authRequest('register', { email, password: pass, name });
-            salvaSessioneAuth(data);
-            succ.textContent = 'Account creato. Accesso effettuato.';
-            succ.style.display = 'block';
-            aggiornaStatoSessione();
-        } catch (error) {
-            err.textContent = error.message || 'Errore durante la registrazione!';
+        const dbUsers = readUsers();
+        const key = user.toLowerCase();
+        if (dbUsers[key]) {
+            err.textContent = 'Utente già esistente!';
             err.style.display = 'block';
+            return;
         }
+        dbUsers[key] = { name: user, password: pass };
+        localStorage.setItem('portalUsers', JSON.stringify(dbUsers));
+        succ.style.display = 'block';
+        setTimeout(() => {
+            switchPortalTab('login');
+            const loginUser = document.getElementById('loginUser');
+            if (loginUser) loginUser.value = user;
+        }, 500);
     }
 
-    async function eseguiLogin() {
+    function eseguiLogin() {
         const userEl = document.getElementById('loginUser');
         const passEl = document.getElementById('loginPass');
         const err = document.getElementById('loginError');
         if (!userEl || !passEl || !err) return;
-        const email = userEl.value.trim();
+        const user = userEl.value.trim();
         const pass = passEl.value;
-        err.style.display = 'none';
-        try {
-            const data = await authRequest('login', { email, password: pass });
-            salvaSessioneAuth(data);
+        const dbUsers = readUsers();
+        const record = dbUsers[user.toLowerCase()];
+        if (record && record.password === pass) {
+            localStorage.setItem('currentUser', record.name || user);
             err.style.display = 'none';
             aggiornaStatoSessione();
-        } catch (error) {
-            err.textContent = error.message || 'Credenziali non valide!';
+        } else {
+            err.textContent = 'Credenziali non valide!';
             err.style.display = 'block';
         }
     }
 
-    async function effettuaLogout() {
-        const token = localStorage.getItem('authToken');
-        if (token && authApiUrl) {
-            try { await authRequest('logout', { token }); } catch (_) {}
-        }
-        localStorage.removeItem('authToken');
+    function effettuaLogout() {
         localStorage.removeItem('currentUser');
         const menu = document.getElementById('menu');
         if (menu) menu.style.display = 'flex';
@@ -588,10 +560,9 @@
 
     function aggiornaStatoSessione() {
         const current = localStorage.getItem('currentUser');
-        const token = localStorage.getItem('authToken');
         const portal = document.getElementById('portalOverlay');
         if (!portal) return;
-        if (current && token) {
+        if (current) {
             portal.style.display = 'none';
             const welcome = document.getElementById('welcomeUser');
             const name = document.getElementById('name');

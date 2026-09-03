@@ -1,15 +1,26 @@
 {
-  "name": "zero-and-yassine-evolution",
-  "version": "2.0.0",
-  "description": "Zero And Yassine Evolution - multiplayer .io game with accounts, 1000 levels and social login",
+  "name": "agar-server",
+  "version": "2.2.0",
+  "description": "Standalone multiplayer .io game backend with WebSocket and optimized crowded-room support.",
+  "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node game-test.js && node feature-test.js"
   },
+  "keywords": [
+    "game",
+    "multiplayer",
+    "websocket",
+    "agar",
+    "io-game"
+  ],
+  "license": "MIT",
   "dependencies": {
     "ws": "^8.18.0"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20 <25"
   }
 }

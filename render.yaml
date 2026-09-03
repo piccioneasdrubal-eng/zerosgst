@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: agar-server
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: INITIAL_BOTS
+        value: "12"
+    autoDeploy: true

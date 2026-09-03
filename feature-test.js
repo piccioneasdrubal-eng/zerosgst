@@ -12,6 +12,7 @@ assert.equal(g.parry(a),true);
 assert.ok(g.getWallet(a).coins >= 0);
 assert.ok(g.getCatalog().length >= 8);
 assert.ok(g.getQuests(a).length >= 4);
+a.dailyClaimAt = 0;
 assert.equal(g.claimDailyReward(a),true);
 assert.equal(g.adminSetMass(a.id,300),true);
 assert.equal(g.adminSetCoins(a.id,5000),true);

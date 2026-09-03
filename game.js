@@ -32,7 +32,10 @@ const CONFIG = {
     SHIELD_TIME: 5000,
     VIRUS_SHOOT_COST: 30,
     VIRUS_PROJECTILE_MASS: 160,
-    MAX_CELLS_PER_PLAYER: 24,
+    MAX_CELLS_PER_PLAYER: 12,
+    BOT_MAX_CELLS: 6,
+    MAX_CELL_MASS: 5000,
+    MAX_PLAYER_MASS: 30000,
     MAX_DT: 0.05,
     DASH_COST: 7,
     DASH_DISTANCE: 320,
@@ -53,6 +56,7 @@ const CONFIG = {
   BOTS: {
     DEFAULT_COUNT: 12,
     MAX_COUNT: 100,
+    ROOM_SHARE_LIMIT: 0.35,
     DEFAULT_MASS: 30,
     AGGRESSION: 0.95,
     VIEW_RADIUS: 1600,
@@ -61,10 +65,16 @@ const CONFIG = {
     DECISION_INTERVAL: 120,
   },
   NETWORK: {
-    VIEW_RADIUS: 1900,
-    PELLET_VIEW_RADIUS: 2200,
-    MAX_BUFFERED_AMOUNT: 512 * 1024,
-    TARGET_MIN_INTERVAL: 40,
+    VIEW_RADIUS: 1700,
+    PELLET_VIEW_RADIUS: 1850,
+    MAX_BUFFERED_AMOUNT: 256 * 1024,
+    TARGET_MIN_INTERVAL: 50,
+    MAX_VISIBLE_PLAYERS: 42,
+    MAX_VISIBLE_PLAYERS_FULL: 28,
+    MAX_VISIBLE_CELLS_PER_OTHER: 6,
+    MAX_VISIBLE_CELLS_FULL: 4,
+    MAX_VISIBLE_PELLETS: 260,
+    MAX_VISIBLE_PELLETS_FULL: 160,
     CHAT_MIN_INTERVAL: 700,
     ABILITY_MIN_INTERVAL: 250,
     ABILITY_BUFFER: 128,
@@ -100,7 +110,7 @@ const dist2 = (a, b) => {
 };
 const randColor = () => `hsl(${randInt(0, 360)}, ${randInt(45, 85)}%, ${randInt(45, 60)}%)`;
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
-const cellRadius = (mass) => 10 * Math.sqrt(Math.max(0, Number(mass) || 0));
+const cellRadius = (mass) => 10 * Math.sqrt(Math.max(0, Math.min(CONFIG.PHYSICS.MAX_CELL_MASS, Number(mass) || 0)));
 
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'season-data.json');
 function loadSeason() {
@@ -450,9 +460,8 @@ class GameServer {
     }
     this.world.players.set(p.id, p);
     if (isBot) {
-      const cx = CONFIG.WORLD.WIDTH / 2;
-      const cy = CONFIG.WORLD.HEIGHT / 2;
-      p.spawnCellAt(cx + rand(-CONFIG.BOTS.SPAWN_RADIUS, CONFIG.BOTS.SPAWN_RADIUS), cy + rand(-CONFIG.BOTS.SPAWN_RADIUS, CONFIG.BOTS.SPAWN_RADIUS));
+      const spot = this.findSafeSpawn(p);
+      p.spawnCellAt(spot.x, spot.y);
       p.botState = {
         wanderTheta: rand(0, Math.PI * 2),
         targetX: p.target.x,
@@ -470,21 +479,46 @@ class GameServer {
   removePlayer(id) {
     const p = this.world.players.get(id);
     if (!p) return;
+    let dropped = 0;
     for (const c of p.cells) {
-      const count = Math.min(40, Math.max(1, Math.floor(Math.max(1, c.mass) / 12)));
-      for (let i = 0; i < count; i++) {
-        this.world.addPellet(c.x + rand(-c.radius, c.radius), c.y + rand(-c.radius, c.radius), CONFIG.WORLD.PELLET_MASS * 2);
+      const count = Math.min(6, Math.max(1, Math.floor(Math.max(1, c.mass) / 250)));
+      for (let i = 0; i < count && dropped < 36; i++) {
+        this.world.addPellet(c.x + rand(-Math.min(c.radius, 80), Math.min(c.radius, 80)), c.y + rand(-Math.min(c.radius, 80), Math.min(c.radius, 80)), CONFIG.WORLD.PELLET_MASS * 2);
+        dropped++;
         if (this.world.pellets.length >= CONFIG.WORLD.MAX_PELLETS) break;
       }
+      if (dropped >= 36) break;
     }
     this.world.players.delete(id);
     this.world.rebuildPelletGrid();
   }
 
+  normalizePlayerMass(p) {
+    if (!p || !p.cells.length) return;
+    let total = 0;
+    for (const c of p.cells) {
+      if (!Number.isFinite(c.mass) || c.mass < 0.1) c.mass = 0.1;
+      if (c.mass > CONFIG.PHYSICS.MAX_CELL_MASS) c.mass = CONFIG.PHYSICS.MAX_CELL_MASS;
+      total += c.mass;
+    }
+    const limit = CONFIG.PHYSICS.MAX_PLAYER_MASS;
+    if (total > limit) {
+      const scale = limit / total;
+      for (const c of p.cells) c.mass = Math.max(0.1, c.mass * scale);
+    }
+  }
+
+  activeCellLimit(p) {
+    if (!p) return CONFIG.PHYSICS.MAX_CELLS_PER_PLAYER;
+    const count = this.world.players.size;
+    if (p.isBot) return count >= 100 ? 4 : (count >= 60 ? 5 : CONFIG.PHYSICS.BOT_MAX_CELLS);
+    return count >= 120 ? 8 : (count >= 80 ? 10 : CONFIG.PHYSICS.MAX_CELLS_PER_PLAYER);
+  }
+
   queueEvent(p, type, data = {}) {
     if (!p || !Array.isArray(p.events)) return;
     p.events.push({ type, ...data, at: Date.now() });
-    if (p.events.length > CONFIG.PHYSICS.MAX_CELLS_PER_PLAYER * 2) p.events.splice(0, p.events.length - CONFIG.PHYSICS.MAX_CELLS_PER_PLAYER * 2);
+    if (p.events.length > 24) p.events.splice(0, p.events.length - 24);
   }
 
   canUseAbility(p, cooldown = 400) {
@@ -616,7 +650,7 @@ class GameServer {
 
   findSafeSpawn(p = null) {
     let best = { x: rand(80, CONFIG.WORLD.WIDTH - 80), y: rand(80, CONFIG.WORLD.HEIGHT - 80), score: -1 };
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < (this.world.players.size >= 100 ? 6 : 10); i++) {
       const candidate = { x: rand(80, CONFIG.WORLD.WIDTH - 80), y: rand(80, CONFIG.WORLD.HEIGHT - 80) };
       let nearest = Infinity;
       for (const other of this.world.players.values()) {
@@ -864,7 +898,7 @@ class GameServer {
       const trap = this.world.traps[i];
       if (trap.expiresAt <= now) { this.world.traps.splice(i, 1); continue; }
       const owner = this.world.players.get(trap.ownerId);
-      for (const p of this.world.players.values()) {
+      for (const p of this.nearbyPlayers(trap.x, trap.y, trap.r + 60)) {
         if (p.dead || !p.center || p.id === trap.ownerId || (owner && owner.team !== null && owner.team === p.team)) continue;
         if (dist2(p.center, trap) > trap.r * trap.r) continue;
         p.slowUntil = Math.max(p.slowUntil, now + 1800);
@@ -884,7 +918,7 @@ class GameServer {
       if (mine.expiresAt <= now) { this.world.mines.splice(i, 1); continue; }
       const owner = this.world.players.get(mine.ownerId);
       let detonated = false;
-      for (const p of this.world.players.values()) {
+      for (const p of this.nearbyPlayers(mine.x, mine.y, mine.r + 60)) {
         if (p.dead || !p.center || p.id === mine.ownerId || (owner && owner.team !== null && owner.team === p.team)) continue;
         if (dist2(p.center, mine) > mine.r * mine.r) continue;
         for (const cell of p.cells) cell.mass = Math.max(5, cell.mass - mine.damage);
@@ -1099,7 +1133,7 @@ class GameServer {
   adminUnmute(idOrName) { const p=this.getPlayer(idOrName); const name=p?p.name:String(idOrName||''); this.mutedNames.delete(name.toLowerCase()); if(p) p.mutedUntil=0; return true; }
   adminFreeze(idOrName) { const p=this.getPlayer(idOrName); if(!p) return false; p.adminFrozen=true; p.freezeUntil=Date.now()+86400000; return true; }
   adminUnfreeze(idOrName) { const p=this.getPlayer(idOrName); if(!p) return false; p.adminFrozen=false; p.freezeUntil=0; return true; }
-  adminSetMass(idOrName,mass) { const p=this.getPlayer(idOrName); if(!p) return false; const m=clamp(Number(mass)||20,5,1000000); if(!p.cells.length)p.spawnCell(); p.cells[0].mass=m; return true; }
+  adminSetMass(idOrName,mass) { const p=this.getPlayer(idOrName); if(!p) return false; const m=clamp(Number(mass)||20,5,CONFIG.PHYSICS.MAX_CELL_MASS); if(!p.cells.length)p.spawnCell(); p.cells[0].mass=m; return true; }
   adminSetCoins(idOrName,coins) { const p=this.getPlayer(idOrName); if(!p) return false; p.coins=clamp(Number(coins)||0,0,100000000); this.markSeasonDirty(); return true; }
   adminTeleport(idOrName,x,y) { const p=this.getPlayer(idOrName); if(!p) return false; for(const c of p.cells){c.x=clamp(Number(x)||c.x,c.radius,CONFIG.WORLD.WIDTH-c.radius);c.y=clamp(Number(y)||c.y,c.radius,CONFIG.WORLD.HEIGHT-c.radius);} return true; }
   adminHeal(idOrName) { const p=this.getPlayer(idOrName); if(!p) return false; if(!p.cells.length)p.spawnCell(); for(const c of p.cells)c.mass+=25; this.queueEvent(p,'admin',{action:'heal'}); return true; }
@@ -1109,7 +1143,7 @@ class GameServer {
   adminSetColor(idOrName,color) { const p=this.getPlayer(idOrName); if(!p || !/^#[0-9a-fA-F]{6}$/.test(String(color||''))) return false; p.color=String(color); return true; }
   adminBroadcast(text) { const msg=String(text||'').replace(/[<>]/g,'').slice(0,160); this.world.announcements.unshift({id:uid(),text:msg,at:Date.now()}); this.world.announcements.length=Math.min(this.world.announcements.length,10); for(const p of this.world.players.values()) this.queueEvent(p,'announcement',{text:msg}); return {ok:true,text:msg}; }
   adminClearEvents() { for(const p of this.world.players.values()) p.events=[]; this.world.announcements=[]; return true; }
-  adminSpawnBots(count=1,mass=30,mode='balanced') { if(!this.botAutomationEnabled) return 0; const current=[...this.world.players.values()].filter(p=>p.isBot).length; const n=Math.min(clamp(Number(count)||1,1,100),Math.max(0,CONFIG.BOTS.MAX_COUNT-current)); for(let i=0;i<n;i++){const p=this.addPlayer(`AdminBot${Date.now().toString().slice(-4)}_${i+1}`,true);p.cells[0].mass=clamp(Number(mass)||30,5,10000);p.botMode=String(mode||'balanced').slice(0,20);} return n; }
+  adminSpawnBots(count=1,mass=30,mode='balanced') { if(!this.botAutomationEnabled) return 0; const current=[...this.world.players.values()].filter(p=>p.isBot).length; const roomBotCap=Math.min(CONFIG.BOTS.MAX_COUNT, Math.max(0, Math.floor(CONFIG.SERVER.MAX_PLAYERS * CONFIG.BOTS.ROOM_SHARE_LIMIT))); const n=Math.min(clamp(Number(count)||1,1,100),Math.max(0,roomBotCap-current),Math.max(0,CONFIG.SERVER.MAX_PLAYERS-this.world.players.size)); for(let i=0;i<n;i++){const p=this.addPlayer(`AdminBot${Date.now().toString().slice(-4)}_${i+1}`,true);p.cells[0].mass=clamp(Number(mass)||30,5,10000);p.botMode=String(mode||'balanced').slice(0,20);} return n; }
   adminRemoveBots(count=999) { let left=clamp(Number(count)||999,1,CONFIG.BOTS.MAX_COUNT); let removed=0; for(const p of [...this.world.players.values()]){ if(left<=0)break; if(p.isBot){this.removePlayer(p.id);left--;removed++;} } return removed; }
   adminSetBotMode(mode) { const m=['balanced','aggressive','farmer','defender','hunter','passive'].includes(mode)?mode:'balanced'; for(const p of this.world.players.values()) if(p.isBot)p.botMode=m; return m; }
   adminSetBotTarget(botId,targetId) { const b=this.getPlayer(botId),t=this.getPlayer(targetId); if(!b||!b.isBot||!t||t.dead) return false; b.botTargetId=t.id; return true; }
@@ -1119,7 +1153,7 @@ class GameServer {
   adminToggleBots(enabled) { this.botAutomationEnabled=Boolean(enabled); return this.botAutomationEnabled; }
   adminPause() { this.paused=true; return true; }
   adminResume() { this.paused=false; return true; }
-  adminResetMatch() { for(const p of this.world.players.values()){ if(!p.isBot){p.coins=Math.max(p.coins,1000);} p.cells=[]; p.dead=false; p.spawnCell(); p.resetForMatch = true; } this.matchStartedAt=Date.now(); this.world.killfeed=[]; this.world.traps=[]; this.world.mines=[]; this.world.duels.clear(); return true; }
+  adminResetMatch() { for(const p of this.world.players.values()){ if(!p.isBot){p.coins=Math.max(p.coins,1000);} p.cells=[]; p.dead=false; const spot=p.isBot?this.findSafeSpawn(p):null; if(spot)p.spawnCellAt(spot.x,spot.y); else p.spawnCell(); p.resetForMatch = true; } this.matchStartedAt=Date.now(); this.world.killfeed=[]; this.world.traps=[]; this.world.mines=[]; this.world.duels.clear(); return true; }
 
   consumeEvents(p) {
     if (!p || !p.events || !p.events.length) return [];
@@ -1203,7 +1237,7 @@ class GameServer {
   }
 
   split(p) {
-    if (p.dead || !p.cells.length || p.cells.length >= CONFIG.PHYSICS.MAX_CELLS_PER_PLAYER) return false;
+    if (p.dead || !p.cells.length || p.cells.length >= this.activeCellLimit(p)) return false;
     const now = Date.now();
     if (now - p.lastSplit < CONFIG.PHYSICS.SPLIT_COOLDOWN) return false;
     let cell = null;
@@ -1298,81 +1332,89 @@ class GameServer {
           for (let gy = minGY; gy <= maxGY; gy++) {
             const k = key(gx, gy);
             let bucket = grid.get(k);
-            if (!bucket) {
-              bucket = [];
-              grid.set(k, bucket);
-            }
+            if (!bucket) { bucket = []; grid.set(k, bucket); }
             bucket.push(idx);
           }
         }
       }
     }
 
+    if (cells.length < 2) return;
     const eatenCells = new Set();
     const killedBy = new Map();
+    const marks = new Int32Array(cells.length);
+    let stamp = 1;
     const now = Date.now();
 
     for (let i = 0; i < cells.length; i++) {
       const a = cells[i];
       if (eatenCells.has(a.c.id)) continue;
+      stamp++;
+      if (stamp >= 2147483647) { marks.fill(0); stamp = 1; }
+
       const minGX = Math.floor((a.c.x - a.c.radius) / PLAYER_GRID_SIZE);
       const maxGX = Math.floor((a.c.x + a.c.radius) / PLAYER_GRID_SIZE);
       const minGY = Math.floor((a.c.y - a.c.radius) / PLAYER_GRID_SIZE);
       const maxGY = Math.floor((a.c.y + a.c.radius) / PLAYER_GRID_SIZE);
-      const candidates = new Set();
 
       for (let gx = minGX; gx <= maxGX; gx++) {
         for (let gy = minGY; gy <= maxGY; gy++) {
           const bucket = grid.get(key(gx, gy));
           if (!bucket) continue;
           for (const j of bucket) {
-            if (j > i) candidates.add(j);
+            if (j <= i || marks[j] === stamp) continue;
+            marks[j] = stamp;
+            const b = cells[j];
+            if (eatenCells.has(b.c.id) || a.p.id === b.p.id) continue;
+            if (a.p.team !== null && a.p.team === b.p.team) continue;
+            if (a.p.shield > now || b.p.shield > now) continue;
+
+            const d2v = dist2(a.c, b.c);
+            const ar = Math.max(0, a.c.radius - b.c.radius * 0.4);
+            const br = Math.max(0, b.c.radius - a.c.radius * 0.4);
+            const eatA = a.c.mass > b.c.mass * CONFIG.PHYSICS.EAT_FACTOR && d2v < ar * ar;
+            const eatB = b.c.mass > a.c.mass * CONFIG.PHYSICS.EAT_FACTOR && d2v < br * br;
+            if (!eatA && !eatB) continue;
+
+            if (eatA && b.p.parryUntil > now) {
+              b.p.parryUntil = 0;
+              for (const cell of a.p.cells) {
+                cell.x = clamp(cell.x - (b.c.x - a.c.x) * 0.15, cell.radius, CONFIG.WORLD.WIDTH - cell.radius);
+                cell.y = clamp(cell.y - (b.c.y - a.c.y) * 0.15, cell.radius, CONFIG.WORLD.HEIGHT - cell.radius);
+              }
+              this.queueEvent(b.p, 'parry-success', { attacker: a.p.name });
+              continue;
+            }
+            if (eatB && a.p.parryUntil > now) {
+              a.p.parryUntil = 0;
+              for (const cell of b.p.cells) {
+                cell.x = clamp(cell.x - (a.c.x - b.c.x) * 0.15, cell.radius, CONFIG.WORLD.WIDTH - cell.radius);
+                cell.y = clamp(cell.y - (a.c.y - b.c.y) * 0.15, cell.radius, CONFIG.WORLD.HEIGHT - cell.radius);
+              }
+              this.queueEvent(a.p, 'parry-success', { attacker: b.p.name });
+              continue;
+            }
+
+            if (eatA && (!eatB || a.c.mass >= b.c.mass)) {
+              const victimMass = Math.max(0, b.c.mass);
+              a.c.mass += victimMass;
+              eatenCells.add(b.c.id);
+              killedBy.set(b.c.id, { killer: a.p, mass: victimMass });
+              this.recordPvpDamage(a.p, b.p, Math.min(victimMass, a.c.mass * 0.25));
+            } else {
+              const victimMass = Math.max(0, a.c.mass);
+              b.c.mass += victimMass;
+              eatenCells.add(a.c.id);
+              killedBy.set(a.c.id, { killer: b.p, mass: victimMass });
+              this.recordPvpDamage(b.p, a.p, Math.min(victimMass, b.c.mass * 0.25));
+              break;
+            }
           }
-        }
-      }
-
-      for (const j of candidates) {
-        const b = cells[j];
-        if (eatenCells.has(b.c.id) || a.p.id === b.p.id) continue;
-        if (a.p.team !== null && a.p.team === b.p.team) continue;
-        if (a.p.shield > now || b.p.shield > now) continue;
-
-        const d2v = dist2(a.c, b.c);
-        const eatA = a.c.mass > b.c.mass * CONFIG.PHYSICS.EAT_FACTOR && d2v < Math.pow(Math.max(0, a.c.radius - b.c.radius * 0.4), 2);
-        const eatB = b.c.mass > a.c.mass * CONFIG.PHYSICS.EAT_FACTOR && d2v < Math.pow(Math.max(0, b.c.radius - a.c.radius * 0.4), 2);
-        if (!eatA && !eatB) continue;
-        if (eatA && b.p.parryUntil > now) {
-          b.p.parryUntil = 0;
-          for (const cell of a.p.cells) { cell.x = clamp(cell.x - (b.c.x - a.c.x) * 0.15, cell.radius, CONFIG.WORLD.WIDTH-cell.radius); cell.y = clamp(cell.y - (b.c.y - a.c.y) * 0.15, cell.radius, CONFIG.WORLD.HEIGHT-cell.radius); }
-          this.queueEvent(b.p, 'parry-success', { attacker: a.p.name });
-          continue;
-        }
-        if (eatB && a.p.parryUntil > now) {
-          a.p.parryUntil = 0;
-          for (const cell of b.p.cells) { cell.x = clamp(cell.x - (a.c.x - b.c.x) * 0.15, cell.radius, CONFIG.WORLD.WIDTH-cell.radius); cell.y = clamp(cell.y - (a.c.y - b.c.y) * 0.15, cell.radius, CONFIG.WORLD.HEIGHT-cell.radius); }
-          this.queueEvent(a.p, 'parry-success', { attacker: b.p.name });
-          continue;
-        }
-
-        if (eatA && (!eatB || a.c.mass >= b.c.mass)) {
-          const victimMass = Math.max(0, b.c.mass);
-          a.c.mass += victimMass;
-          eatenCells.add(b.c.id);
-          killedBy.set(b.c.id, { killer: a.p, mass: victimMass });
-          this.recordPvpDamage(a.p, b.p, Math.min(victimMass, a.c.mass * 0.25));
-        } else {
-          const victimMass = Math.max(0, a.c.mass);
-          b.c.mass += victimMass;
-          eatenCells.add(a.c.id);
-          killedBy.set(a.c.id, { killer: b.p, mass: victimMass });
-          this.recordPvpDamage(b.p, a.p, Math.min(victimMass, b.c.mass * 0.25));
-          break;
         }
       }
     }
 
     if (!eatenCells.size) return;
-
     for (const p of this.world.players.values()) {
       const before = p.cells.length;
       p.cells = p.cells.filter((c) => !eatenCells.has(c.id));
@@ -1382,10 +1424,7 @@ class GameServer {
         for (const { c } of cells) {
           if (c.ownerId !== p.id) continue;
           const hit = killedBy.get(c.id);
-          if (hit) {
-            killer = hit.killer;
-            mass += hit.mass;
-          }
+          if (hit) { killer = hit.killer; mass += hit.mass; }
         }
         if (killer) {
           this.handlePvpKill(killer, p, mass, 'eat');
@@ -1426,8 +1465,8 @@ class GameServer {
   }
 
   explodeFromVirus(player, cell) {
-    if (!cell || cell.mass < 50 || player.cells.length >= CONFIG.PHYSICS.MAX_CELLS_PER_PLAYER) return false;
-    const maxPieces = CONFIG.PHYSICS.MAX_CELLS_PER_PLAYER - player.cells.length + 1;
+    if (!cell || cell.mass < 50 || player.cells.length >= this.activeCellLimit(player)) return false;
+    const maxPieces = this.activeCellLimit(player) - player.cells.length + 1;
     const pieces = Math.min(16, Math.floor(cell.mass / 10), Math.max(1, maxPieces));
     if (pieces < 2) return false;
     const perPiece = cell.mass / pieces;
@@ -1447,12 +1486,6 @@ class GameServer {
 
   updateVirusProjectiles(dt) {
     if (!this.world.virusProjectiles.length) return;
-    const cells = [];
-    for (const p of this.world.players.values()) {
-      if (p.dead) continue;
-      for (const c of p.cells) cells.push({ p, c });
-    }
-
     for (let i = this.world.virusProjectiles.length - 1; i >= 0; i--) {
       const v = this.world.virusProjectiles[i];
       v.x += v.vx * dt;
@@ -1463,14 +1496,17 @@ class GameServer {
       }
       const owner = this.world.players.get(v.ownerId);
       let hit = false;
-      for (const { p, c } of cells) {
+      for (const p of this.nearbyPlayers(v.x, v.y, 850)) {
         if (p.dead || p.id === v.ownerId) continue;
         if (owner && owner.team !== null && owner.team === p.team) continue;
-        if (dist2(v, c) < Math.pow(c.radius + 10, 2)) {
-          this.explodeFromVirus(p, c);
-          hit = true;
-          break;
+        for (const c of p.cells) {
+          if (dist2(v, c) < Math.pow(c.radius + 10, 2)) {
+            this.explodeFromVirus(p, c);
+            hit = true;
+            break;
+          }
         }
+        if (hit) break;
       }
       if (hit) this.world.virusProjectiles.splice(i, 1);
     }
@@ -1581,7 +1617,8 @@ class GameServer {
       const d2v = dist2(c, o);
       if (d2v > CONFIG.BOTS.VIEW_RADIUS * CONFIG.BOTS.VIEW_RADIUS) continue;
       if (!other.isBot && d2v < nearestHumanD2) { nearestHumanD2 = d2v; nearestHuman = o; }
-      if (o.mass * CONFIG.PHYSICS.EAT_FACTOR < pm && d2v < preyD2) { preyD2 = d2v; prey = o; }
+      const canHuntBots = p.botMode === 'aggressive' || p.botMode === 'hunter';
+      if ((canHuntBots || !other.isBot) && o.mass * CONFIG.PHYSICS.EAT_FACTOR < pm && d2v < preyD2) { preyD2 = d2v; prey = o; }
       if (pm * CONFIG.PHYSICS.EAT_FACTOR < o.mass && d2v < threatD2) { threatD2 = d2v; threat = o; }
     }
 
@@ -1622,7 +1659,7 @@ class GameServer {
     p.botState.targetX = tx;
     p.botState.targetY = ty;
     this.setTarget(p, tx, ty);
-    if (prey && preyD2 < 200 * 200 && pm > CONFIG.PHYSICS.SPLIT_MASS_THRESHOLD * 3 && Math.random() < 0.05) this.split(p);
+    if (prey && preyD2 < 200 * 200 && p.cells.length < this.activeCellLimit(p) && pm > CONFIG.PHYSICS.SPLIT_MASS_THRESHOLD * 3 && Math.random() < 0.012) this.split(p);
   }
 
   updateBot(p, dt, now) {
@@ -1668,6 +1705,7 @@ class GameServer {
     const dt = clamp((now - this.lastTick) / 1000, 0, CONFIG.PHYSICS.MAX_DT);
     this.lastTick = now;
 
+    for (const p of this.world.players.values()) this.normalizePlayerMass(p);
     this.rebuildPlayerGrid();
     for (const p of this.world.players.values()) {
       if (p.isBot && this.botAutomationEnabled && p.adminBotEnabled) this.updateBot(p, dt, now);
@@ -1687,11 +1725,15 @@ class GameServer {
     this.resolveZones(dt);
     this.updateVirusProjectiles(dt);
     this.zoneTick(now);
-    this.triggerTraps();
-    this.triggerMines();
-    this.resolveDuels();
-    this.antiCampTick(now);
-    this.mergeCells();
+    const heavyEvery = this.world.players.size >= 80 ? 3 : 1;
+    if (this.totalTicks % heavyEvery === 0) {
+      this.triggerTraps();
+      this.triggerMines();
+      this.resolveDuels();
+      this.antiCampTick(now);
+    }
+    if (this.totalTicks % (this.world.players.size >= 80 ? 3 : 2) === 0) this.mergeCells();
+    for (const p of this.world.players.values()) this.normalizePlayerMass(p);
 
     const before = this.world.pellets.length;
     this.world.pellets = this.world.pellets.filter((p) => !p.consumed);
@@ -1745,72 +1787,136 @@ class GameServer {
     };
   }
 
-  snapshotFor(viewer) {
-    const center = viewer && viewer.center;
-    const now = Date.now();
-    const r2 = CONFIG.NETWORK.VIEW_RADIUS * CONFIG.NETWORK.VIEW_RADIUS;
-    const pelletR2 = CONFIG.NETWORK.PELLET_VIEW_RADIUS * CONFIG.NETWORK.PELLET_VIEW_RADIUS;
-    const players = [];
+  networkProfile() {
+    const players = this.world.players.size;
+    const cells = this.activeCellCount();
+    if (players >= 120 || cells >= 700) return { view: 1350, pelletView: 1550, players: CONFIG.NETWORK.MAX_VISIBLE_PLAYERS_FULL, cells: CONFIG.NETWORK.MAX_VISIBLE_CELLS_FULL, pellets: CONFIG.NETWORK.MAX_VISIBLE_PELLETS_FULL };
+    if (players >= 80 || cells >= 450) return { view: 1500, pelletView: 1700, players: 36, cells: 5, pellets: 200 };
+    if (players >= 50 || cells >= 260) return { view: 1600, pelletView: 1780, players: 40, cells: 6, pellets: 230 };
+    return { view: CONFIG.NETWORK.VIEW_RADIUS, pelletView: CONFIG.NETWORK.PELLET_VIEW_RADIUS, players: CONFIG.NETWORK.MAX_VISIBLE_PLAYERS, cells: CONFIG.NETWORK.MAX_VISIBLE_CELLS_PER_OTHER, pellets: CONFIG.NETWORK.MAX_VISIBLE_PELLETS };
+  }
 
-    for (const p of this.world.players.values()) {
-      if (p.id === viewer.id) {
-        players.push(this.playerSnapshot(p, now));
-        continue;
-      }
-      if (p.dead || !center) continue;
-      const pc = p.center;
-      if (pc && dist2(center, pc) <= r2) {
-        const snap = this.playerSnapshot(p, now);
-        if (p.invisible > now && viewer.revealUntil <= now) snap.invisible = true;
-        else snap.invisible = false;
-        players.push(snap);
+  activeCellCount() {
+    let count = 0;
+    for (const p of this.world.players.values()) if (!p.dead) count += p.cells.length;
+    return count;
+  }
+
+  networkInterval() {
+    const players = this.world.players.size;
+    const cells = this.activeCellCount();
+    if (players >= 120 || cells >= 700) return 125;
+    if (players >= 80 || cells >= 450) return 100;
+    if (players >= 50 || cells >= 260) return 80;
+    return CONFIG.NET_TICK;
+  }
+
+  snapshotCells(p, limit) {
+    if (!p || !p.cells.length) return [];
+    const src = p.cells;
+    if (!limit || src.length <= limit) return src.map((c) => ({ x: c.x, y: c.y, mass: Math.round(Math.max(0, c.mass)), id: c.id }));
+    const top = [];
+    for (const c of src) {
+      const item = { x: c.x, y: c.y, mass: Math.round(Math.max(0, c.mass)), id: c.id };
+      let pos = top.length;
+      while (pos > 0 && top[pos - 1].mass < item.mass) pos--;
+      if (pos < limit) {
+        top.splice(pos, 0, item);
+        if (top.length > limit) top.pop();
       }
     }
+    return top;
+  }
 
-    const pellets = center
-      ? this.world.nearbyPellets(center.x, center.y, CONFIG.NETWORK.PELLET_VIEW_RADIUS)
-          .filter((pellet) => !pellet.consumed && dist2(center, pellet) <= pelletR2)
-          .map(({ id, x, y, mass }) => ({ id, x, y, mass }))
-      : [];
+  playerSnapshot(p, now = Date.now(), self = false, cellLimit = 0) {
+    const out = {
+      id: p.id, name: p.name, isBot: p.isBot, color: p.color, team: p.team,
+      mass: Math.round(p.totalMass), dead: p.dead,
+      respawnAt: p.dead ? p.respawnAt : null,
+      invisible: p.invisible > now, speedBoost: p.speedBoost > now,
+      magnet: p.magnet > now, shield: p.shield > now, respawnShield: p.respawnShieldUntil > now,
+      frozen: p.freezeUntil > now, rage: p.rageUntil > now, reveal: p.revealUntil > now,
+      autoPilot: p.autoPilot, bounty: Math.round(p.bounty),
+      cells: this.snapshotCells(p, cellLimit),
+    };
+    if (self) Object.assign(out, {
+      kills: p.stats.kills, deaths: p.stats.deaths, assists: p.assists, combo: p.combo,
+      pvpPoints: Math.round(p.pvpPoints), elo: Math.round(p.elo), damageDealt: Math.round(p.damageDealt),
+      damageTaken: Math.round(p.damageTaken), killStreak: p.killStreak, hunter: p.hunterUntil > now,
+      parry: p.parryUntil > now, slow: p.slowUntil > now, coins: Math.round(p.coins), equippedSkin: p.equippedSkin,
+    });
+    return out;
+  }
 
-    const powerups = center
-      ? this.world.powerups.filter((pu) => dist2(center, pu) <= pelletR2)
-      : [];
-    const decoys = center
-      ? this.world.decoys.filter((d) => dist2(center, d) <= pelletR2)
-      : [];
-    const traps = center ? this.world.traps.filter((x) => dist2(center, x) <= pelletR2) : [];
-    const mines = center ? this.world.mines.filter((x) => dist2(center, x) <= pelletR2) : [];
-    const virusProjectiles = center
-      ? this.world.virusProjectiles.filter((v) => dist2(center, v) <= pelletR2)
-      : [];
+  snapshotFor(viewer) {
+    const center = viewer && viewer.center;
+    if (!center) return { players: [], pellets: [], powerups: [], virusProjectiles: [], zones: this.world.zones, killfeed: this.world.killfeed, decoys: [], traps: [], mines: [], world: { width: CONFIG.WORLD.WIDTH, height: CONFIG.WORLD.HEIGHT } };
+    const now = Date.now();
+    const profile = this.networkProfile();
+    const r2 = profile.view * profile.view;
+    const pelletR2 = profile.pelletView * profile.pelletView;
 
-    return {
-      players,
-      pellets,
-      powerups,
-      virusProjectiles,
-      decoys,
-      traps,
-      mines,
-      zones: this.world.zones,
-      killfeed: this.world.killfeed,
-      teamScores: this.teamScores(),
-      matchInfo: this.matchInfo(),
-      pvpLeaderboard: this.pvpLeaderboard(10),
-      pvpEvent: this.pvpEvent,
-      arena: this.arena,
-      announcements: this.world.announcements,
-      playerSummary: this.playerSummary(viewer),
-      wallet: this.getWallet(viewer),
-      shopCatalog: this.getCatalog(),
-      shopSale: this.currentSale(),
-      quests: this.getQuests(viewer),
-      shopStats: this.shopStats(viewer),
-      nearbyThreats: this.nearbyThreats(viewer),
-      events: this.consumeEvents(viewer),
+    const ranked = [];
+    for (const p of this.world.players.values()) {
+      if (p.id === viewer.id) continue;
+      if (p.dead) continue;
+      const pc = p.center;
+      if (!pc) continue;
+      const d2v = dist2(center, pc);
+      if (d2v <= r2) ranked.push({ p, d2: d2v });
+    }
+    ranked.sort((a, b) => a.d2 - b.d2);
+
+    const players = [this.playerSnapshot(viewer, now, true, 0)];
+    let added = 1;
+    for (const item of ranked) {
+      if (added >= profile.players) break;
+      const p = item.p;
+      const snap = this.playerSnapshot(p, now, false, profile.cells);
+      // Do not send invisible bots/players at full load unless the viewer has reveal.
+      if (p.invisible > now && (!viewer.revealUntil || viewer.revealUntil <= now)) {
+        if (item.d2 > 500 * 500) continue;
+        snap.invisible = true;
+      }
+      players.push(snap);
+      added++;
+    }
+
+    const nearby = this.world.nearbyPellets(center.x, center.y, profile.pelletView);
+    const pellets = [];
+    for (const pellet of nearby) {
+      if (pellet.consumed || dist2(center, pellet) > pelletR2) continue;
+      pellets.push({ pellet, d2: dist2(center, pellet) });
+    }
+    pellets.sort((a, b) => a.d2 - b.d2);
+    const pelletOut = pellets.slice(0, profile.pellets).map(({ pellet }) => ({ id: pellet.id, x: pellet.x, y: pellet.y, mass: pellet.mass }));
+
+    const powerups = [];
+    for (const pu of this.world.powerups) if (dist2(center, pu) <= pelletR2) powerups.push(pu);
+    const decoys = [];
+    for (const d of this.world.decoys) if (dist2(center, d) <= pelletR2) decoys.push(d);
+    const traps = [];
+    for (const t of this.world.traps) if (dist2(center, t) <= pelletR2) traps.push(t);
+    const mines = [];
+    for (const m of this.world.mines) if (dist2(center, m) <= pelletR2) mines.push(m);
+    const virusProjectiles = [];
+    for (const v of this.world.virusProjectiles) if (dist2(center, v) <= pelletR2) virusProjectiles.push(v);
+
+    const out = {
+      players, pellets: pelletOut, powerups: powerups.slice(0, 20), virusProjectiles: virusProjectiles.slice(0, 40),
+      zones: this.world.zones, killfeed: this.world.killfeed.slice(0, 8), decoys: decoys.slice(0, 20),
+      traps: traps.slice(0, 24), mines: mines.slice(0, 24),
       world: { width: CONFIG.WORLD.WIDTH, height: CONFIG.WORLD.HEIGHT },
     };
+    // Backwards-compatible rich snapshot for tests/admin tools only; network snapshots stay lean.
+    if (!viewer.ws) Object.assign(out, {
+      teamScores: this.teamScores(), matchInfo: this.matchInfo(), pvpLeaderboard: this.pvpLeaderboard(10),
+      pvpEvent: this.pvpEvent, arena: this.arena, announcements: this.world.announcements,
+      playerSummary: this.playerSummary(viewer), wallet: this.getWallet(viewer), shopCatalog: this.getCatalog(),
+      shopSale: this.currentSale(), quests: this.getQuests(viewer), shopStats: this.shopStats(viewer),
+      nearbyThreats: this.nearbyThreats(viewer), events: this.consumeEvents(viewer),
+    });
+    return out;
   }
 
   snapshot() {

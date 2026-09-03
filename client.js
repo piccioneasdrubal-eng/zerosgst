@@ -7,9 +7,17 @@
 
   function boot() {
     const qs = new URLSearchParams(location.search);
-    const rawServer = qs.get('server') || 'https://agar-server-bruo.onrender.com';
-    const serverUrl = rawServer.replace(/\/$/, '');
+    const configuredDefault = (typeof window.GAME_SERVER_URL === 'string' ? window.GAME_SERVER_URL : '').trim();
 
+    function cleanServerUrl(value) {
+      return String(value || '').trim().replace(/\/$/, '');
+    }
+    function getConfiguredServer() {
+      const fromQuery = cleanServerUrl(qs.get('server'));
+      const fromStorage = cleanServerUrl(localStorage.getItem('gameServerUrl'));
+      const fromConfig = cleanServerUrl(configuredDefault);
+      return fromQuery || fromStorage || fromConfig;
+    }
     function wsUrl(value) {
       if (/^wss?:\/\//i.test(value)) return value;
       if (/^https?:\/\//i.test(value)) return value.replace(/^http/i, 'ws');
@@ -22,8 +30,9 @@
       return 'https://' + value;
     }
 
-    const WS_ROOT = wsUrl(serverUrl);
-    const API_ROOT = httpUrl(serverUrl);
+    function currentServerUrl() { return cleanServerUrl((ui.serverUrl && ui.serverUrl.value) || getConfiguredServer()); }
+    function currentWsRoot() { const value = currentServerUrl(); return value ? wsUrl(value) : ''; }
+    function currentApiRoot() { const value = currentServerUrl(); return value ? httpUrl(value) : ''; }
 
     const canvas = document.getElementById('game');
     const mmCanvas = document.getElementById('minimap-canvas');
@@ -40,6 +49,7 @@
       menu: el('menu'),
       play: el('play'),
       name: el('name'),
+      serverUrl: el('server-url'),
       team: el('team-select'),
       mass: el('mass'),
       respawn: el('respawn'),
@@ -99,6 +109,11 @@
     const target = { x: camera.x, y: camera.y };
     let lastSentTarget = { x: NaN, y: NaN };
     let connected = false;
+    let connecting = false;
+    let manualDisconnect = false;
+    let roomFull = false;
+    let reconnectTimer = 0;
+    let reconnectAttempts = 0;
     let stateAt = 0;
     let stats = { startedAt: 0, maxMass: 0 };
     let myStats = { kills: 0, deaths: 0 };
@@ -109,6 +124,7 @@
     let lastLeaderboardAt = 0;
     let lastKillfeedSignature = '';
     let lastLeaderboardSignature = '';
+    let lastFrameDrawAt = 0;
 
     const DEFAULT_KEYS = { split: ' ', feed: 'w', virus: 'q' };
     let keybinds = { ...DEFAULT_KEYS };
@@ -140,6 +156,23 @@
 
     function send(obj) {
       if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+    }
+
+    function setConnectionStatus(text) {
+      if (ui.botStatus) ui.botStatus.textContent = text || '';
+    }
+
+    function scheduleReconnect(name, team) {
+      if (manualDisconnect || roomFull || connecting || connected) return;
+      if (reconnectAttempts >= 5) {
+        setConnectionStatus('❌ Server non raggiungibile. Premi Gioca per riprovare.');
+        return;
+      }
+      reconnectAttempts += 1;
+      const delay = Math.min(12000, 1000 * Math.pow(2, reconnectAttempts - 1));
+      clearTimeout(reconnectTimer);
+      setConnectionStatus(`🔄 Riconnessione tra ${Math.ceil(delay / 1000)}s...`);
+      reconnectTimer = setTimeout(() => connect(name, team, true), delay);
     }
 
     function setMouseTarget() {
@@ -190,28 +223,69 @@
       if (button) button.addEventListener('click', () => send({ type: action }));
     }
 
-    async function connect(name, team) {
+    async function connect(name, team, fromRetry = false) {
+      if (connecting || connected) return;
+      if (!fromRetry) {
+        manualDisconnect = false;
+        roomFull = false;
+        reconnectAttempts = 0;
+        clearTimeout(reconnectTimer);
+      }
+      connecting = true;
       if (ws && ws.readyState !== WebSocket.CLOSED) {
         try { ws.close(1000, 'reconnect'); } catch (_) {}
       }
-      connected = false;
       myId = null;
+      setConnectionStatus(fromRetry ? '🔄 Connessione al server...' : '⏳ Connessione al server...');
+
+      let sock;
       try {
-        ws = new WebSocket(WS_ROOT);
+        const endpoint = currentWsRoot();
+        if (!endpoint) {
+          connecting = false;
+          setConnectionStatus("⚠️ Server di gioco non configurato. Inserisci l'URL del backend.");
+          return;
+        }
+        if (ui.serverUrl) {
+          ui.serverUrl.value = endpoint.replace(/^ws/i, 'http');
+          localStorage.setItem('gameServerUrl', ui.serverUrl.value.trim());
+        }
+        sock = new WebSocket(endpoint);
+        ws = sock;
       } catch (_) {
-        if (ui.botStatus) ui.botStatus.textContent = '❌ WebSocket non disponibile.';
+        connecting = false;
+        scheduleReconnect(name, team);
         return;
       }
-      ws.onopen = () => {
-        connected = true;
-        if (ui.botStatus) ui.botStatus.textContent = '';
 
-        send({ type: 'join', name, color: myColor, team });
+      const connectTimeout = setTimeout(() => {
+        if (sock.readyState === WebSocket.CONNECTING) {
+          try { sock.close(); } catch (_) {}
+        }
+      }, 10000);
+
+      sock.onopen = () => {
+        clearTimeout(connectTimeout);
+        connecting = false;
+        connected = true;
+        roomFull = false;
+        reconnectAttempts = 0;
+        setConnectionStatus('');
+        send({ type: 'join', name, color: myColor, team, token: localStorage.getItem('authToken') || '' });
       };
-      ws.onmessage = (ev) => {
+      sock.onmessage = (ev) => {
         let msg;
         try { msg = JSON.parse(ev.data); } catch (_) { return; }
         if (!msg || typeof msg.type !== 'string') return;
+        if (msg.type === 'room-full') {
+          roomFull = true;
+          connecting = false;
+          connected = false;
+          const current = Number(msg.players) || 0;
+          const max = Number(msg.maxPlayers) || 0;
+          setConnectionStatus(`🚫 Room piena (${current}/${max}). Riprova tra qualche secondo.`);
+          return;
+        }
         if (msg.type === 'welcome') {
           myId = msg.id;
           world = msg.world || world;
@@ -262,14 +336,25 @@
           addChatMsg(msg.name, teamTag + msg.text, msg.id === myId ? '#6ee7ff' : '#fff');
         }
       };
-      ws.onclose = () => {
+      sock.onclose = () => {
+        clearTimeout(connectTimeout);
+        const wasConnected = connected;
         connected = false;
-        myId = null;
+        connecting = false;
         if (ui.menu) ui.menu.style.display = 'flex';
+        if (roomFull) {
+          setConnectionStatus('🚫 Room piena. Attendi e riprova con Gioca.');
+          return;
+        }
+        if (manualDisconnect) {
+          setConnectionStatus('');
+          return;
+        }
+        if (wasConnected || reconnectAttempts < 5) scheduleReconnect(name, team);
       };
-      ws.onerror = () => {
+      sock.onerror = () => {
+        // Chrome logs the network failure itself; don't spam the console with duplicate retries.
         connected = false;
-        if (ui.botStatus) ui.botStatus.textContent = '❌ Connessione al server fallita.';
       };
     }
 
@@ -387,29 +472,39 @@
     }
 
     function drawCells() {
+      const crowded = state.players.length >= 28;
+      const veryCrowded = state.players.length >= 38;
+      const maxRadius = veryCrowded ? 240 : (crowded ? 320 : 480);
+      const showNamesForBots = !crowded;
       for (const p of state.players) {
-        for (const c of p.cells || []) {
-          const pos = renderCellPosition(c);
-          const r = 10 * Math.sqrt(Math.max(1, c.mass || 1));
+        const cells = Array.isArray(p.cells) ? p.cells : [];
+        for (const cell of cells) {
+          const pos = renderCellPosition(cell);
+          const rawRadius = 10 * Math.sqrt(Math.max(1, Number(cell.mass) || 1));
+          const r = Math.min(rawRadius, maxRadius);
           if (Math.abs(pos.x - camera.x) > viewW / 2 / camera.zoom + r || Math.abs(pos.y - camera.y) > viewH / 2 / camera.zoom + r) continue;
-          ctx.globalAlpha = p.invisible && p.id !== myId ? 0.15 : 1;
+          ctx.globalAlpha = p.invisible && p.id !== myId ? 0.10 : 1;
           ctx.fillStyle = p.color || '#fff';
-          ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+          ctx.fill();
           ctx.globalAlpha = 1;
           ctx.strokeStyle = p.shield ? '#4de8ff' : 'rgba(0,0,0,.35)';
-          ctx.lineWidth = Math.max(1, r * (p.shield ? 0.12 : 0.06));
+          ctx.lineWidth = Math.max(1, Math.min(18, r * (p.shield ? 0.10 : 0.045)));
           ctx.stroke();
-          if ((r > 20 || p.id === myId)) {
+
+          const showName = p.id === myId || (!p.isBot && !veryCrowded) || (!p.isBot && r > 46 && crowded) || (showNamesForBots && r > 70);
+          if (showName) {
             ctx.fillStyle = '#fff';
-            ctx.font = `bold ${Math.max(11, r * 0.35)}px sans-serif`;
+            ctx.font = `bold ${Math.min(28, Math.max(11, r * 0.24))}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             let label = `${p.name || 'Player'}${p.isBot ? ' 🤖' : ''}`;
             if (p.team !== null && p.team !== undefined) label = `[${teams.NAMES[p.team] || ''}] ${label}`;
             ctx.fillText(label, pos.x, pos.y);
             if (p.id === myId) {
-              ctx.font = `bold ${Math.max(9, r * 0.22)}px sans-serif`;
-              ctx.fillText(Math.round(c.mass), pos.x, pos.y + r * 0.4);
+              ctx.font = `bold ${Math.min(18, Math.max(9, r * 0.15))}px sans-serif`;
+              ctx.fillText(Math.round(cell.mass || 0), pos.x, pos.y + Math.min(r * 0.4, 45));
             }
           }
         }
@@ -497,20 +592,25 @@
     });
 
     if (ui.play && ui.name) ui.play.addEventListener('click', () => {
+      if (connecting || connected) return;
       const name = ui.name.value.trim() || 'Player';
       localStorage.setItem('nickname', name);
+      if (ui.serverUrl && ui.serverUrl.value.trim()) localStorage.setItem('gameServerUrl', ui.serverUrl.value.trim().replace(/\/$/, ''));
       const team = ui.team && ui.team.value !== '' ? Number.parseInt(ui.team.value, 10) : null;
       connect(name, Number.isInteger(team) ? team : null);
     });
     if (ui.name && ui.play) ui.name.addEventListener('keydown', (e) => { if (e.key === 'Enter') ui.play.click(); });
     if (ui.name) ui.name.value = savedName();
+    if (ui.serverUrl) ui.serverUrl.value = getConfiguredServer();
 
     if (ui.botForm) ui.botForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!ui.botStatus) return;
       ui.botStatus.textContent = 'Spawn in corso...';
       try {
-        const url = `${API_ROOT}/api/spawn-bot?count=${encodeURIComponent(ui.botCount?.value || '10')}&mass=${encodeURIComponent(ui.botMass?.value || '30')}&name=${encodeURIComponent(ui.botName?.value || 'Bot')}`;
+        const apiRoot = currentApiRoot();
+        if (!apiRoot) throw new Error('server');
+        const url = `${apiRoot}/api/spawn-bot?count=${encodeURIComponent(ui.botCount?.value || '10')}&mass=${encodeURIComponent(ui.botMass?.value || '30')}&name=${encodeURIComponent(ui.botName?.value || 'Bot')}`;
         const res = await fetch(url, { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -520,7 +620,9 @@
 
     async function loadSeason() {
       try {
-        const res = await fetch(`${API_ROOT}/api/season`, { cache: 'no-store' });
+        const apiRoot = currentApiRoot();
+        if (!apiRoot) throw new Error('server');
+        const res = await fetch(`${apiRoot}/api/season`, { cache: 'no-store' });
         if (!res.ok) throw new Error('season');
         const data = await res.json();
         if (!ui.seasonList) return;
@@ -603,6 +705,10 @@
     }, 50);
 
     function frame(now) {
+      const crowded = state.players.length >= 28;
+      const targetFrameMs = crowded ? 33 : 16;
+      if (now - lastFrameDrawAt < targetFrameMs) { requestAnimationFrame(frame); return; }
+      lastFrameDrawAt = now;
       updateCamera();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, viewW, viewH);

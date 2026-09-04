@@ -1,7 +1,7 @@
 {
-  "name": "agar-server",
-  "version": "2.2.0",
-  "description": "Standalone multiplayer .io game backend with WebSocket and optimized crowded-room support.",
+  "name": "zerothelegend-game-backend",
+  "version": "2.0.0",
+  "description": "ZeroLegend multiplayer agar-like backend with WebSocket, bots and authenticated sessions",
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
@@ -9,18 +9,8 @@
     "dev": "node --watch server.js",
     "test": "node game-test.js && node feature-test.js"
   },
-  "keywords": [
-    "game",
-    "multiplayer",
-    "websocket",
-    "agar",
-    "io-game"
-  ],
+  "keywords": ["game", "multiplayer", "websocket", "agar", "zerothelegend"],
   "license": "MIT",
-  "dependencies": {
-    "ws": "^8.18.0"
-  },
-  "engines": {
-    "node": ">=20 <25"
-  }
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" }
 }

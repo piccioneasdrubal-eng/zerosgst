@@ -21,9 +21,9 @@ const CONFIG = {
     BASE_SPEED: 3.0,
     SPEED_MASS_DECAY: 0.55,
     EAT_FACTOR: 1.15,
-    SPLIT_COOLDOWN: 1000,
+    SPLIT_COOLDOWN: 500,
     SPLIT_MASS_THRESHOLD: 20,
-    EJECT_MASS: 15,
+    EJECT_MASS: 14,
     MERGE_TIMEOUT: 30_000,
     RESPAWN_TIME: 3000,
     BOT_RESPAWN_TIME: 700,
@@ -38,6 +38,11 @@ const CONFIG = {
     MAX_PLAYER_MASS: 30000,
     MAX_DT: 0.05,
     DASH_COST: 7,
+    GOD_MODE_DURATION: 10000,
+    GOD_MODE_COOLDOWN: 45000,
+    GOD_MODE_MASS_COST: 0,
+    MOVE_ACCELERATION: 14,
+    MOVE_FRICTION: 0.86,
     DASH_DISTANCE: 320,
     BLINK_COST: 18,
     BLINK_DISTANCE: 480,
@@ -184,7 +189,7 @@ class World {
     return out;
   }
 
-  addPellet(x, y, mass = CONFIG.WORLD.PELLET_MASS) {
+  addPellet(x, y, mass = CONFIG.WORLD.PELLET_MASS, vx = 0, vy = 0, color = null, ownerId = null) {
     if (this.pellets.length >= CONFIG.WORLD.MAX_PELLETS) return false;
     const m = Math.max(0.1, Number(mass) || CONFIG.WORLD.PELLET_MASS);
     this.pellets.push({
@@ -192,7 +197,12 @@ class World {
       x: clamp(Number(x) || 0, 0, CONFIG.WORLD.WIDTH),
       y: clamp(Number(y) || 0, 0, CONFIG.WORLD.HEIGHT),
       mass: m,
+      vx: Number(vx) || 0,
+      vy: Number(vy) || 0,
       consumed: false,
+      ownerId: ownerId || null,
+      releasedAt: Date.now(),
+      color: color || randColor(),
     });
     return true;
   }
@@ -252,6 +262,8 @@ class Cell {
     this.mass = Math.max(0.1, Number(mass) || 0.1);
     this.ownerId = ownerId;
     this.bornAt = Date.now();
+    this.vx = 0;
+    this.vy = 0;
   }
   get radius() { return cellRadius(this.mass); }
 }
@@ -294,6 +306,9 @@ class Player {
     this.coins = 1000;
     this.inventory = new Set(['skin_default']);
     this.equippedSkin = 'default';
+    this.customSkinUrl = '';
+    this.customSkinMime = '';
+    this.customSkinTitle = '';
     this.shopHistory = [];
     this.dailyClaimAt = 0;
     this.questState = {};
@@ -306,6 +321,8 @@ class Player {
     this.damageDealt = 0;
     this.damageTaken = 0;
     this.killStreak = 0;
+    this.godUntil = 0;
+    this.lastGodMode = 0;
     this.bestKillStreak = 0;
     this.parryUntil = 0;
     this.markedTargetId = null;
@@ -319,6 +336,7 @@ class Player {
     this.botTargetId = null;
     this.duelId = null;
     this.arena = false;
+    this.gameMode = 'ffa';
   }
 
   get totalMass() {
@@ -383,6 +401,14 @@ class GameServer {
     this.pvpEvent = { type: null, endsAt: 0, label: '' };
   }
 
+  seasonKey(playerOrName) {
+    if (playerOrName && typeof playerOrName === 'object') {
+      if (!playerOrName.isBot && playerOrName.accountId) return `account:${String(playerOrName.accountId)}`;
+      return String(playerOrName.name || 'player').trim().toLowerCase();
+    }
+    return String(playerOrName || 'player').trim().toLowerCase();
+  }
+
   markSeasonDirty() {
     this.seasonDirty = true;
   }
@@ -392,7 +418,7 @@ class GameServer {
     if (!force && (!this.seasonDirty || now - this.lastSeasonSave < 3000)) return;
     for (const p of this.world.players.values()) {
       if (p.isBot) continue;
-      const key = String(p.name || 'player').trim().toLowerCase();
+      const key = this.seasonKey(p);
       const rec = this.season.players[key] || (this.season.players[key] = { name: p.name, score: 0, kills: 0, deaths: 0 });
       rec.name = p.name;
       rec.coins = Math.round(p.coins);
@@ -413,21 +439,23 @@ class GameServer {
     }
   }
 
-  recordDeath(name) {
-    const key = String(name || 'player').trim().toLowerCase();
+  recordDeath(playerOrName) {
+    const key = this.seasonKey(playerOrName);
+    const name = typeof playerOrName === 'object' ? playerOrName.name : playerOrName;
     if (!this.season.players[key]) this.season.players[key] = { name: String(name || 'Player').slice(0, 16), score: 0, kills: 0, deaths: 0 };
     this.season.players[key].deaths += 1;
     this.season.players[key].name = String(name || 'Player').slice(0, 16);
     this.markSeasonDirty();
   }
 
-  recordKill(name, mass) {
-    const key = String(name || 'player').trim().toLowerCase();
+  recordKill(playerOrName, mass) {
+    const key = this.seasonKey(playerOrName);
+    const name = typeof playerOrName === 'object' ? playerOrName.name : playerOrName;
     if (!this.season.players[key]) this.season.players[key] = { name: String(name || 'Player').slice(0, 16), score: 0, kills: 0, deaths: 0 };
-    const p = this.season.players[key];
-    p.kills += 1;
-    p.score += Math.max(1, Math.round(Number(mass) / 2));
-    p.name = String(name || 'Player').slice(0, 16);
+    const rec = this.season.players[key];
+    rec.kills += 1;
+    rec.score += Math.max(1, Math.round(Number(mass) / 2));
+    rec.name = String(name || 'Player').slice(0, 16);
     this.markSeasonDirty();
   }
 
@@ -438,17 +466,38 @@ class GameServer {
       .slice(0, n);
   }
 
-  addPlayer(name, isBot = false, team = null) {
+  addPlayer(name, isBot = false, team = null, auth = null) {
     const p = new Player(uid(), name, isBot);
+    if (!isBot && auth && typeof auth === 'object') {
+      p.accountId = auth.id ?? null;
+      p.authEmail = String(auth.email || '');
+      p.premium = Boolean(auth.premium);
+      p.role = String(auth.role || 'user').toLowerCase();
+      p.isAdmin = auth.is_admin === true || Number(auth.is_admin) === 1 || ['admin','owner'].includes(p.role);
+    }
     if (Number.isInteger(team) && team >= 0 && team < CONFIG.TEAMS.COLORS.length) {
       p.team = team;
       p.color = CONFIG.TEAMS.COLORS[team];
     }
-    const saved = this.season.players[p.name.trim().toLowerCase()];
+    const saved = this.season.players[this.seasonKey(p)];
+    const dbAuthoritative = !isBot && auth && typeof auth === 'object' && Number.isFinite(Number(auth.id));
+    if (dbAuthoritative) {
+      p.coins = clamp(Number(auth.coins ?? 1000) || 1000, 0, 100000000);
+      try {
+        const skins = typeof auth.skins === 'string' ? JSON.parse(auth.skins || '[]') : auth.skins;
+        if (Array.isArray(skins) && skins.length) p.inventory = new Set(skins.map(String).slice(0, 100));
+      } catch (_) {}
+      p.equippedSkin = String(auth.equipped_skin || auth.equippedSkin || 'default').slice(0, 100);
+      p.customSkinUrl = String(auth.custom_skin_url || '').slice(0, 500);
+      p.customSkinMime = String(auth.custom_skin_mime || '').slice(0, 80);
+      p.customSkinTitle = String(auth.custom_skin_title || '').slice(0, 80);
+    }
     if (saved && typeof saved === 'object') {
-      p.coins = clamp(Number(saved.coins) || 1000, 0, 100000000);
-      p.inventory = new Set(Array.isArray(saved.inventory) && saved.inventory.length ? saved.inventory.slice(0, 100) : ['skin_default']);
-      p.equippedSkin = String(saved.equippedSkin || 'default').slice(0, 40);
+      if (!dbAuthoritative) {
+        p.coins = clamp(Number(saved.coins) || 1000, 0, 100000000);
+        p.inventory = new Set(Array.isArray(saved.inventory) && saved.inventory.length ? saved.inventory.slice(0, 100) : ['skin_default']);
+        p.equippedSkin = String(saved.equippedSkin || 'default').slice(0, 40);
+      }
       p.pvpPoints = Number(saved.pvpPoints) || 0;
       p.elo = clamp(Number(saved.elo) || 1000, 400, 4000);
       p.bestKillStreak = Number(saved.bestKillStreak) || 0;
@@ -634,6 +683,16 @@ class GameServer {
     if (!this.canUseAbility(p, 3000) || !this.spendMass(p, CONFIG.PHYSICS.REVEAL_COST)) return false;
     p.revealUntil = Date.now() + 5000;
     this.queueEvent(p, 'ability', { name: 'reveal' });
+    return true;
+  }
+
+  godMode(p) {
+    if (!p || p.dead || !p.cells.length) return false;
+    const now = Date.now();
+    if (now - (p.lastGodMode || 0) < CONFIG.PHYSICS.GOD_MODE_COOLDOWN) return false;
+    p.lastGodMode = now;
+    p.godUntil = now + CONFIG.PHYSICS.GOD_MODE_DURATION;
+    this.queueEvent(p, 'godmode', { duration: CONFIG.PHYSICS.GOD_MODE_DURATION });
     return true;
   }
 
@@ -1028,7 +1087,7 @@ class GameServer {
     const mass = victim.totalMass;
     if (killer) this.handlePvpKill(killer, victim, mass, reason);
     victim.stats.deaths += 1;
-    if (!victim.isBot) this.recordDeath(victim.name);
+    if (!victim.isBot) this.recordDeath(victim);
     this.startRespawn(victim);
     return true;
   }
@@ -1043,12 +1102,13 @@ class GameServer {
     const recent = [...(victim.damageLedger || new Map()).entries()].filter(([aid,at]) => Date.now() - at <= 6000 && this.world.players.has(aid));
     for (const [aid] of recent.slice(0, 3)) { const a = this.world.players.get(aid); if (a && a.id !== killer.id) this.registerAssist(a); }
     this.awardPvpPoints(killer, 10 + Math.min(50, Math.round(mass / 20)));
-    if (!killer.isBot) this.recordKill(killer.name, mass);
+    if (!killer.isBot) this.recordKill(killer, mass);
     this.rewardKillCoins(killer, mass);
     this.rewardStreakCoins(killer);
     this.updateElo(killer, victim, 1);
     this.world.pushKillfeed(killer.name, victim.name, killer.color, victim.color);
     this.queueEvent(killer, 'kill', { victim: victim.name, reason, streak: killer.killStreak });
+    this.queueEvent(victim, 'death', { killer: killer.name, reason });
     return true;
   }
 
@@ -1117,6 +1177,18 @@ class GameServer {
   getCoinMultiplier(p) { return p && p.coinMultiplierUntil>Date.now()?Math.max(1,Number(p.coinMultiplierValue)||1):1; }
   activateCoinBoost(p,multiplier=2,durationMs=60000) { if(!p || !this.spendCoins(p,200,'coin-boost')) return false; p.coinMultiplierValue=clamp(Number(multiplier)||2,1,5); p.coinMultiplierUntil=Date.now()+clamp(Number(durationMs)||60000,10000,3600000); return true; }
   starterGift(p) { if(!p || p.starterGiftClaimed) return false; p.starterGiftClaimed=true; this.addCoins(p,500,'starter'); this.addInventoryItem(p,'shield_pack'); return true; }
+  grantPurchasedItem(p, itemId, wallet) {
+    const item = this.getCatalog().find(x => x.id === itemId);
+    if (!p || !item || !wallet || !Number.isFinite(Number(wallet.coins))) return false;
+    p.coins = clamp(Number(wallet.coins), 0, 100000000);
+    if (Array.isArray(wallet.inventory)) p.inventory = new Set(wallet.inventory.map(String).slice(0, 100));
+    if (wallet.equippedSkin) p.equippedSkin = String(wallet.equippedSkin).slice(0, 40);
+    p.shopHistory.push({ type:'buy', item:item.id, price:Number(wallet.price_paid || item.price), at:Date.now(), source:'db' });
+    if (p.shopHistory.length > 40) p.shopHistory.shift();
+    this.markSeasonDirty();
+    return true;
+  }
+
   refundLastPurchase(p) { if(!p) return false; const idx=[...p.shopHistory].map((e,i)=>[e,i]).reverse().find(([e])=>e.type==='buy' && !e.refunded); if(!idx) return false; const [e,i]=idx; e.refunded=true; this.addCoins(p,e.price,'refund'); this.removeInventoryItem(p,e.item); if(String(e.item).startsWith('skin_') && p.equippedSkin===String(e.item).replace(/^skin_/,'').slice(0,40)) p.equippedSkin='default'; this.markSeasonDirty(); return true; }
   shopStats(p) { return p?{coins:Math.round(p.coins),inventory:this.getInventory(p).length,earned:p.shopHistory.filter(x=>x.type==='earn').reduce((a,x)=>a+x.amount,0),spent:p.shopHistory.filter(x=>x.type==='spend').reduce((a,x)=>a+x.amount,0),multiplier:this.getCoinMultiplier(p)}:null; }
 
@@ -1179,23 +1251,42 @@ class GameServer {
       const dx = t.x - cell.x;
       const dy = t.y - cell.y;
       const d2v = dx * dx + dy * dy;
-      if (d2v <= 1) continue;
-      const d = Math.sqrt(d2v);
       let speed = this.speedAt(cell);
       if (p.speedBoost > now) speed *= 1.7;
       if (p.rageUntil > now) speed *= 1.55;
       if (p.slowUntil > now) speed *= 0.48;
       if (p.hunterUntil > now) speed *= 1.12;
       if (p.sprinting && !p.isBot) speed *= CONFIG.PHYSICS.SPRINT_SPEED;
+
       if (p.dashUntil > now) {
         cell.x += p.dashVx * dt;
         cell.y += p.dashVy * dt;
+      } else if (d2v > 1) {
+        const d = Math.sqrt(d2v);
+        const desiredVx = (dx / d) * speed;
+        const desiredVy = (dy / d) * speed;
+        const accel = 1 - Math.exp(-CONFIG.PHYSICS.MOVE_ACCELERATION * dt);
+        cell.vx += (desiredVx - cell.vx) * accel;
+        cell.vy += (desiredVy - cell.vy) * accel;
+        const maxStep = d;
+        const step = Math.hypot(cell.vx, cell.vy) * dt;
+        if (step > maxStep) {
+          const scale = maxStep / Math.max(step, 0.0001);
+          cell.vx *= scale;
+          cell.vy *= scale;
+        }
+        cell.x += cell.vx * dt;
+        cell.y += cell.vy * dt;
       } else {
-        const step = Math.min(speed * dt, d);
-        cell.x += (dx / d) * step;
-        cell.y += (dy / d) * step;
+        const friction = Math.pow(CONFIG.PHYSICS.MOVE_FRICTION, dt * 30);
+        cell.vx *= friction;
+        cell.vy *= friction;
+        cell.x += cell.vx * dt;
+        cell.y += cell.vy * dt;
       }
       const r = cell.radius;
+      if (cell.x <= r || cell.x >= CONFIG.WORLD.WIDTH - r) cell.vx *= -0.18;
+      if (cell.y <= r || cell.y >= CONFIG.WORLD.HEIGHT - r) cell.vy *= -0.18;
       cell.x = clamp(cell.x, r, CONFIG.WORLD.WIDTH - r);
       cell.y = clamp(cell.y, r, CONFIG.WORLD.HEIGHT - r);
     }
@@ -1257,22 +1348,29 @@ class GameServer {
       p.id,
     );
     nc.bornAt = now;
+    nc.vx = Math.cos(dir) * 900;
+    nc.vy = Math.sin(dir) * 900;
     p.cells.push(nc);
+    this.queueEvent(p, 'split', { x:nc.x, y:nc.y });
     return true;
   }
 
   eject(p) {
-    if (p.dead || !p.cells.length || p.totalMass < CONFIG.PHYSICS.EJECT_MASS + 5) return false;
+    if (p.dead || !p.cells.length) return false;
     let cell = p.cells[0];
     for (const c of p.cells) if (c.mass > cell.mass) cell = c;
-    if (cell.mass <= CONFIG.PHYSICS.EJECT_MASS + 1) return false;
-    cell.mass -= CONFIG.PHYSICS.EJECT_MASS;
+    const cost = CONFIG.PHYSICS.EJECT_MASS;
+    if (cell.mass < cost + 5) return false;
+    if (this.world.pellets.length >= CONFIG.WORLD.MAX_PELLETS) return false;
     const dir = p.target ? Math.atan2(p.target.y - cell.y, p.target.x - cell.x) : 0;
-    return this.world.addPellet(
-      cell.x + Math.cos(dir) * cell.radius,
-      cell.y + Math.sin(dir) * cell.radius,
-      CONFIG.PHYSICS.EJECT_MASS,
-    );
+    const launchDist = cell.radius + 28;
+    const pelletX = cell.x + Math.cos(dir) * launchDist;
+    const pelletY = cell.y + Math.sin(dir) * launchDist;
+    const pellet = this.world.addPellet(pelletX, pelletY, cost, Math.cos(dir) * 1700, Math.sin(dir) * 1700, p.color, p.id);
+    if (!pellet) return false;
+    cell.mass -= cost;
+    this.queueEvent(p, 'eject', { x:pelletX, y:pelletY });
+    return true;
   }
 
   shootVirus(p) {
@@ -1305,6 +1403,7 @@ class GameServer {
         const rr = pickupRadius + 8;
         for (const pellet of this.world.nearbyPellets(cell.x, cell.y, rr)) {
           if (pellet.consumed) continue;
+          if (pellet.ownerId === player.id && Date.now() - (pellet.releasedAt || 0) < 850) continue;
           if (dist2(cell, pellet) <= pickupRadius * pickupRadius) {
             pellet.consumed = true;
             cell.mass += pellet.mass;
@@ -1368,6 +1467,7 @@ class GameServer {
             if (eatenCells.has(b.c.id) || a.p.id === b.p.id) continue;
             if (a.p.team !== null && a.p.team === b.p.team) continue;
             if (a.p.shield > now || b.p.shield > now) continue;
+            if (a.p.godUntil > now || b.p.godUntil > now) continue;
 
             const d2v = dist2(a.c, b.c);
             const ar = Math.max(0, a.c.radius - b.c.radius * 0.4);
@@ -1429,7 +1529,7 @@ class GameServer {
         if (killer) {
           this.handlePvpKill(killer, p, mass, 'eat');
           p.stats.deaths += 1;
-          if (!p.isBot) this.recordDeath(p.name);
+          if (!p.isBot) this.recordDeath(p);
         }
         this.startRespawn(p);
       }
@@ -1686,6 +1786,7 @@ class GameServer {
     p.invisible = 0;
     p.magnet = 0;
     p.shield = 0;
+    p.godUntil = 0;
     p.sprinting = false;
   }
 
@@ -1719,6 +1820,19 @@ class GameServer {
     }
 
     this.updateTimedEffects(now);
+    // Ejected food visibly launches outward, then slows down.
+    for (const pellet of this.world.pellets) {
+      if (!pellet || pellet.consumed) continue;
+      const pv = Math.hypot(Number(pellet.vx) || 0, Number(pellet.vy) || 0);
+      if (pv > 1) {
+        pellet.x += (Number(pellet.vx) || 0) * dt;
+        pellet.y += (Number(pellet.vy) || 0) * dt;
+        pellet.vx *= Math.pow(0.055, dt);
+        pellet.vy *= Math.pow(0.055, dt);
+        pellet.x = clamp(pellet.x, 4, CONFIG.WORLD.WIDTH - 4);
+        pellet.y = clamp(pellet.y, 4, CONFIG.WORLD.HEIGHT - 4);
+      }
+    }
     this.resolvePellets();
     this.resolvePlayerCollisions();
     this.resolvePowerups();
@@ -1754,6 +1868,7 @@ class GameServer {
       id: p.id,
       name: p.name,
       isBot: p.isBot,
+      gameMode: p.gameMode,
       color: p.color,
       team: p.team,
       mass: Math.round(p.totalMass),
@@ -1781,6 +1896,8 @@ class GameServer {
       hunter: p.hunterUntil > now,
       parry: p.parryUntil > now,
       slow: p.slowUntil > now,
+      godMode: p.godUntil > now,
+      godModeRemaining: Math.max(0, p.godUntil - now),
       coins: Math.round(p.coins),
       equippedSkin: p.equippedSkin,
       cells: p.cells.map((c) => ({ x: c.x, y: c.y, mass: Math.max(0, Number(c.mass) || 0), id: c.id })),
@@ -1830,13 +1947,15 @@ class GameServer {
 
   playerSnapshot(p, now = Date.now(), self = false, cellLimit = 0) {
     const out = {
-      id: p.id, name: p.name, isBot: p.isBot, color: p.color, team: p.team,
+      id: p.id, name: p.name, isBot: p.isBot, gameMode: p.gameMode, color: p.color, team: p.team,
       mass: Math.round(p.totalMass), dead: p.dead,
       respawnAt: p.dead ? p.respawnAt : null,
       invisible: p.invisible > now, speedBoost: p.speedBoost > now,
       magnet: p.magnet > now, shield: p.shield > now, respawnShield: p.respawnShieldUntil > now,
-      frozen: p.freezeUntil > now, rage: p.rageUntil > now, reveal: p.revealUntil > now,
+      frozen: p.freezeUntil > now, rage: p.rageUntil > now, reveal: p.revealUntil > now, godMode: p.godUntil > now,
+      godModeRemaining: Math.max(0, p.godUntil - now),
       autoPilot: p.autoPilot, bounty: Math.round(p.bounty),
+      customSkinUrl: p.customSkinUrl || '', customSkinMime: p.customSkinMime || '', customSkinTitle: p.customSkinTitle || '',
       cells: this.snapshotCells(p, cellLimit),
     };
     if (self) Object.assign(out, {
@@ -1889,7 +2008,7 @@ class GameServer {
       pellets.push({ pellet, d2: dist2(center, pellet) });
     }
     pellets.sort((a, b) => a.d2 - b.d2);
-    const pelletOut = pellets.slice(0, profile.pellets).map(({ pellet }) => ({ id: pellet.id, x: pellet.x, y: pellet.y, mass: pellet.mass }));
+    const pelletOut = pellets.slice(0, profile.pellets).map(({ pellet }) => ({ id: pellet.id, x: pellet.x, y: pellet.y, mass: pellet.mass, color: pellet.color || '#fff' }));
 
     const powerups = [];
     for (const pu of this.world.powerups) if (dist2(center, pu) <= pelletR2) powerups.push(pu);
@@ -1902,10 +2021,11 @@ class GameServer {
     const virusProjectiles = [];
     for (const v of this.world.virusProjectiles) if (dist2(center, v) <= pelletR2) virusProjectiles.push(v);
 
+    const events = this.consumeEvents(viewer);
     const out = {
       players, pellets: pelletOut, powerups: powerups.slice(0, 20), virusProjectiles: virusProjectiles.slice(0, 40),
       zones: this.world.zones, killfeed: this.world.killfeed.slice(0, 8), decoys: decoys.slice(0, 20),
-      traps: traps.slice(0, 24), mines: mines.slice(0, 24),
+      traps: traps.slice(0, 24), mines: mines.slice(0, 24), events,
       world: { width: CONFIG.WORLD.WIDTH, height: CONFIG.WORLD.HEIGHT },
     };
     // Backwards-compatible rich snapshot for tests/admin tools only; network snapshots stay lean.
@@ -1914,7 +2034,7 @@ class GameServer {
       pvpEvent: this.pvpEvent, arena: this.arena, announcements: this.world.announcements,
       playerSummary: this.playerSummary(viewer), wallet: this.getWallet(viewer), shopCatalog: this.getCatalog(),
       shopSale: this.currentSale(), quests: this.getQuests(viewer), shopStats: this.shopStats(viewer),
-      nearbyThreats: this.nearbyThreats(viewer), events: this.consumeEvents(viewer),
+      nearbyThreats: this.nearbyThreats(viewer),
     });
     return out;
   }

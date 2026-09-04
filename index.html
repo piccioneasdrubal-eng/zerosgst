@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZeroLegend — Portale & Gioco .io</title>
+  <title>ZeroLegend — Multiplayer .io</title>
   <link rel="stylesheet" href="style.css" />
   
   <style>
@@ -203,49 +203,69 @@
     }
     .btn-action.active { background-color: #2ecc71; }
   </style>
+
+<style>
+  #portalOverlay .portal-box form { margin:0; }
+  #portalOverlay .portal-btn[disabled] { opacity:.6; cursor:wait; }
+  #game-server-url { padding:7px 9px; border-radius:5px; border:1px solid #566; background:#17212b; color:#fff; }
+  @media (max-width:700px) { #game-server-url{ min-width:220px!important;max-width:calc(100vw - 60px)!important; } .menu-container{width:calc(100vw - 30px)!important;} }
+</style>
+
+<style id="zl-unified-menu-style">
+#feature-panel,#btn-features,#season-panel,#btn-season,#skin-panel,#skin-btn,#bot-panel,#gameMenuOverlay{display:none!important}
+#zl-user-overlay{display:none;position:fixed;inset:0;z-index:999999;background:rgba(3,7,18,.78);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:18px;box-sizing:border-box}
+#zl-user-overlay.open{display:flex}
+.zl-user-modal{width:min(1120px,96vw);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#111c2c,#0b1422);border:1px solid rgba(110,231,255,.25);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.55);color:#eef6ff;padding:20px}
+.zl-user-top{display:flex;justify-content:space-between;align-items:flex-start}.zl-user-top small{letter-spacing:.22em;color:#6ee7ff}.zl-user-top h2{margin:3px 0 0}.zl-icon-btn{background:#17263a;border:1px solid #2d4056;color:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
+.zl-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.zl-tab-btn,.zl-actions button,.zl-quick-grid button,.zl-mode-btn,.zl-shop-grid button,.zl-coin-packages button,.zl-feature-card,.zl-secondary{background:#162338;color:#eef6ff;border:1px solid #2a415b;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:700}.zl-tab-btn.active{background:#16c5a4;border-color:#16c5a4}.zl-tab-pane{display:none}.zl-tab-pane.active{display:block}.zl-account-strip{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr)) 2fr;gap:10px;background:#0f1b2c;border:1px solid #1e334a;border-radius:14px;padding:12px;margin-bottom:14px}.zl-account-strip>div{background:#15243a;border-radius:10px;padding:10px}.zl-account-strip span,.zl-account-strip small,.zl-note{color:#92a4b8;font-size:12px}.zl-account-strip b{display:block;font-size:20px;margin-top:4px}.zl-account-xp>div{display:flex;justify-content:space-between}.zl-head-progress{height:9px;background:#1c2c42;border-radius:999px;overflow:hidden;margin:9px 0}.zl-head-progress i,.zl-progress i{display:block;height:100%;background:linear-gradient(90deg,#13e3bc,#58c7ff);border-radius:999px}.zl-profile-head{display:flex;gap:14px;align-items:center;background:#111e2e;border:1px solid #21364e;padding:14px;border-radius:14px}.zl-avatar{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#14d8ba,#4db8ff);font-weight:900;font-size:22px;color:#07121c}.zl-overview-grid,.zl-stat-cards,.zl-detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}.zl-overview-grid>div,.zl-stat-cards>div,.zl-detail-grid>div{background:#111d2d;border:1px solid #223a53;border-radius:12px;padding:12px}.zl-overview-grid small,.zl-stat-cards small,.zl-detail-grid small{display:block;color:#8da0b4;font-size:11px}.zl-overview-grid b,.zl-stat-cards b,.zl-detail-grid b{font-size:22px}.zl-level{background:#101d2d;border:1px solid #223a53;border-radius:12px;padding:12px;margin:10px 0}.zl-level>div:first-child{display:flex;justify-content:space-between}.zl-progress{height:10px;background:#1a2b41;border-radius:999px;overflow:hidden;margin:8px 0}.zl-actions,.zl-quick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:12px}.zl-modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}.zl-mode-btn small,.zl-shop-grid small,.zl-coin-packages small{display:block;color:#91a7bc;margin-top:4px}.zl-shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}.zl-shop-grid button{min-height:78px}.zl-coin-packages{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}.zl-coin-packages button{background:#11263b}.zl-function-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-height:54vh;overflow:auto}.zl-feature-card{display:grid;grid-template-columns:34px 1fr 28px;align-items:center;text-align:left;gap:5px;padding:9px}.zl-feature-card span{color:#6ee7ff;font-size:11px}.zl-feature-card em{font-style:normal;color:#8ba2b7;text-align:center}.zl-feature-card em.on{color:#16e0bb}.zl-setting-row{width:100%;display:flex;justify-content:space-between;align-items:center;background:#111d2d;color:#eef6ff;border:1px solid #21384f;border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer}.zl-setting-row b{font-size:11px;color:#8195aa}.zl-setting-row b.on{color:#1ae3bb}.zl-key-row{display:flex;justify-content:space-between;align-items:center;background:#111d2d;border:1px solid #21384f;border-radius:10px;padding:10px;margin-bottom:7px}.zl-key-row button{min-width:110px;background:#17263b;color:#fff;border:1px solid #2d4056;border-radius:8px;padding:8px;cursor:pointer}.zl-upload-row{display:grid;grid-template-columns:1.2fr 1fr auto;gap:8px;margin-top:14px}.zl-upload-row input{background:#0f1928;color:#fff;border:1px solid #2b4158;border-radius:9px;padding:10px}.zl-setting-control label{display:flex;flex-direction:column;gap:8px;background:#111d2d;border:1px solid #21384f;padding:12px;border-radius:10px}.zl-health,.zl-menu-status{margin-top:10px;padding:8px 10px;background:#0d1927;border-radius:9px;color:#9fb1c3}.zl-menu-status{min-height:18px}.zl-hide-grid #game{filter:none}.zl-reduced-motion *{scroll-behavior:auto!important;animation-duration:.001ms!important;transition-duration:.001ms!important}
+#zl-user-btn{position:fixed;left:14px;top:112px;z-index:9000;background:#142137;color:#fff;border:1px solid #2b4863;border-radius:11px;padding:9px 13px;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+@media(max-width:900px){.zl-function-grid{grid-template-columns:repeat(2,1fr)}.zl-shop-grid{grid-template-columns:repeat(2,1fr)}.zl-coin-packages{grid-template-columns:repeat(2,1fr)}.zl-account-strip{grid-template-columns:1fr 1fr}.zl-account-xp{grid-column:1/-1}.zl-overview-grid,.zl-stat-cards,.zl-detail-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.zl-user-modal{padding:12px}.zl-function-grid,.zl-shop-grid{grid-template-columns:1fr}.zl-upload-row{grid-template-columns:1fr}.zl-modes{grid-template-columns:1fr}.zl-account-strip{grid-template-columns:1fr 1fr}}
+</style>
+
 </head>
 <body>
-
-  <!-- PORTALE DI ACCESSO (LOGIN / REGISTRAZIONE) -->
+  <!-- PORTALE AUTH UNIFICATO -->
   <div id="portalOverlay">
-      <div class="portal-box">
-          <h2>🌐 ZeroLegend Portal</h2>
-          <div class="portal-tabs">
-              <button class="portal-tab active" onclick="switchPortalTab('login')">Accedi</button>
-              <button class="portal-tab" onclick="switchPortalTab('register')">Registrati</button>
-          </div>
-
-          <div id="loginFormContainer">
-              <div class="form-group">
-                  <label>Email</label>
-                  <input type="email" id="loginUser" placeholder="Inserisci email" autocomplete="email">
-              </div>
-              <div class="form-group">
-                  <label>Password</label>
-                  <input type="password" id="loginPass" placeholder="******">
-              </div>
-              <button class="portal-btn" onclick="eseguiLogin()">Entra nel Portale</button>
-              <div id="loginError" class="error-msg">Credenziali non valide!</div>
-          </div>
-
-          <div id="registerFormContainer" style="display: none;">
-              <div class="form-group">
-                  <label>Email</label>
-                  <input type="email" id="regUser" placeholder="La tua email" autocomplete="email">
-              </div>
-              <div class="form-group">
-                  <label>Nome</label>
-                  <input type="text" id="regName" placeholder="Il tuo nome" autocomplete="name">
-              </div>
-              <div class="form-group">
-                  <label>Scegli Password</label>
-                  <input type="password" id="regPass" placeholder="Minimo 8 caratteri" autocomplete="new-password">
-              </div>
-              <button class="portal-btn" onclick="eseguiRegistrazione()">Crea Account</button>
-              <div id="regError" class="error-msg">Errore durante la registrazione!</div>
-              <div id="regSuccess" class="success-msg">Account creato! Ora puoi accedere.</div>
-          </div>
+    <div class="portal-box">
+      <h2>🌐 ZeroLegend Portal</h2>
+      <div class="portal-tabs">
+        <button type="button" class="portal-tab active" data-portal-tab="login">Accedi</button>
+        <button type="button" class="portal-tab" data-portal-tab="register">Registrati</button>
       </div>
+
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" autocomplete="email" placeholder="nome@email.it" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPass">Password</label>
+          <input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <button class="portal-btn" type="submit">Entra nel Portale</button>
+        <div id="loginError" class="error-msg" role="alert"></div>
+      </form>
+
+      <form id="registerForm" style="display:none" novalidate>
+        <div class="form-group">
+          <label for="regEmail">Email</label>
+          <input type="email" id="regEmail" autocomplete="email" placeholder="nome@email.it" required>
+        </div>
+        <div class="form-group">
+          <label for="regName">Nome</label>
+          <input type="text" id="regName" autocomplete="name" maxlength="40" placeholder="Il tuo nome" required>
+        </div>
+        <div class="form-group">
+          <label for="regPass">Scegli Password</label>
+          <input type="password" id="regPass" autocomplete="new-password" minlength="8" placeholder="Minimo 8 caratteri" required>
+        </div>
+        <button class="portal-btn" type="submit">Crea Account</button>
+        <div id="regError" class="error-msg" role="alert"></div>
+        <div id="regSuccess" class="success-msg" role="status"></div>
+      </form>
+      <div id="authStatus" style="margin-top:10px;color:#9aa8b8;font-size:12px"></div>
+    </div>
   </div>
 
   <!-- CANVAS PRINCIPALE RICHIESTO DA CLIENT.JS -->
@@ -273,7 +293,7 @@
   <div id="controls">
     <button id="btn-split" type="button" title="Spazio">💥 Split</button>
     <button id="btn-feed" type="button" title="W">🥏 Feed</button>
-    <button id="btn-virus" type="button" title="Q">🦠 Virus</button>
+    <button id="btn-virus" type="button" title="Q">🦠 Virus</button><button id="btn-godmode" type="button" title="G">🛡 GOD 10s</button>
   </div>
 
   <button id="btn-features" type="button" title="90 nuove funzioni">⚡ 90 Funzioni</button>
@@ -360,6 +380,11 @@
   <div id="menu">
     <h1>agar-server v2</h1>
     <p>ZeroCoins: <span id="userCoins" style="color: #f1c40f; font-weight: bold;">1000</span> ZC | Utente: <span id="welcomeUser" style="color:#1abc9c; font-weight:bold;">Ospite</span> | <a href="#" onclick="effettuaLogout()" style="color:#e74c3c; font-size:12px;">Esci</a></p>
+    <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center">
+      <input id="game-server-url" type="url" placeholder="URL backend multiplayer (es. https://game.miodominio.it)" style="min-width:290px;max-width:420px">
+      <button id="save-server-url" type="button" class="btn-action">Salva server</button>
+    </div>
+    <div id="game-server-status" style="font-size:12px;color:#9aa8b8;min-height:18px"></div>
     <input id="name" type="text" placeholder="Il tuo nickname" maxlength="16" />
     <select id="team-select">
       <option value="">— Nessuna squadra —</option>
@@ -369,20 +394,15 @@
       <option value="3">🟡 GIALLI</option>
       <option value="4">🟣 VIOLA</option>
     </select>
-    <input id="server-url" type="url" placeholder="Server multiplayer: https://tuo-server.example" autocomplete="url" style="width:100%;box-sizing:border-box;margin:8px 0;" />
-    <small style="display:block;color:#aaa;margin-bottom:8px;">Backend WebSocket (non usare il vecchio indirizzo Render)</small>
     <button id="play">Gioca</button>
     <div class="hint">
       <span>🖱️ Mouse = muoviti</span>
       <span>⌨️ Spazio = split</span>
       <span>⌨️ W = feed</span>
-      <span>⌨️ Q = virus</span>
-      <span>⌨️ ESC = ZeroShop & Bot</span>
+      <span>⌨️ Q = virus</span><span>⌨️ G = GOD 10s</span>
+      <span>⌨️ ESC = Menu Utente</span>
     </div>
   </div>
-
-  <script src="game-config.js"></script>
-  <script src="client.js"></script>
 
   <!-- OVERLAY MENU AVANZATO, ZERO SHOP E BOT (PREMENDO ESC) -->
   <div id="gameMenuOverlay" style="display: none;">
@@ -451,6 +471,7 @@
                   <label>Tasto Split: <input type="text" id="keySplit" value="Space" readonly onclick="assegnaTasto('keySplit')"></label>
                   <label>Tasto Feed: <input type="text" id="keyFeed" value="w" readonly onclick="assegnaTasto('keyFeed')"></label>
                   <label>Tasto Virus: <input type="text" id="keyVirus" value="q" readonly onclick="assegnaTasto('keyVirus')"></label>
+                  <label>Tasto God Mode: <input type="text" id="keyGodmode" value="g" readonly onclick="assegnaTasto('keyGodmode')"></label>
               </div>
           </div>
 
@@ -467,261 +488,12 @@
       </div>
   </div>
 
-  <script>
-    // --- IMPOSTAZIONI LOCALI DEL PORTALE ---
-    const safeInt = (v, fallback) => {
-        const n = Number.parseInt(v, 10);
-        return Number.isFinite(n) ? n : fallback;
-    };
-    const authApiUrl = String(window.AUTH_API_URL || '').trim().replace(/\/$/, '');
-    let userCoins = Math.max(0, safeInt(localStorage.getItem('zeroCoins'), 1000));
-    let keybinds = { split: ' ', feed: 'w', virus: 'q' };
-    let botStates = { follow: false, farm: false };
-
-    function aggiornaMoneteUI() {
-        const a = document.getElementById('userCoins');
-        const b = document.getElementById('menuCoins');
-        if (a) a.textContent = userCoins;
-        if (b) b.textContent = userCoins;
-        localStorage.setItem('zeroCoins', String(userCoins));
-    }
-
-    function readUsers() {
-        try {
-            const raw = localStorage.getItem('portalUsers');
-            const data = raw ? JSON.parse(raw) : {};
-            return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
-        } catch (_) {
-            return {};
-        }
-    }
-
-    function switchPortalTab(tab) {
-        const login = document.getElementById('loginFormContainer');
-        const register = document.getElementById('registerFormContainer');
-        const tabs = document.querySelectorAll('.portal-tab');
-        if (!login || !register || tabs.length < 2) return;
-        const isLogin = tab === 'login';
-        login.style.display = isLogin ? 'block' : 'none';
-        register.style.display = isLogin ? 'none' : 'block';
-        tabs[0].classList.toggle('active', isLogin);
-        tabs[1].classList.toggle('active', !isLogin);
-    }
-
-    async function authRequest(action, payload) {
-        if (!authApiUrl) throw new Error('AUTH_API_URL non configurato.');
-        const response = await fetch(authApiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, ...payload }),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.ok) throw new Error(data.error || `Errore HTTP ${response.status}`);
-        return data;
-    }
-
-    function salvaSessioneAuth(data) {
-        if (!data || typeof data.token !== 'string' || !data.user) throw new Error('Risposta auth non valida.');
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('currentUser', data.user.name || data.user.email);
-    }
-
-    async function eseguiRegistrazione() {
-        const userEl = document.getElementById('regUser');
-        const nameEl = document.getElementById('regName');
-        const passEl = document.getElementById('regPass');
-        const err = document.getElementById('regError');
-        const succ = document.getElementById('regSuccess');
-        if (!userEl || !nameEl || !passEl || !err || !succ) return;
-        const email = userEl.value.trim();
-        const name = nameEl.value.trim().slice(0, 32);
-        const pass = passEl.value;
-        err.style.display = 'none';
-        succ.style.display = 'none';
-        if (!email.includes('@') || name.length < 3 || pass.length < 8) {
-            err.textContent = 'Inserisci una email valida, un nome di almeno 3 caratteri e una password di almeno 8 caratteri.';
-            err.style.display = 'block';
-            return;
-        }
-        try {
-            const data = await authRequest('register', { email, password: pass, name });
-            salvaSessioneAuth(data);
-            succ.textContent = 'Account creato. Accesso effettuato.';
-            succ.style.display = 'block';
-            aggiornaStatoSessione();
-        } catch (error) {
-            err.textContent = error.message || 'Errore durante la registrazione!';
-            err.style.display = 'block';
-        }
-    }
-
-    async function eseguiLogin() {
-        const userEl = document.getElementById('loginUser');
-        const passEl = document.getElementById('loginPass');
-        const err = document.getElementById('loginError');
-        if (!userEl || !passEl || !err) return;
-        const email = userEl.value.trim();
-        const pass = passEl.value;
-        err.style.display = 'none';
-        try {
-            const data = await authRequest('login', { email, password: pass });
-            salvaSessioneAuth(data);
-            err.style.display = 'none';
-            aggiornaStatoSessione();
-        } catch (error) {
-            err.textContent = error.message || 'Credenziali non valide!';
-            err.style.display = 'block';
-        }
-    }
-
-    async function effettuaLogout() {
-        const token = localStorage.getItem('authToken');
-        if (token && authApiUrl) {
-            try { await authRequest('logout', { token }); } catch (_) {}
-        }
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('currentUser');
-        const menu = document.getElementById('menu');
-        if (menu) menu.style.display = 'flex';
-        aggiornaStatoSessione();
-    }
-
-    function aggiornaStatoSessione() {
-        const current = localStorage.getItem('currentUser');
-        const token = localStorage.getItem('authToken');
-        const portal = document.getElementById('portalOverlay');
-        if (!portal) return;
-        if (current && token) {
-            portal.style.display = 'none';
-            const welcome = document.getElementById('welcomeUser');
-            const name = document.getElementById('name');
-            if (welcome) welcome.textContent = current;
-            if (name) name.value = localStorage.getItem('agarNick') || current;
-            aggiornaMoneteUI();
-        } else {
-            portal.style.display = 'flex';
-        }
-    }
-
-    function acquistaOggetto(item, costo) {
-        const price = Math.max(0, safeInt(costo, 0));
-        if (userCoins < price) {
-            alert('ZeroCoins insufficienti!');
-            return;
-        }
-        userCoins -= price;
-        aggiornaMoneteUI();
-        alert('Acquisto effettuato: ' + String(item || 'oggetto'));
-    }
-
-    function cambiaScheda(idScheda) {
-        const target = document.getElementById(idScheda);
-        if (!target) return;
-        document.querySelectorAll('.tab-content').forEach((el) => el.classList.remove('active'));
-        target.classList.add('active');
-    }
-
-    document.addEventListener('keydown', function(event) {
-        const raw = typeof event.key === 'string' ? event.key : '';
-        if (raw === 'Escape' || event.keyCode === 27) {
-            const menuOverlay = document.getElementById('gameMenuOverlay');
-            if (!menuOverlay) return;
-            const open = menuOverlay.style.display === 'none' || menuOverlay.style.display === '';
-            menuOverlay.style.display = open ? 'flex' : 'none';
-        }
-    });
-
-    function assegnaTasto(elementId) {
-        const inputField = document.getElementById(elementId);
-        if (!inputField) return;
-        inputField.value = 'Premi un tasto...';
-        const handler = function(e) {
-            const key = typeof e.key === 'string' ? e.key : '';
-            if (!key) return;
-            if (key === 'Escape') {
-                inputField.value = keybinds[elementId === 'keySplit' ? 'split' : elementId === 'keyFeed' ? 'feed' : 'virus'];
-                window.removeEventListener('keydown', handler);
-                return;
-            }
-            e.preventDefault();
-            inputField.value = key;
-            if (elementId === 'keySplit') keybinds.split = key;
-            if (elementId === 'keyFeed') keybinds.feed = key;
-            if (elementId === 'keyVirus') keybinds.virus = key;
-            salvaImpostazioni();
-            window.removeEventListener('keydown', handler);
-        };
-        window.addEventListener('keydown', handler, { once: false });
-    }
-
-    function toggleBotAction(action) {
-        if (!(action in botStates)) return;
-        botStates[action] = !botStates[action];
-        const btn = document.getElementById(action === 'follow' ? 'btnFollow' : 'btnFarm');
-        if (!btn) return;
-        btn.classList.toggle('active', botStates[action]);
-        btn.textContent = (action === 'follow' ? 'Seguimi (locale): ' : 'Farming (locale): ') + (botStates[action] ? 'ATTIVO' : 'OFF');
-    }
-
-    function salvaImpostazioni() {
-        const get = (id, fallback = '') => {
-            const node = document.getElementById(id);
-            return node ? node.value : fallback;
-        };
-        const checked = (id, fallback = false) => {
-            const node = document.getElementById(id);
-            return node ? !!node.checked : fallback;
-        };
-        const config = {
-            massa: checked('optMassa'),
-            nomi: checked('optNomi', true),
-            b1: { name: get('botName1', 'Bot Alpha'), color: get('botColor1', '#ff4757') },
-            b2: { name: get('botName2', 'Bot Beta'), color: get('botColor2', '#2ed573') },
-            b3: { name: get('botName3', 'Bot Gamma'), color: get('botColor3', '#1e90ff') },
-            b4: { name: get('botName4', 'Bot Delta'), color: get('botColor4', '#ffa502') },
-            keybinds: { ...keybinds },
-        };
-        localStorage.setItem('agarServerConfig', JSON.stringify(config));
-        window.dispatchEvent(new Event('keybinds-changed'));
-    }
-
-    function caricaImpostazioni() {
-        try {
-            const raw = localStorage.getItem('agarServerConfig');
-            if (!raw) return;
-            const config = JSON.parse(raw);
-            const setChecked = (id, value) => { const node = document.getElementById(id); if (node) node.checked = !!value; };
-            const setValue = (id, value) => { const node = document.getElementById(id); if (node && typeof value === 'string') node.value = value; };
-            setChecked('optMassa', config.massa);
-            setChecked('optNomi', config.nomi === undefined ? true : config.nomi);
-            for (const [k, n] of [['b1',1],['b2',2],['b3',3],['b4',4]]) {
-                if (config[k] && typeof config[k] === 'object') {
-                    setValue(`botName${n}`, config[k].name || '');
-                    setValue(`botColor${n}`, config[k].color || '#ffffff');
-                }
-            }
-            if (config.keybinds && typeof config.keybinds === 'object') {
-                for (const name of ['split', 'feed', 'virus']) {
-                    if (typeof config.keybinds[name] === 'string' && config.keybinds[name]) keybinds[name] = config.keybinds[name];
-                }
-            }
-            setValue('keySplit', keybinds.split);
-            setValue('keyFeed', keybinds.feed);
-            setValue('keyVirus', keybinds.virus);
-        } catch (_) {
-            localStorage.removeItem('agarServerConfig');
-        }
-    }
-
-    const featureBtn = document.getElementById('btn-features');
-    const featurePanel = document.getElementById('feature-panel');
-    if (featureBtn && featurePanel) featureBtn.addEventListener('click', () => featurePanel.classList.toggle('open'));
-
-    window.addEventListener('load', () => {
-        aggiornaStatoSessione();
-        caricaImpostazioni();
-        aggiornaMoneteUI();
-    });
-  </script>
+  <script src="game-config.js"></script>
+  <script src="auth.js?v=20260904-shopfix3"></script>
+  <script src="client.js?v=20260904-ejectfix1"></script>
+  <script src="compat.js"></script>
+  <script src="i18n.js?v=20260904-shopfix3"></script>
+  <script src="user-menu.js?v=20260904-shopfix3"></script>
+  <script src="menu-v2.js?v=20260904-v2"></script>
 </body>
 </html>

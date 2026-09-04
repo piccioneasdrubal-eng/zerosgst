@@ -1,0 +1,437 @@
+(() => {
+  'use strict';
+
+  const KEY = {
+    mode: 'zl_game_mode',
+    settings: 'zl_user_settings',
+    stats: 'zl_local_stats',
+    friends: 'zl_friends',
+  };
+
+  const DEFAULTS = {
+    mode: 'ffa',
+    showNames: true,
+    showMass: true,
+    showMinimap: true,
+    showHud: true,
+    showGrid: true,
+    lowGraphics: false,
+    smoothCamera: true,
+    autoReconnect: true,
+    sfx: true,
+    threeD: true,
+    wheelZoom: true,
+  };
+
+  const get = (k, fallback = null) => {
+    try { const v = localStorage.getItem(k); return v === null ? fallback : v; } catch (_) { return fallback; }
+  };
+  const set = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
+  const loadSettings = () => {
+    try { return { ...DEFAULTS, ...(JSON.parse(get(KEY.settings, '{}')) || {}) }; }
+    catch (_) { return { ...DEFAULTS }; }
+  };
+  const saveSettings = (s) => set(KEY.settings, JSON.stringify(s));
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const $ = (id) => document.getElementById(id);
+
+  let settings = loadSettings();
+  set(KEY.mode, get(KEY.mode, DEFAULTS.mode) === 'teams' ? 'teams' : 'ffa');
+
+  function localStats() {
+    try { return { matches: 0, bestMass: 0, bestRank: 0, kills: 0, deaths: 0, playSeconds: 0, xp: 0, ...(JSON.parse(get(KEY.stats, '{}')) || {}) }; }
+    catch (_) { return { matches: 0, bestMass: 0, bestRank: 0, kills: 0, deaths: 0, playSeconds: 0, xp: 0 }; }
+  }
+  function saveLocalStats(s) { set(KEY.stats, JSON.stringify(s)); }
+  function updateBodyClasses() {
+    document.documentElement.classList.toggle('zl-hide-ui', !settings.showHud);
+    document.documentElement.classList.toggle('zl-hide-minimap', !settings.showMinimap);
+    document.documentElement.classList.toggle('zl-hide-grid', !settings.showGrid);
+    document.documentElement.classList.toggle('zl-low-graphics', !!settings.lowGraphics);
+  }
+
+  function beep(freq = 560, duration = 45) {
+    if (!settings.sfx) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ac = beep.ac || (beep.ac = new AC());
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.frequency.value = freq; o.type = 'sine';
+      g.gain.setValueAtTime(0.035, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration / 1000);
+      o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + duration / 1000);
+    } catch (_) {}
+  }
+
+  function serverBase() {
+    const qs = new URLSearchParams(location.search);
+    const v = (qs.get('server') || get('gameServerUrl', '') || String(window.GAME_CONFIG?.GAME_SERVER_URL || '')).replace(/\/$/, '');
+    if (!v) return '';
+    if (/^https?:\/\//i.test(v)) return v;
+    if (/^wss?:\/\//i.test(v)) return v.replace(/^ws/i, 'http');
+    return (v.startsWith('localhost') || v.startsWith('127.0.0.1')) ? `http://${v}` : `https://${v}`;
+  }
+
+  function user() { return window.ZLAuth?.getUser?.() || null; }
+  function currentState() { return window.ZLGame?.getState?.() || { players: [], leaderboard: [] }; }
+  function me() { return window.ZLGame?.getMe?.() || null; }
+
+  function mergedProfile() {
+    const u = user() || {};
+    const ls = localStats();
+    const db = u.stats || {};
+    const stats = {
+      matches: Math.max(Number(ls.matches)||0, Number(db.matches)||0),
+      kills: Math.max(Number(ls.kills)||0, Number(db.kills)||0),
+      deaths: Math.max(Number(ls.deaths)||0, Number(db.deaths)||0),
+      bestMass: Math.max(Number(ls.bestMass)||0, Number(db.best_mass)||0),
+      bestRank: Number(db.best_rank || ls.bestRank || 0),
+      playSeconds: Math.max(Number(ls.playSeconds)||0, Number(db.play_seconds)||0),
+      elo: Number(db.elo || 1000),
+      killStreak: Number(db.kill_streak || 0),
+    };
+    const xp = Math.max(Number(u.xp)||0, Number(ls.xp)||0);
+    const level = Math.max(1, Number(u.level)||1, Math.floor(Math.sqrt(Math.max(0,xp)/100))+1);
+    const next = level * level * 100;
+    const prev = (level-1)*(level-1)*100;
+    const pct = Math.max(0, Math.min(100, ((xp-prev)/Math.max(1,next-prev))*100));
+    return {...u, xp, level, next_level_xp: Number(u.next_level_xp || next), level_start_xp: Number(u.level_start_xp || prev), progress_pct: Number(u.progress_pct ?? pct), coins: Number(u.coins || 0), stats, daily: u.daily || { rewards: [] }};
+  }
+
+  function renderProfile() {
+    const u = mergedProfile();
+    const s = u.stats || {};
+    const ratio = s.deaths ? (s.kills / Math.max(1,s.deaths)).toFixed(2) : String(s.kills || 0);
+    const mins = Math.floor((Number(s.playSeconds)||0)/60);
+    const daily = Array.isArray(u.daily?.rewards) ? u.daily.rewards : [];
+    const headCoins = $('zl-head-coins'); if (headCoins) headCoins.textContent = Number.isFinite(u.coins) ? Math.round(u.coins).toLocaleString('it-IT') : '0';
+    const headLevel = $('zl-head-level'); if (headLevel) headLevel.textContent = String(u.level || 1);
+    const headXp = $('zl-head-xp'); if (headXp) headXp.textContent = Math.round(u.xp || 0).toLocaleString('it-IT');
+    const headXpLabel = $('zl-head-xp-label'); if (headXpLabel) headXpLabel.textContent = `${Math.round(u.xp || 0).toLocaleString('it-IT')} / ${Math.round(u.next_level_xp || 100).toLocaleString('it-IT')}`;
+    const headBar = $('zl-head-progress-bar'); if (headBar) headBar.style.width = `${Math.max(0, Math.min(100, Number(u.progress_pct) || 0))}%`;
+    const headNext = $('zl-head-next'); if (headNext) headNext.textContent = `${Math.max(0, Math.round((u.next_level_xp || 100) - (u.xp || 0))).toLocaleString('it-IT')} XP al prossimo livello`;
+    const dailyHtml = daily.length ? daily.map(m => {
+      const pct = Math.max(0, Math.min(100, (Number(m.progress)/Math.max(1,Number(m.target)))*100));
+      return `<div class="zl-mission"><div class="zl-mission-row"><b>${esc(m.label)}</b><span>+${Number(m.reward)||0} ZC</span></div><div class="zl-mission-bar"><i style="width:${pct}%"></i></div><div class="zl-mission-foot"><small>${Math.min(Number(m.progress)||0,Number(m.target)||0)} / ${Number(m.target)||0}</small><button data-claim-daily="${esc(m.id)}" ${m.claimed || Number(m.progress)<Number(m.target) ? 'disabled':''}>${m.claimed ? '✓ Riscossa' : 'Riscatta'}</button></div></div>`;
+    }).join('') : '<div class="zl-empty">Nessuna missione disponibile.</div>';
+    return `<div class="zl-profile-head"><div class="zl-avatar">${esc((u.name || 'P').slice(0,1).toUpperCase())}</div><div><div class="zl-profile-name">${esc(u.name || 'Player')}</div><div class="zl-profile-email">${esc(u.email || '')}</div><div class="zl-role">${esc(String(u.role || 'user').toUpperCase())} · ID ${Number(u.id)||0}</div></div></div>
+      <div class="zl-overview-grid">
+        <div class="zl-big-card"><small>💰 ZeroCoins</small><b>${Math.round(u.coins)}</b><span>saldo disponibile</span></div>
+        <div class="zl-big-card"><small>⭐ Livello</small><b>${u.level}</b><span>${Math.round(u.xp)} XP totali</span></div>
+        <div class="zl-big-card"><small>🏆 ELO</small><b>${Math.round(s.elo || 1000)}</b><span>rating PvP</span></div>
+        <div class="zl-big-card"><small>🔥 Kill streak</small><b>${Math.round(s.killStreak || 0)}</b><span>serie attuale</span></div>
+      </div>
+      <div class="zl-level"><div><b>Progressione livello</b><span>${Math.round(u.xp)} / ${Math.round(u.next_level_xp)} XP</span></div><div class="zl-progress"><i style="width:${u.progress_pct}%"></i></div><small>${Math.round(u.progress_pct)}% · ${Math.max(0,Math.round(u.next_level_xp-u.xp))} XP al prossimo livello</small></div>
+      <div class="zl-stat-cards"><div><b>${s.matches}</b><small>Partite</small></div><div><b>${Math.round(s.bestMass)}</b><small>Max massa</small></div><div><b>${s.bestRank || '—'}</b><small>Miglior rank</small></div><div><b>${ratio}</b><small>K/D</small></div><div><b>${mins}m</b><small>Tempo gioco</small></div><div><b>${s.kills}</b><small>Uccisioni</small></div></div>
+      <div class="zl-section"><div class="zl-section-title"><h3>🎯 Missioni giornaliere</h3><span>${esc(u.daily?.date || '')}</span></div><div class="zl-missions">${dailyHtml}</div></div>
+      <div class="zl-section"><div class="zl-section-title"><h3>📅 Account</h3></div><div class="zl-account-grid"><div><small>Registrazione</small><b>${u.joined_at ? new Date(u.joined_at.replace(' ','T')).toLocaleDateString('it-IT') : '—'}</b></div><div><small>Skin equipaggiata</small><b>${esc(u.equipped_skin || 'default')}</b></div><div><small>Ruolo</small><b>${esc(u.role || 'user')}</b></div><div><small>Server account</small><b>MySQL</b></div></div></div>`;
+  }
+
+  function showTab(tab) {
+    document.querySelectorAll('.zl-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.zl-tab-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === tab));
+    refresh();
+  }
+
+  function toggle(id) {
+    settings[id] = !settings[id]; saveSettings(settings); updateBodyClasses(); renderSettings(); beep(620, 30);
+  }
+
+  async function uploadCustomSkin(file, title = 'Skin personalizzata') {
+    const MAX = 50 * 1024 * 1024;
+    const CHUNK = 512 * 1024;
+    if (!(file instanceof File)) throw new Error("Seleziona un'immagine.");
+    if (file.size > MAX) throw new Error("L'immagine supera il limite di 50 MB.");
+    const allowedExt = /\.(gif|jpe?g|png|webp|avif|bmp)$/i;
+    if (!allowedExt.test(file.name)) throw new Error('Formato non supportato. Usa JPG, JPEG, PNG, GIF, WebP, AVIF o BMP.');
+    const token = window.ZLAuth?.getToken?.();
+    if (!token) throw new Error('Accedi per caricare una skin.');
+    const status = $('zl-skin-upload-status');
+    const progress = $('zl-skin-upload-progress');
+    const uploadId = [...crypto.getRandomValues(new Uint8Array(18))].map(x => x.toString(16).padStart(2,'0')).join('');
+    const total = Math.ceil(file.size / CHUNK);
+    if (status) status.textContent = `⏳ Preparazione upload: 0/${total}`;
+    for (let i=0; i<total; i++) {
+      const blob = file.slice(i*CHUNK, Math.min(file.size, (i+1)*CHUNK));
+      const fd = new FormData();
+      fd.append('action','upload_chunk'); fd.append('token',token); fd.append('upload_id',uploadId);
+      fd.append('chunk_index',String(i)); fd.append('total_chunks',String(total)); fd.append('total_bytes',String(file.size));
+      fd.append('chunk',blob,`chunk-${i}.part`);
+      const r = await fetch('/auth/skins.php',{method:'POST',body:fd,cache:'no-store'});
+      const raw = await r.text();
+      let d = {}; try { d = JSON.parse(raw); } catch (_) {}
+      if (!r.ok || !d.ok) throw new Error(d.error || `Errore chunk ${i+1} (HTTP ${r.status})`);
+      const pct = Math.round(((i+1)/total)*100);
+      if (progress) progress.value = pct;
+      if (status) status.textContent = `⏳ Caricamento ${pct}% (${i+1}/${total})`;
+    }
+    const r = await fetch('/auth/skins.php',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({action:'finalize',token,upload_id:uploadId,title:(title||file.name.replace(/\.[^.]+$/,'')).slice(0,64)}),cache:'no-store'});
+    const raw = await r.text();
+    let d = {}; try { d = JSON.parse(raw); } catch (_) {}
+    if (!r.ok || !d.ok || !d.skin) {
+      const extra = d.error || (raw && raw.slice(0,180)) || `HTTP ${r.status}`;
+      throw new Error(`Finalizzazione fallita: ${extra}`);
+    }
+    if (status) status.textContent = `✅ Skin caricata: ${d.skin.title} (${(Number(d.skin.size_bytes)/1048576).toFixed(2)} MB)`;
+    if (progress) progress.value = 100;
+    beep(980,80);
+    return d.skin;
+  }
+
+  function buildSkinUploadUI() {
+    const list = $('zl-settings-list'); if (!list || $('zl-skin-upload-box')) return;
+    const box = document.createElement('div'); box.id='zl-skin-upload-box'; box.className='zl-skin-upload-box';
+    box.innerHTML = `<div class="zl-upload-title">🖼️ Skin immagine personalizzata</div><div class="zl-note">Carica JPG, JPEG, PNG, GIF, WebP, AVIF o BMP fino a <b>50 MB</b>. L'upload è a chunk per compatibilità con InfinityFree.</div><div class="zl-upload-row"><input id="zl-skin-file" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp,.jpg,.jpeg,.png,.gif,.webp,.avif,.bmp"><input id="zl-skin-title" type="text" maxlength="64" placeholder="Nome della skin"></div><progress id="zl-skin-upload-progress" max="100" value="0"></progress><div id="zl-skin-upload-status" class="zl-note">Nessun upload in corso.</div><button id="zl-skin-upload-btn" class="zl-secondary" type="button">⬆️ Carica immagine (max 50 MB)</button>`;
+    list.insertAdjacentElement('afterend', box);
+    $('zl-skin-upload-btn')?.addEventListener('click', async () => {
+      const file=$('zl-skin-file')?.files?.[0]; const title=$('zl-skin-title')?.value?.trim() || file?.name?.replace(/\.[^.]+$/,'') || '';
+      const btn=$('zl-skin-upload-btn');
+      if (!file) { if($('zl-skin-upload-status')) $('zl-skin-upload-status').textContent="❌ Seleziona un'immagine."; return; }
+      if(btn) btn.disabled=true;
+      try { await uploadCustomSkin(file,title); }
+      catch(e){ if($('zl-skin-upload-status')) $('zl-skin-upload-status').textContent='❌ '+(e?.message||'Upload fallito.'); if($('zl-skin-upload-progress')) $('zl-skin-upload-progress').value=0; }
+      finally { if(btn) btn.disabled=false; }
+    });
+  }
+
+  function renderSettings() {
+    const list = $('zl-settings-list'); if (!list) return;
+    const items = [
+      ['showNames','Mostra nomi'],['showMass','Mostra massa'],['showMinimap','Mostra minimappa'],['showHud','Mostra HUD'],['showGrid','Mostra griglia'],['lowGraphics','Grafica leggera'],['smoothCamera','Camera fluida'],['autoReconnect','Riconnessione automatica'],['sfx','Suoni interfaccia'],['threeD','Effetto 3D'],['wheelZoom','Zoom con rotellina']
+    ];
+    list.innerHTML = items.map(([k,label]) => `<button class="zl-setting-row" data-toggle="${k}"><span>${label}</span><b class="${settings[k]?'on':''}">${settings[k]?'ON':'OFF'}</b></button>`).join('');
+    list.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', () => toggle(b.dataset.toggle)));
+    buildSkinUploadUI();
+  }
+
+  async function renderStats() {
+    const el = $('zl-stats-detail'); if (!el) return;
+    const s = mergedProfile().stats || {};
+    const ratio = s.deaths ? (s.kills / Math.max(1,s.deaths)).toFixed(2) : String(s.kills || 0);
+    el.innerHTML = `<div class="zl-detail-grid"><div><small>Uccisioni</small><b>${s.kills}</b></div><div><small>Morti</small><b>${s.deaths}</b></div><div><small>K/D</small><b>${ratio}</b></div><div><small>Max massa</small><b>${Math.round(s.bestMass)}</b></div><div><small>Record rank</small><b>${s.bestRank || '—'}</b></div><div><small>Partite</small><b>${s.matches}</b></div><div><small>Tempo</small><b>${Math.floor((s.playSeconds||0)/60)}m</b></div><div><small>ELO</small><b>${s.elo || 1000}</b></div></div>`;
+  }
+
+  async function health() {
+    const el = $('zl-server-health'); if (!el) return;
+    const base = serverBase();
+    if (!base) { el.textContent = '⚪ Backend non configurato'; return; }
+    el.textContent = '⏳ controllo...';
+    const start = performance.now();
+    try {
+      const r = await fetch(`${base}/healthz`, { cache: 'no-store' });
+      const ms = Math.round(performance.now() - start);
+      const d = await r.json().catch(() => ({}));
+      el.textContent = r.ok ? `🟢 Online · ${ms} ms · uptime ${d.uptime ?? '?'}s` : `🔴 HTTP ${r.status}`;
+    } catch (_) { el.textContent = '🔴 Backend non raggiungibile'; }
+  }
+
+  function setMode(mode) {
+    const m = mode === 'teams' ? 'teams' : 'ffa';
+    const current = get(KEY.mode, 'ffa');
+    set(KEY.mode, m);
+    document.querySelectorAll('.zl-mode-btn').forEach(b => b.classList.toggle('selected', b.dataset.mode === m));
+    const info = $('zl-mode-note');
+    if (info) info.textContent = m === 'teams' ? 'Squadre: il gioco bilancia automaticamente i team.' : 'FFA: tutti contro tutti.';
+    if (current !== m && window.ZLGame?.connected?.()) {
+      if (confirm('Cambio modalità: riavviare la partita?')) window.ZLGame.restart?.();
+    }
+    beep(700, 35);
+  }
+
+  function doQuickAction(action) {
+    beep(760, 35);
+    if (action === 'start') window.ZLGame?.start?.();
+    if (action === 'restart') window.ZLGame?.restart?.();
+    if (action === 'spectate') {
+      if (!window.ZLGame?.connected?.()) return;
+      const s = currentState(), id = window.ZLGame?.getMyId?.();
+      const target = (s.players || []).find(p => p.id !== id && !p.dead && !p.isBot) || (s.players || []).find(p => p.id !== id && !p.dead);
+      if (target) window.ZLGame.send?.({ type:'pvp', action:'spectate', targetId:target.id });
+    }
+    if (action === 'shop') showTab('shop');
+    if (action === 'season') document.getElementById('btn-season')?.click();
+    if (action === 'fullscreen') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.();
+    }
+  }
+
+  async function buyCoinsPackage(packageId) {
+    const status = $('zl-payment-status');
+    const token = window.ZLAuth?.getToken?.() || '';
+    if (!token) { if (status) status.textContent = '❌ Effettua il login.'; return; }
+    if (status) status.textContent = '⏳ Apertura checkout…';
+    try {
+      const r = await fetch('/payments/create-checkout.php', { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify({token, package:packageId}), cache:'no-store' });
+      const d = await r.json().catch(()=>({}));
+      if (!r.ok || !d.ok || !d.url) throw new Error(d.error || `HTTP ${r.status}`);
+      window.location.href = d.url;
+    } catch (e) { if (status) status.textContent = '❌ ' + (e?.message || 'Pagamento non disponibile.'); }
+  }
+
+  function build() {
+    const btn = document.createElement('button');
+    btn.id = 'zl-user-btn'; btn.type = 'button'; btn.innerHTML = '👤 <span>Profilo</span>';
+    document.body.appendChild(btn);
+
+    const overlay = document.createElement('div'); overlay.id = 'zl-user-overlay'; overlay.innerHTML = `
+      <div class="zl-user-modal" role="dialog" aria-label="Menu utente">
+        <div class="zl-user-top"><div><small>ZEROLEGEND</small><h2>Menu Utente</h2></div><button id="zl-user-close" class="zl-icon-btn">✕</button></div>
+        <div class="zl-tabs">
+          <button class="zl-tab-btn active" data-tab="profile">👤 Profilo</button>
+          <button class="zl-tab-btn" data-tab="play">🎮 Gioca</button>
+          <button class="zl-tab-btn" data-tab="shop">🛒 Shop</button>
+          <button class="zl-tab-btn" data-tab="stats">📊 Statistiche</button>
+          <button class="zl-tab-btn" data-tab="settings">⚙ Impostazioni</button>
+          <button class="zl-tab-btn" data-tab="help">❓ Altro</button>
+        </div>
+        <div class="zl-account-strip" aria-live="polite">
+          <div class="zl-account-mini"><span>💰 Coins</span><b id="zl-head-coins" data-zl-coins="1">—</b></div>
+          <div class="zl-account-mini"><span>⭐ Livello</span><b id="zl-head-level">—</b></div>
+          <div class="zl-account-mini"><span>✨ XP</span><b id="zl-head-xp">—</b></div>
+          <div class="zl-account-xp"><div><span>Progressi</span><b id="zl-head-xp-label">—</b></div><div class="zl-head-progress"><i id="zl-head-progress-bar" style="width:0%"></i></div><small id="zl-head-next">—</small></div>
+        </div>
+        <div class="zl-tab-pane active" data-pane="profile">
+          <div id="zl-profile-view"></div>
+          <div class="zl-actions"><button data-action="shop">🛒 Shop</button><button data-action="season">🏆 Classifica</button><button data-action="fullscreen">⛶ Schermo intero</button><button id="zl-logout">🚪 Esci</button></div>
+          <div class="zl-section"><h3>🎨 Personalizzazione rapida</h3><div class="zl-color-line" id="zl-colors"></div></div>
+        </div>
+        <div class="zl-tab-pane" data-pane="play">
+          <h3>Modalità di gioco</h3>
+          <div class="zl-modes"><button class="zl-mode-btn" data-mode="ffa">🌐 FFA<small>Tutti contro tutti</small></button><button class="zl-mode-btn" data-mode="teams">🛡 Squadre<small>5 squadre bilanciate</small></button></div>
+          <p id="zl-mode-note" class="zl-note"></p>
+          <div class="zl-quick-grid"><button data-action="start">▶ Gioca ora</button><button data-action="restart">🔄 Riavvia</button><button data-action="spectate">👁 Spettatore</button><button data-action="fullscreen">⛶ Fullscreen</button></div>
+          <div class="zl-health" id="zl-server-health">⚪ Controllo server...</div>
+        </div>
+        <div class="zl-tab-pane" data-pane="shop">
+          <div class="zl-shop-head"><div><h3>🛒 ZeroShop</h3><p class="zl-note">Compra skin e potenziamenti usando i tuoi ZeroCoins.</p></div><button class="zl-secondary" data-action="season">🏆 Classifica</button></div>
+          <div class="zl-shop-grid">
+            <button class="zl-shop-card" data-shop-item="skin_galaxy" data-shop-cost="300"><span>🌌</span><b>Galaxy</b><small>300 ZC</small></button>
+            <button class="zl-shop-card" data-shop-item="skin_cyber" data-shop-cost="500"><span>⚡</span><b>Cyber</b><small>500 ZC</small></button>
+            <button class="zl-shop-card" data-shop-item="boost_speed_60" data-shop-cost="200"><span>🚀</span><b>Speed Boost</b><small>200 ZC</small></button>
+            <button class="zl-shop-card" data-shop-item="boost_mass_60" data-shop-cost="400"><span>🥩</span><b>Mass Boost</b><small>400 ZC</small></button>
+            <button class="zl-shop-card" data-shop-item="shield_pack" data-shop-cost="250"><span>🛡️</span><b>Shield Pack</b><small>250 ZC</small></button>
+            <button class="zl-shop-card" data-shop-item="bounty_badge" data-shop-cost="350"><span>🏹</span><b>Bounty Badge</b><small>350 ZC</small></button>
+          </div>
+          <div class="zl-real-money-card"><div class="zl-section-title"><h3>💳 Compra ZeroCoins</h3><span>Pagamento sicuro</span></div><div class="zl-note">I Coins vengono accreditati nel database solo dopo conferma del pagamento.</div><div class="zl-coin-packages"><button data-coin-package="zc_1000"><b>1.000 ZC</b><small>€ 0,99</small></button><button data-coin-package="zc_5500"><b>5.500 ZC</b><small>€ 4,99</small></button><button data-coin-package="zc_12000"><b>12.000 ZC</b><small>€ 9,99</small></button><button data-coin-package="zc_30000"><b>30.000 ZC</b><small>€ 19,99</small></button></div><div id="zl-payment-status" class="zl-note"></div></div>
+          <div id="zl-shop-status" class="zl-note">Seleziona un oggetto per acquistarlo.</div>
+          <div class="zl-actions"><button data-shop-action="wallet">💰 Wallet</button><button data-shop-action="inventory">🎒 Inventario</button><button data-shop-action="quests">🎯 Quest</button><button data-shop-action="daily">🎁 Daily</button></div>
+        </div>
+        <div class="zl-tab-pane" data-pane="stats"><h3>📊 Le tue statistiche</h3><div id="zl-stats-detail"></div><div class="zl-note">Le statistiche locali vengono aggiornate dal gameplay multiplayer e restano nel browser.</div></div>
+        <div class="zl-tab-pane" data-pane="settings"><h3>⚙ Impostazioni</h3><div id="zl-settings-list"></div><button class="zl-secondary" id="zl-reset-settings">↩ Ripristina impostazioni</button></div>
+        <div class="zl-tab-pane" data-pane="help"><h3>❓ Comandi</h3><div class="zl-help-grid"><div><b>Movimento</b><span>Mouse / touch</span></div><div><b>Split</b><span>Spazio</span></div><div><b>Feed</b><span>W</span></div><div><b>Virus</b><span>Q</span></div><div><b>Scatto</b><span>Shift</span></div><div><b>Abilità</b><span>Pannello ⚡</span></div></div><p class="zl-note">Le modalità e le funzioni sono progettate per uno stile .io: arena, crescita, split, feed, virus, squadre, classifica e spettatore.</p></div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const openMenu = () => {
+      document.getElementById('feature-panel')?.classList.remove('open');
+      document.getElementById('season-panel')?.classList.remove('open');
+      document.getElementById('skin-panel')?.classList.remove('open');
+      overlay.classList.add('open');
+      document.documentElement.classList.add('zl-user-menu-open');
+      showTab('profile');
+      refresh();
+      if (window.ZLGame?.connected?.()) {
+        const m = window.ZLGame?.getMe?.();
+        const c = m?.cells?.[0];
+        if (c) window.ZLGame?.send?.({ type: 'target', x: Number(c.x)||0, y: Number(c.y)||0 });
+      }
+    };
+    const closeMenu = () => {
+      overlay.classList.remove('open');
+      document.documentElement.classList.remove('zl-user-menu-open');
+    };
+    btn.addEventListener('click', openMenu);
+    $('zl-user-close').addEventListener('click', closeMenu);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeMenu(); });
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (overlay.classList.contains('open')) closeMenu(); else openMenu();
+    }, true);
+    document.querySelectorAll('.zl-tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+    overlay.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => doQuickAction(b.dataset.action)));
+    overlay.querySelectorAll('[data-shop-item]').forEach(b => b.addEventListener('click', async () => {
+      const itemId = b.dataset.shopItem;
+      const status = $('zl-shop-status');
+      if (status) status.textContent = `⏳ Acquisto ${itemId}...`;
+      const result = window.ZLGame?.shop?.('buy', { itemId });
+      if (result && typeof result.then === 'function') {
+        const data = await result;
+        if (status) status.textContent = data?.ok ? `✅ Acquistato: ${itemId}` : `❌ ${data?.error || 'Acquisto non riuscito.'}`;
+      } else if (status) {
+        status.textContent = window.ZLGame?.connected?.() ? `✅ Richiesta inviata: ${itemId}` : '❌ Connettiti al multiplayer per acquistare.';
+      }
+      beep(720, 35);
+    }));
+    overlay.querySelectorAll('[data-coin-package]').forEach(b => b.addEventListener('click', () => { buyCoinsPackage(b.dataset.coinPackage); }));
+    overlay.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-claim-daily]');
+      if (!b || b.disabled) return;
+      b.disabled = true;
+      try {
+        const u = await window.ZLAuth?.claimDaily?.(b.dataset.claimDaily);
+        if (u) { beep(900, 55); refresh(); }
+      } catch (err) {
+        b.disabled = false;
+        alert(err?.message || 'Impossibile riscattare la missione.');
+      }
+    });
+    overlay.querySelectorAll('[data-shop-action]').forEach(b => b.addEventListener('click', async () => {
+      const action=b.dataset.shopAction; const status=$('zl-shop-status');
+      if (status) status.textContent=`⏳ ${action}...`;
+      const result=window.ZLGame?.shop?.(action, {});
+      if (result && typeof result.then === 'function') { const data=await result; if (status) status.textContent=data?.ok ? `✅ ${action} completato.` : `❌ ${data?.error || 'Operazione non riuscita.'}`; }
+      else if (status) status.textContent=window.ZLGame?.connected?.() ? `✅ ${action} richiesto.` : '❌ Connettiti al multiplayer.';
+    }));
+    document.querySelectorAll('.zl-mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+    $('zl-reset-settings').addEventListener('click', () => { settings = { ...DEFAULTS }; saveSettings(settings); updateBodyClasses(); renderSettings(); });
+    $('zl-logout').addEventListener('click', () => window.ZLAuth?.logout?.());
+    window.addEventListener('zl-wallet-updated', () => { renderProfile(); });
+    makeColors();
+    updateBodyClasses();
+    refresh();
+
+    setInterval(() => {
+      if (!overlay.classList.contains('open')) return;
+      renderProfile(); renderStats();
+    }, 1000);
+    setInterval(() => {
+      if (!window.ZLAuth?.getToken?.() || !overlay.classList.contains('open')) return;
+      const s = localStats(); const m = me(); const state = currentState();
+      const rank = (state.leaderboard || []).findIndex(e => e.id === window.ZLGame?.getMyId?.());
+      if (rank >= 0) s.bestRank = s.bestRank ? Math.min(s.bestRank, rank + 1) : rank + 1;
+      if (m) { s.bestMass = Math.max(s.bestMass, Number(m.mass)||0); s.kills=Math.max(s.kills,Number(m.kills)||0); s.deaths=Math.max(s.deaths,Number(m.deaths)||0); }
+      s.matches = Math.max(s.matches, Number(s.matches)||0);
+      s.xp = Math.max(s.xp || 0, s.kills*100 + s.matches*25 + Math.floor(s.bestMass/10));
+      saveLocalStats(s);
+      window.ZLAuth.syncStats?.({matches:s.matches,kills:s.kills,deaths:s.deaths,bestMass:s.bestMass,bestRank:s.bestRank,playSeconds:s.playSeconds,killStreak:s.killStreak}).then(() => renderProfile()).catch(() => {});
+    }, 10000);
+  }
+
+  function makeColors() {
+    const box = $('zl-colors'); if (!box) return;
+    const colors = ['#ff5c5c','#ffa94d','#ffd43b','#69db7c','#4dd0ff','#748ffc','#b48cff','#ff7ce0','#ffffff','#111827'];
+    box.innerHTML = colors.map(c => `<button class="zl-color" data-color="${c}" style="background:${c}" title="${c}"></button>`).join('');
+    box.querySelectorAll('[data-color]').forEach(b => b.addEventListener('click', () => {
+      localStorage.setItem('skin-color', b.dataset.color); document.querySelectorAll('.zl-color').forEach(x => x.classList.toggle('selected', x === b)); beep(640, 35);
+    }));
+  }
+
+  function refresh() {
+    renderProfile(); renderStats(); renderSettings();
+    if (window.ZLAuth?.getToken?.() && !refresh._busy) {
+      refresh._busy = true;
+      window.ZLAuth.refreshProfile?.().then(() => { renderProfile(); renderStats(); }).catch(() => {}).finally(() => { refresh._busy = false; });
+    }
+    const mode = get(KEY.mode, 'ffa');
+    document.querySelectorAll('.zl-mode-btn').forEach(b => b.classList.toggle('selected', b.dataset.mode === mode));
+    const n = $('zl-mode-note'); if (n) n.textContent = mode === 'teams' ? 'Squadre: il gioco bilancia automaticamente i team.' : 'FFA: tutti contro tutti.';
+    const token = window.ZLAuth?.getToken?.();
+    const btn = $('zl-user-btn'); if (btn) btn.title = token ? 'Menu utente' : 'Accedi';
+  }
+
+  window.ZLUserMenu = { open: () => $('zl-user-btn')?.click(), close: () => $('zl-user-close')?.click(), shop: () => showTab('shop'), settings: () => showTab('settings'), profile: () => showTab('profile'), stats: localStats, uploadSkin: uploadCustomSkin };
+  document.addEventListener('DOMContentLoaded', build, { once: true });
+})();

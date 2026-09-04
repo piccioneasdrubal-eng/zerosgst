@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZeroLegend — Multiplayer .io</title>
+  <link rel="stylesheet" href="style.css" />
+  
+  <style>
+    /* PORTALE DI ACCESSO (LOGIN / REGISTRAZIONE) */
+    #portalOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg, #1e272e, #0f1419);
+        z-index: 999999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: 'Arial', sans-serif;
+    }
+
+    .portal-box {
+        background-color: #2c3e50;
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        width: 420px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+        text-align: center;
+    }
+
+    .portal-box h2 {
+        margin-bottom: 20px;
+        color: #1abc9c;
+    }
+
+    .portal-tabs {
+        display: flex;
+        margin-bottom: 20px;
+        background: #1a252f;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .portal-tab {
+        flex: 1;
+        padding: 10px;
+        cursor: pointer;
+        background: none;
+        border: none;
+        color: #aaa;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+
+    .portal-tab.active {
+        background: #1abc9c;
+        color: white;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+        text-align: left;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 5px;
+        color: #ddd;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        background: #1a252f;
+        color: white;
+        box-sizing: border-box;
+    }
+
+    .portal-btn {
+        width: 100%;
+        padding: 12px;
+        background-color: #2ecc71;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.3s;
+        margin-top: 10px;
+    }
+
+    .portal-btn:hover { background-color: #27ae60; }
+    .error-msg { color: #e74c3c; font-size: 12px; margin-top: 10px; display: none; }
+    .success-msg { color: #2ecc71; font-size: 12px; margin-top: 10px; display: none; }
+
+    /* MENU DI GIOCO AVANZATO & SHOP (PREMENDO ESC) */
+    #gameMenuOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.85);
+        z-index: 99999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: 'Arial', sans-serif;
+    }
+
+    .menu-container {
+        background-color: #2c3e50;
+        color: white;
+        padding: 25px;
+        border-radius: 12px;
+        width: 620px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+
+    .menu-tabs {
+        display: flex;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    .tab-btn {
+        flex: 1;
+        padding: 8px;
+        cursor: pointer;
+        background-color: #34495e;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        transition: 0.3s;
+        font-size: 12px;
+    }
+
+    .tab-btn:hover { background-color: #1abc9c; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .shop-grid, .settings-grid, .bots-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .shop-item {
+        background: #1a252f;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #444;
+        text-align: center;
+    }
+
+    .shop-item button {
+        margin-top: 8px;
+        padding: 6px 12px;
+        background: #f1c40f;
+        border: none;
+        border-radius: 4px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .settings-grid label, .bots-grid label {
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .bots-grid input, .settings-grid input {
+        padding: 5px;
+        border-radius: 4px;
+        border: 1px solid #444;
+        background: #1a252f;
+        color: white;
+    }
+
+    .btn-action {
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px 2px;
+        font-weight: bold;
+        font-size: 12px;
+    }
+    .btn-action.active { background-color: #2ecc71; }
+  </style>
+
+<style>
+  #portalOverlay .portal-box form { margin:0; }
+  #portalOverlay .portal-btn[disabled] { opacity:.6; cursor:wait; }
+  #game-server-url { padding:7px 9px; border-radius:5px; border:1px solid #566; background:#17212b; color:#fff; }
+  @media (max-width:700px) { #game-server-url{ min-width:220px!important;max-width:calc(100vw - 60px)!important; } .menu-container{width:calc(100vw - 30px)!important;} }
+</style>
+</head>
+<body>
+  <!-- PORTALE AUTH UNIFICATO -->
+  <div id="portalOverlay">
+    <div class="portal-box">
+      <h2>🌐 ZeroLegend Portal</h2>
+      <div class="portal-tabs">
+        <button type="button" class="portal-tab active" data-portal-tab="login">Accedi</button>
+        <button type="button" class="portal-tab" data-portal-tab="register">Registrati</button>
+      </div>
+
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" autocomplete="email" placeholder="nome@email.it" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPass">Password</label>
+          <input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <button class="portal-btn" type="submit">Entra nel Portale</button>
+        <div id="loginError" class="error-msg" role="alert"></div>
+      </form>
+
+      <form id="registerForm" style="display:none" novalidate>
+        <div class="form-group">
+          <label for="regEmail">Email</label>
+          <input type="email" id="regEmail" autocomplete="email" placeholder="nome@email.it" required>
+        </div>
+        <div class="form-group">
+          <label for="regName">Nome</label>
+          <input type="text" id="regName" autocomplete="name" maxlength="40" placeholder="Il tuo nome" required>
+        </div>
+        <div class="form-group">
+          <label for="regPass">Scegli Password</label>
+          <input type="password" id="regPass" autocomplete="new-password" minlength="8" placeholder="Minimo 8 caratteri" required>
+        </div>
+        <button class="portal-btn" type="submit">Crea Account</button>
+        <div id="regError" class="error-msg" role="alert"></div>
+        <div id="regSuccess" class="success-msg" role="status"></div>
+      </form>
+      <div id="authStatus" style="margin-top:10px;color:#9aa8b8;font-size:12px"></div>
+    </div>
+  </div>
+
+  <!-- CANVAS PRINCIPALE RICHIESTO DA CLIENT.JS -->
+  <canvas id="game"></canvas>
+
+  <div id="hud"><div id="mass"></div></div>
+  <div id="killfeed"></div>
+  <div id="respawn" style="display: none;">
+    <div class="respawn-inner">
+      <div class="respawn-title">💀 Sei stato eliminato!</div>
+      <div class="respawn-count">Respawn tra <span id="respawn-count">3</span>s</div>
+    </div>
+  </div>
+
+  <div id="leaderboard">
+    <div class="lb-title">Leaderboard</div>
+    <ol id="lb-list"></ol>
+  </div>
+
+  <div id="minimap">
+    <canvas id="minimap-canvas" width="160" height="160"></canvas>
+    <div id="minimap-label">Minimappa</div>
+  </div>
+
+  <div id="controls">
+    <button id="btn-split" type="button" title="Spazio">💥 Split</button>
+    <button id="btn-feed" type="button" title="W">🥏 Feed</button>
+    <button id="btn-virus" type="button" title="Q">🦠 Virus</button>
+  </div>
+
+  <button id="btn-features" type="button" title="90 nuove funzioni">⚡ 90 Funzioni</button>
+  <div id="feature-panel">
+    <div class="feature-title">⚡ 90 FUNZIONI</div>
+    <div class="feature-section"><b>30 PvP</b><div class="feature-grid">
+      <button data-pvp-action="mark">🎯 Mark</button><button data-pvp-action="hunter">🏹 Hunter</button><button data-pvp-action="parry">🛡 Parry</button>
+      <button data-pvp-action="stun">💫 Stun</button><button data-pvp-action="slow">🐌 Slow</button><button data-pvp-action="knockback">💥 Knockback</button>
+      <button data-pvp-action="trap">🪤 Trappola</button><button data-pvp-action="mine">💣 Mina</button><button data-pvp-action="lifesteal">🩸 Lifesteal</button>
+      <button data-pvp-action="execute">☠ Esecuzione</button><button data-pvp-action="shieldbreak">💥 Rompi Scudo</button><button data-pvp-action="duel">⚔️ Sfida</button>
+      <button data-pvp-action="duelCancel">🚫 Annulla Duello</button><button data-pvp-action="arenaIn">🏟 Arena ON</button><button data-pvp-action="arenaOut">🚪 Arena OFF</button>
+      <button data-pvp-action="spectate">👁 Spettatore</button>
+      <button onclick="alert('Le altre funzioni PvP sono automatiche: combo, assist, bounty, streak, ELO, danno, eventi, anti-camp, ecc.')">ℹ️ 30/30</button>
+    </div></div>
+    <div class="feature-section"><b>30 Shop / Coins</b><div class="feature-grid">
+      <button data-shop-action="wallet">💰 Wallet</button><button data-shop-action="catalog">🛒 Catalogo</button><button data-shop-action="inventory">🎒 Inventario</button>
+      <button data-shop-action="history">📜 Storico</button><button data-shop-action="quests">🎯 Quest</button><button data-shop-action="daily">🎁 Daily</button>
+      <button data-shop-action="starter">🧰 Starter Gift</button><button data-shop-action="boost">✨ x2 Coins</button><button data-shop-action="stats">📊 Shop Stats</button>
+      <button data-shop-action="buy" data-item-id="skin_galaxy">🌌 Compra Galaxy</button><button data-shop-action="buy" data-item-id="skin_cyber">⚡ Compra Cyber</button>
+      <button data-shop-action="buy" data-item-id="boost_speed_60">🚀 Speed Boost</button><button data-shop-action="buy" data-item-id="boost_mass_60">🥩 Mass Boost</button>
+      <button data-shop-action="buy" data-item-id="shield_pack">🛡 Shield Pack</button><button data-shop-action="buy" data-item-id="bounty_badge">🏹 Badge</button>
+      <button data-shop-action="use" data-item-id="boost_speed_60">Usa Speed</button><button data-shop-action="use" data-item-id="boost_mass_60">Usa Mass</button>
+      <button data-shop-action="use" data-item-id="shield_pack">Usa Shield</button><button data-shop-action="equip" data-item-id="skin_galaxy">Equip Galaxy</button>
+      <button data-shop-action="equip" data-item-id="skin_cyber">Equip Cyber</button><button data-shop-action="unequip">↩ Default</button>
+      <button data-shop-action="claimQuest" data-quest-id="kills3">Claim 3 Kill</button><button data-shop-action="claimQuest" data-quest-id="kills10">Claim 10 Kill</button>
+      <button data-shop-action="claimQuest" data-quest-id="coins1000">Claim Coins</button><button data-shop-action="claimQuest" data-quest-id="play5">Claim Play</button>
+      <button data-shop-action="refund">↩ Refund</button><button onclick="alert('Earn/Spend, multiplier, reward kill/streak/team e altre API shop sono attive lato server.')">ℹ️ 30/30</button>
+    </div></div>
+    <div class="feature-section"><b>30 Admin / Bot</b>
+      <input id="admin-token" type="password" placeholder="ADMIN_TOKEN" autocomplete="off" style="width:100%;box-sizing:border-box;margin:4px 0">
+      <input id="admin-target" type="text" placeholder="Player ID / nome" style="width:100%;box-sizing:border-box;margin:4px 0">
+      <div class="feature-grid">
+        <button data-admin-action="list">📋 Lista</button><button data-admin-action="get">🔎 Get Player</button><button data-admin-action="kick">👢 Kick</button>
+        <button data-admin-action="ban">⛔ Ban</button><button data-admin-action="unban">✅ Unban</button><button data-admin-action="mute">🔇 Mute</button>
+        <button data-admin-action="unmute">🔊 Unmute</button><button data-admin-action="freeze">❄ Freeze</button><button data-admin-action="unfreeze">🔥 Unfreeze</button>
+        <button data-admin-action="setMass">⚖ Massa</button><button data-admin-action="setCoins">💰 Coins</button><button data-admin-action="teleport">📍 Teleport</button>
+        <button data-admin-action="heal">❤️ Heal</button><button data-admin-action="kill">💀 Kill</button><button data-admin-action="respawn">♻ Respawn</button>
+        <button data-admin-action="setTeam">🏳 Team</button><button data-admin-action="setColor">🎨 Color</button><button data-admin-action="broadcast">📢 Broadcast</button>
+        <button data-admin-action="clearEvents">🧹 Clear Events</button><button data-admin-action="spawnBots">🤖 Spawn Bot</button><button data-admin-action="removeBots">🗑 Remove Bot</button>
+        <button data-admin-action="botMode" data-value="aggressive">🔥 Bot Aggro</button><button data-admin-action="botTarget">🎯 Bot Target</button><button data-admin-action="botDifficulty">🧠 Bot Diff</button>
+        <button data-admin-action="botTeam">🏳 Bot Team</button><button data-admin-action="botName">✏ Bot Name</button><button data-admin-action="toggleBots" data-value="true">▶ Bots ON</button>
+        <button data-admin-action="pause">⏸ Pause</button><button data-admin-action="resume">▶ Resume</button><button data-admin-action="resetMatch">🔄 Reset Match</button>
+      </div>
+    </div>
+    <div id="feature-status">Pronto</div>
+  </div>
+
+  <button id="btn-season" type="button" title="Classifica stagionale">🏆 Stagione</button>
+  <div id="season-panel">
+    <div class="skin-title">🏆 Classifica stagionale</div>
+    <ol id="season-list"></ol>
+    <button id="season-close" type="button">Chiudi</button>
+  </div>
+
+  <div id="stats"></div>
+  <div id="chat">
+    <div id="chat-box"></div>
+    <input id="chat-input" type="text" placeholder="Scrivi in chat... (Invio per inviare)" maxlength="120" />
+  </div>
+
+  <button id="skin-btn" type="button" title="Personalizza">🎨 Skin</button>
+  <div id="skin-panel">
+    <div class="skin-title">Personalizza il tuo nick</div>
+    <div class="skin-colors" id="skin-colors"></div>
+    <div class="skin-title">Template nome</div>
+    <div class="skin-presets" id="skin-presets"></div>
+    <button id="skin-close" type="button">Chiudi</button>
+  </div>
+
+  <div id="bot-panel">
+    <details open>
+      <summary>🧪 Spawn Bot (allenamento)</summary>
+      <form id="bot-form">
+        <label>Numero <input id="bot-count" type="number" value="10" min="1" max="200" /></label>
+        <label>Massa <input id="bot-mass" type="number" value="30" min="1" max="10000" /></label>
+        <label>Nome <input id="bot-name" type="text" value="Bot" /></label>
+        <button type="submit">Spawna</button>
+      </form>
+      <div id="bot-status"></div>
+    </details>
+  </div>
+
+  <!-- SCHERMATA DI INGRESSO GIOCO -->
+  <div id="menu">
+    <h1>agar-server v2</h1>
+    <p>ZeroCoins: <span id="userCoins" style="color: #f1c40f; font-weight: bold;">1000</span> ZC | Utente: <span id="welcomeUser" style="color:#1abc9c; font-weight:bold;">Ospite</span> | <a href="#" onclick="effettuaLogout()" style="color:#e74c3c; font-size:12px;">Esci</a></p>
+    <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center">
+      <input id="game-server-url" type="url" placeholder="URL backend multiplayer (es. https://game.miodominio.it)" style="min-width:290px;max-width:420px">
+      <button id="save-server-url" type="button" class="btn-action">Salva server</button>
+    </div>
+    <div id="game-server-status" style="font-size:12px;color:#9aa8b8;min-height:18px"></div>
+    <input id="name" type="text" placeholder="Il tuo nickname" maxlength="16" />
+    <select id="team-select">
+      <option value="">— Nessuna squadra —</option>
+      <option value="0">🔴 ROSSI</option>
+      <option value="1">🔵 BLU</option>
+      <option value="2">🟢 VERDI</option>
+      <option value="3">🟡 GIALLI</option>
+      <option value="4">🟣 VIOLA</option>
+    </select>
+    <button id="play">Gioca</button>
+    <div class="hint">
+      <span>🖱️ Mouse = muoviti</span>
+      <span>⌨️ Spazio = split</span>
+      <span>⌨️ W = feed</span>
+      <span>⌨️ Q = virus</span>
+      <span>⌨️ ESC = Menu Utente</span>
+    </div>
+  </div>
+
+  <!-- OVERLAY MENU AVANZATO, ZERO SHOP E BOT (PREMENDO ESC) -->
+  <div id="gameMenuOverlay" style="display: none;">
+      <div class="menu-container">
+          <h2>🛒 ZeroShop & Pannello di Controllo</h2>
+          <p>I tuoi ZeroCoins: <span id="menuCoins" style="color:#f1c40f; font-weight:bold;">1000</span> ZC</p>
+          
+          <div class="menu-tabs">
+              <button onclick="cambiaScheda('schedaShop')" class="tab-btn">ZeroShop</button>
+              <button onclick="cambiaScheda('schedaBot')" class="tab-btn">Gestione Bot (4)</button>
+              <button onclick="cambiaScheda('schedaTasti')" class="tab-btn">Keybinds</button>
+              <button onclick="cambiaScheda('schedaImpostazioni')" class="tab-btn">Impostazioni</button>
+          </div>
+
+          <!-- SCHEDA ZERO SHOP -->
+          <div id="schedaShop" class="tab-content active">
+              <h3>Negozio Skin & Potenziamenti</h3>
+              <div class="shop-grid">
+                  <div class="shop-item">
+                      <h4>Skin Galattica 🌌</h4>
+                      <p>Prezzo: 300 ZC</p>
+                      <button onclick="acquistaOggetto('skin_galassia', 300)">Acquista</button>
+                  </div>
+                  <div class="shop-item">
+                      <h4>Skin Cyberpunk ⚡</h4>
+                      <p>Prezzo: 500 ZC</p>
+                      <button onclick="acquistaOggetto('skin_cyber', 500)">Acquista</button>
+                  </div>
+                  <div class="shop-item">
+                      <h4>Boost Velocità (+20%) 🚀</h4>
+                      <p>Prezzo: 200 ZC</p>
+                      <button onclick="acquistaOggetto('boost_speed', 200)">Acquista</button>
+                  </div>
+                  <div class="shop-item">
+                      <h4>Doppia Massa Iniziale 🥩</h4>
+                      <p>Prezzo: 400 ZC</p>
+                      <button onclick="acquistaOggetto('boost_mass', 400)">Acquista</button>
+                  </div>
+              </div>
+          </div>
+
+          <!-- SCHEDA GESTIONE BOT -->
+          <div id="schedaBot" class="tab-content">
+              <h3>Configurazione 4 Bot & Automazione</h3>
+              <div class="bots-grid">
+                  <label>Bot 1 Nome: <input type="text" id="botName1" value="Bot Alpha" oninput="salvaImpostazioni()"></label>
+                  <label>Bot 1 Colore: <input type="color" id="botColor1" value="#ff4757" onchange="salvaImpostazioni()"></label>
+                  <label>Bot 2 Nome: <input type="text" id="botName2" value="Bot Beta" oninput="salvaImpostazioni()"></label>
+                  <label>Bot 2 Colore: <input type="color" id="botColor2" value="#2ed573" onchange="salvaImpostazioni()"></label>
+                  <label>Bot 3 Nome: <input type="text" id="botName3" value="Bot Gamma" oninput="salvaImpostazioni()"></label>
+                  <label>Bot 3 Colore: <input type="color" id="botColor3" value="#1e90ff" onchange="salvaImpostazioni()"></label>
+                  <label>Bot 4 Nome: <input type="text" id="botName4" value="Bot Delta" oninput="salvaImpostazioni()"></label>
+                  <label>Bot 4 Colore: <input type="color" id="botColor4" value="#ffa502" onchange="salvaImpostazioni()"></label>
+              </div>
+              <div>
+                  <button id="btnFollow" class="btn-action" onclick="toggleBotAction('follow')">Seguimi (Follow): OFF</button>
+                  <button id="btnFarm" class="btn-action" onclick="toggleBotAction('farm')">Farming Cibo: OFF</button>
+              </div>
+          </div>
+
+          <!-- SCHEDA KEYBINDS -->
+          <div id="schedaTasti" class="tab-content">
+              <h3>Tasti Personalizzati</h3>
+              <p style="font-size:12px; color:#ccc;">Clicca sulla casella e premi un tasto per cambiarlo:</p>
+              <div class="settings-grid">
+                  <label>Tasto Split: <input type="text" id="keySplit" value="Space" readonly onclick="assegnaTasto('keySplit')"></label>
+                  <label>Tasto Feed: <input type="text" id="keyFeed" value="w" readonly onclick="assegnaTasto('keyFeed')"></label>
+                  <label>Tasto Virus: <input type="text" id="keyVirus" value="q" readonly onclick="assegnaTasto('keyVirus')"></label>
+              </div>
+          </div>
+
+          <!-- SCHEDA IMPOSTAZIONI -->
+          <div id="schedaImpostazioni" class="tab-content">
+              <h3>Impostazioni di Gioco</h3>
+              <div class="settings-grid">
+                  <label><input type="checkbox" id="optMassa" onchange="salvaImpostazioni()"> Mostra Massa</label>
+                  <label><input type="checkbox" id="optNomi" onchange="salvaImpostazioni()" checked> Mostra Nomi</label>
+              </div>
+          </div>
+          
+          <p style="font-size: 12px; color: #aaa; margin-top: 20px; text-align:center;">Premi ESC per chiudere il menu</p>
+      </div>
+  </div>
+
+  <script src="game-config.js"></script>
+  <script src="auth.js"></script>
+  <script src="client.js?v=20260903-escmenu1"></script>
+  <script src="compat.js"></script>
+  <script src="user-menu.js"></script>
+  <script src="menu-v2.js"></script>
+<a href="/" style="position:fixed;top:14px;left:14px;z-index:99999;padding:8px 12px;border-radius:9px;background:#101827;color:#fff;text-decoration:none;border:1px solid rgba(110,231,255,.3)">← Portale</a></body>
+</html>

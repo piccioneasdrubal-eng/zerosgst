@@ -113,6 +113,9 @@
       setSession(data);
       if ($('name')) $('name').value = localStorage.getItem('agarNick') || data.user?.name || 'Player';
       applySession(data.user);
+      if (/\/(login|register)\.html$/i.test(location.pathname)) {
+        location.replace('/');
+      }
     } catch (err) { showLoginError(err.message); }
   }
 

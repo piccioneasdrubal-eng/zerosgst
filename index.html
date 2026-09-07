@@ -1,499 +1,67 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZeroLegend — Multiplayer .io</title>
-  <link rel="stylesheet" href="style.css" />
-  
-  <style>
-    /* PORTALE DI ACCESSO (LOGIN / REGISTRAZIONE) */
-    #portalOverlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: linear-gradient(135deg, #1e272e, #0f1419);
-        z-index: 999999;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-family: 'Arial', sans-serif;
-    }
-
-    .portal-box {
-        background-color: #2c3e50;
-        color: white;
-        padding: 30px;
-        border-radius: 15px;
-        width: 420px;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.8);
-        text-align: center;
-    }
-
-    .portal-box h2 {
-        margin-bottom: 20px;
-        color: #1abc9c;
-    }
-
-    .portal-tabs {
-        display: flex;
-        margin-bottom: 20px;
-        background: #1a252f;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-    .portal-tab {
-        flex: 1;
-        padding: 10px;
-        cursor: pointer;
-        background: none;
-        border: none;
-        color: #aaa;
-        font-weight: bold;
-        transition: 0.3s;
-    }
-
-    .portal-tab.active {
-        background: #1abc9c;
-        color: white;
-    }
-
-    .form-group {
-        margin-bottom: 15px;
-        text-align: left;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 13px;
-        margin-bottom: 5px;
-        color: #ddd;
-    }
-
-    .form-group input {
-        width: 100%;
-        padding: 10px;
-        border-radius: 6px;
-        border: 1px solid #444;
-        background: #1a252f;
-        color: white;
-        box-sizing: border-box;
-    }
-
-    .portal-btn {
-        width: 100%;
-        padding: 12px;
-        background-color: #2ecc71;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: 0.3s;
-        margin-top: 10px;
-    }
-
-    .portal-btn:hover { background-color: #27ae60; }
-    .error-msg { color: #e74c3c; font-size: 12px; margin-top: 10px; display: none; }
-    .success-msg { color: #2ecc71; font-size: 12px; margin-top: 10px; display: none; }
-
-    /* MENU DI GIOCO AVANZATO & SHOP (PREMENDO ESC) */
-    #gameMenuOverlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(0, 0, 0, 0.85);
-        z-index: 99999;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-family: 'Arial', sans-serif;
-    }
-
-    .menu-container {
-        background-color: #2c3e50;
-        color: white;
-        padding: 25px;
-        border-radius: 12px;
-        width: 620px;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-    }
-
-    .menu-tabs {
-        display: flex;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-        gap: 5px;
-    }
-
-    .tab-btn {
-        flex: 1;
-        padding: 8px;
-        cursor: pointer;
-        background-color: #34495e;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        transition: 0.3s;
-        font-size: 12px;
-    }
-
-    .tab-btn:hover { background-color: #1abc9c; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    .shop-grid, .settings-grid, .bots-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-bottom: 15px;
-    }
-
-    .shop-item {
-        background: #1a252f;
-        padding: 12px;
-        border-radius: 8px;
-        border: 1px solid #444;
-        text-align: center;
-    }
-
-    .shop-item button {
-        margin-top: 8px;
-        padding: 6px 12px;
-        background: #f1c40f;
-        border: none;
-        border-radius: 4px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .settings-grid label, .bots-grid label {
-        cursor: pointer;
-        font-size: 13px;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .bots-grid input, .settings-grid input {
-        padding: 5px;
-        border-radius: 4px;
-        border: 1px solid #444;
-        background: #1a252f;
-        color: white;
-    }
-
-    .btn-action {
-        background-color: #e74c3c;
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 5px;
-        cursor: pointer;
-        margin: 5px 2px;
-        font-weight: bold;
-        font-size: 12px;
-    }
-    .btn-action.active { background-color: #2ecc71; }
-  </style>
-
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZeroLegend Portal</title>
+<link rel="stylesheet" href="/portal.css">
 <style>
-  #portalOverlay .portal-box form { margin:0; }
-  #portalOverlay .portal-btn[disabled] { opacity:.6; cursor:wait; }
-  #game-server-url { padding:7px 9px; border-radius:5px; border:1px solid #566; background:#17212b; color:#fff; }
-  @media (max-width:700px) { #game-server-url{ min-width:220px!important;max-width:calc(100vw - 60px)!important; } .menu-container{width:calc(100vw - 30px)!important;} }
+#portalOverlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 20% 10%,rgba(67,228,255,.14),transparent 32%),radial-gradient(circle at 80% 80%,rgba(157,108,255,.14),transparent 35%),rgba(3,7,18,.96);backdrop-filter:blur(14px)}
+.portal-box{width:min(470px,94vw);padding:28px;border:1px solid rgba(67,228,255,.25);border-radius:24px;background:rgba(10,17,29,.94);box-shadow:0 30px 90px rgba(0,0,0,.55)}
+.portal-logo{font-size:34px;font-weight:950;text-align:center;margin-bottom:5px}.portal-sub{text-align:center;color:#91a4bd;margin-bottom:22px}.portal-tabs{display:flex;gap:8px;margin-bottom:15px}.portal-tab{flex:1;padding:11px;border-radius:11px;border:1px solid rgba(135,180,255,.18);background:#0d1727;color:#9fb1c8;font-weight:800;cursor:pointer}.portal-tab.active{background:linear-gradient(90deg,#13d9bd,#43cfff);color:#03121a}.portal-form{display:grid;gap:10px}.portal-form label{font-size:12px;color:#9fb1c8}.portal-form input{width:100%;margin-top:5px;padding:12px;border-radius:11px;border:1px solid rgba(135,180,255,.18);background:#07101d;color:#fff;outline:none}.portal-form input:focus{border-color:#43e4ff}.portal-btn{border:0;border-radius:11px;padding:12px;background:linear-gradient(90deg,#13d9bd,#43cfff);color:#03121a;font-weight:900;cursor:pointer}.portal-msg{font-size:12px;min-height:18px}.portal-msg.error{color:#ff7b8f}.portal-msg.success{color:#37e28a}.portal-links{display:flex;justify-content:center;gap:16px;margin-top:15px}.portal-links a{color:#43e4ff;text-decoration:none;font-size:12px}
+.dashboard{display:none}.authenticated .dashboard{display:block}
 </style>
-
-<style id="zl-unified-menu-style">
-#feature-panel,#btn-features,#season-panel,#btn-season,#skin-panel,#skin-btn,#bot-panel,#gameMenuOverlay{display:none!important}
-#zl-user-overlay{display:none;position:fixed;inset:0;z-index:999999;background:rgba(3,7,18,.78);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:18px;box-sizing:border-box}
-#zl-user-overlay.open{display:flex}
-.zl-user-modal{width:min(1120px,96vw);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#111c2c,#0b1422);border:1px solid rgba(110,231,255,.25);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.55);color:#eef6ff;padding:20px}
-.zl-user-top{display:flex;justify-content:space-between;align-items:flex-start}.zl-user-top small{letter-spacing:.22em;color:#6ee7ff}.zl-user-top h2{margin:3px 0 0}.zl-icon-btn{background:#17263a;border:1px solid #2d4056;color:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
-.zl-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.zl-tab-btn,.zl-actions button,.zl-quick-grid button,.zl-mode-btn,.zl-shop-grid button,.zl-coin-packages button,.zl-feature-card,.zl-secondary{background:#162338;color:#eef6ff;border:1px solid #2a415b;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:700}.zl-tab-btn.active{background:#16c5a4;border-color:#16c5a4}.zl-tab-pane{display:none}.zl-tab-pane.active{display:block}.zl-account-strip{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr)) 2fr;gap:10px;background:#0f1b2c;border:1px solid #1e334a;border-radius:14px;padding:12px;margin-bottom:14px}.zl-account-strip>div{background:#15243a;border-radius:10px;padding:10px}.zl-account-strip span,.zl-account-strip small,.zl-note{color:#92a4b8;font-size:12px}.zl-account-strip b{display:block;font-size:20px;margin-top:4px}.zl-account-xp>div{display:flex;justify-content:space-between}.zl-head-progress{height:9px;background:#1c2c42;border-radius:999px;overflow:hidden;margin:9px 0}.zl-head-progress i,.zl-progress i{display:block;height:100%;background:linear-gradient(90deg,#13e3bc,#58c7ff);border-radius:999px}.zl-profile-head{display:flex;gap:14px;align-items:center;background:#111e2e;border:1px solid #21364e;padding:14px;border-radius:14px}.zl-avatar{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#14d8ba,#4db8ff);font-weight:900;font-size:22px;color:#07121c}.zl-overview-grid,.zl-stat-cards,.zl-detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}.zl-overview-grid>div,.zl-stat-cards>div,.zl-detail-grid>div{background:#111d2d;border:1px solid #223a53;border-radius:12px;padding:12px}.zl-overview-grid small,.zl-stat-cards small,.zl-detail-grid small{display:block;color:#8da0b4;font-size:11px}.zl-overview-grid b,.zl-stat-cards b,.zl-detail-grid b{font-size:22px}.zl-level{background:#101d2d;border:1px solid #223a53;border-radius:12px;padding:12px;margin:10px 0}.zl-level>div:first-child{display:flex;justify-content:space-between}.zl-progress{height:10px;background:#1a2b41;border-radius:999px;overflow:hidden;margin:8px 0}.zl-actions,.zl-quick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:12px}.zl-modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}.zl-mode-btn small,.zl-shop-grid small,.zl-coin-packages small{display:block;color:#91a7bc;margin-top:4px}.zl-shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}.zl-shop-grid button{min-height:78px}.zl-coin-packages{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}.zl-coin-packages button{background:#11263b}.zl-function-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-height:54vh;overflow:auto}.zl-feature-card{display:grid;grid-template-columns:34px 1fr 28px;align-items:center;text-align:left;gap:5px;padding:9px}.zl-feature-card span{color:#6ee7ff;font-size:11px}.zl-feature-card em{font-style:normal;color:#8ba2b7;text-align:center}.zl-feature-card em.on{color:#16e0bb}.zl-setting-row{width:100%;display:flex;justify-content:space-between;align-items:center;background:#111d2d;color:#eef6ff;border:1px solid #21384f;border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer}.zl-setting-row b{font-size:11px;color:#8195aa}.zl-setting-row b.on{color:#1ae3bb}.zl-key-row{display:flex;justify-content:space-between;align-items:center;background:#111d2d;border:1px solid #21384f;border-radius:10px;padding:10px;margin-bottom:7px}.zl-key-row button{min-width:110px;background:#17263b;color:#fff;border:1px solid #2d4056;border-radius:8px;padding:8px;cursor:pointer}.zl-upload-row{display:grid;grid-template-columns:1.2fr 1fr auto;gap:8px;margin-top:14px}.zl-upload-row input{background:#0f1928;color:#fff;border:1px solid #2b4158;border-radius:9px;padding:10px}.zl-setting-control label{display:flex;flex-direction:column;gap:8px;background:#111d2d;border:1px solid #21384f;padding:12px;border-radius:10px}.zl-health,.zl-menu-status{margin-top:10px;padding:8px 10px;background:#0d1927;border-radius:9px;color:#9fb1c3}.zl-menu-status{min-height:18px}.zl-hide-grid #game{filter:none}.zl-reduced-motion *{scroll-behavior:auto!important;animation-duration:.001ms!important;transition-duration:.001ms!important}
-#zl-user-btn{position:fixed;left:14px;top:112px;z-index:9000;background:#142137;color:#fff;border:1px solid #2b4863;border-radius:11px;padding:9px 13px;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.25)}
-@media(max-width:900px){.zl-function-grid{grid-template-columns:repeat(2,1fr)}.zl-shop-grid{grid-template-columns:repeat(2,1fr)}.zl-coin-packages{grid-template-columns:repeat(2,1fr)}.zl-account-strip{grid-template-columns:1fr 1fr}.zl-account-xp{grid-column:1/-1}.zl-overview-grid,.zl-stat-cards,.zl-detail-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.zl-user-modal{padding:12px}.zl-function-grid,.zl-shop-grid{grid-template-columns:1fr}.zl-upload-row{grid-template-columns:1fr}.zl-modes{grid-template-columns:1fr}.zl-account-strip{grid-template-columns:1fr 1fr}}
-</style>
-
 </head>
 <body>
-  <!-- PORTALE AUTH UNIFICATO -->
-  <div id="portalOverlay">
-    <div class="portal-box">
-      <h2>🌐 ZeroLegend Portal</h2>
-      <div class="portal-tabs">
-        <button type="button" class="portal-tab active" data-portal-tab="login">Accedi</button>
-        <button type="button" class="portal-tab" data-portal-tab="register">Registrati</button>
-      </div>
+<div class="grid"></div><div class="bg-orb orb-a"></div><div class="bg-orb orb-b"></div>
 
-      <form id="loginForm" novalidate>
-        <div class="form-group">
-          <label for="loginEmail">Email</label>
-          <input type="email" id="loginEmail" autocomplete="email" placeholder="nome@email.it" required>
-        </div>
-        <div class="form-group">
-          <label for="loginPass">Password</label>
-          <input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••" required>
-        </div>
-        <button class="portal-btn" type="submit">Entra nel Portale</button>
-        <div id="loginError" class="error-msg" role="alert"></div>
-      </form>
+<header class="topbar">
+  <a class="brand" href="/">⚡ ZeroLegend</a>
+  <nav>
+    <a href="/games/">🎮 Giochi</a><a href="/profile.html">👤 Profilo</a><a href="/shop.html">🛒 Shop</a><a href="/leaderboard.html">🏆 Classifica</a>
+    <button id="logoutBtn" class="ghost-btn" type="button">Esci</button>
+  </nav>
+</header>
 
-      <form id="registerForm" style="display:none" novalidate>
-        <div class="form-group">
-          <label for="regEmail">Email</label>
-          <input type="email" id="regEmail" autocomplete="email" placeholder="nome@email.it" required>
-        </div>
-        <div class="form-group">
-          <label for="regName">Nome</label>
-          <input type="text" id="regName" autocomplete="name" maxlength="40" placeholder="Il tuo nome" required>
-        </div>
-        <div class="form-group">
-          <label for="regPass">Scegli Password</label>
-          <input type="password" id="regPass" autocomplete="new-password" minlength="8" placeholder="Minimo 8 caratteri" required>
-        </div>
-        <button class="portal-btn" type="submit">Crea Account</button>
-        <div id="regError" class="error-msg" role="alert"></div>
-        <div id="regSuccess" class="success-msg" role="status"></div>
-      </form>
-      <div id="authStatus" style="margin-top:10px;color:#9aa8b8;font-size:12px"></div>
-    </div>
+<main>
+<section class="hero glass">
+  <div><div class="eyebrow">MULTIPLAYER GAMING PORTAL</div><h1>Benvenuto in <span>ZeroLegend</span></h1><p>Un portale unico per account, ZeroCoins, statistiche, classifiche e tutti i giochi ZeroLegend.</p>
+    <div class="hero-actions"><a class="primary-btn" href="/games/">🎮 Apri Giochi</a><a class="secondary-btn" href="/shop.html">🛒 ZeroShop</a></div></div>
+  <div class="hero-stats"><div><strong id="heroLevel">—</strong><span>Livello</span></div><div><strong id="heroCoins">—</strong><span>ZeroCoins</span></div><div><strong id="heroGames">—</strong><span>Partite</span></div></div>
+</section>
+
+<div class="dashboard">
+<section class="section"><div class="section-head"><div><div class="eyebrow">IL TUO ACCOUNT</div><h2>Profilo</h2></div><a class="secondary-btn" href="/profile.html">Apri profilo</a></div>
+<div class="profile-grid"><div class="profile-main glass"><div id="avatar" class="avatar">Z</div><div><h3 id="profileName">Giocatore</h3><div id="profileEmail" class="muted">—</div><div class="xp-line"><span id="levelText">Lv. 1</span><span id="xpText">0 XP</span></div><div class="xpbar"><i id="xpBar"></i></div></div></div><div class="stat-card glass"><b id="statCoins">0</b><span>Coins</span></div><div class="stat-card glass"><b id="statGames">0</b><span>Partite</span></div><div class="stat-card glass"><b id="statKills">0</b><span>Kill</span></div><div class="stat-card glass"><b id="statBestMass">0</b><span>Best Mass</span></div><div class="stat-card glass"><b id="statElo">0</b><span>ELO</span></div></div></section>
+
+<section class="section"><div class="section-head"><div><div class="eyebrow">PLAY</div><h2>Tutti i giochi</h2></div></div><div class="game-grid"><a class="game-card featured" href="/games/zerolegend/"><div class="game-icon">🟣</div><div><div class="tag">LIVE · MULTIPLAYER</div><h3>ZeroLegend Arena</h3><p>Arena .io con PvP, bot, split, feed, virus e abilità.</p></div><span class="play">▶</span></a></div></section>
+
+<section class="section"><div class="section-head"><div><div class="eyebrow">COMMUNITY</div><h2>Classifica</h2></div><a class="secondary-btn" href="/leaderboard.html">Vedi tutto</a></div><div id="leaderboard" class="leader glass"><div class="muted">Caricamento…</div></div></section>
+</div>
+</main>
+<div id="toast" class="toast"></div>
+
+<!-- Auth compatibility overlay: login/register stays available on first visit. -->
+<div id="portalOverlay">
+  <div class="portal-box">
+    <div class="portal-logo">⚡ ZeroLegend</div><div class="portal-sub">Il tuo portale gaming · account unico</div>
+    <div class="portal-tabs"><button type="button" class="portal-tab active" data-portal-tab="login">Accedi</button><button type="button" class="portal-tab" data-portal-tab="register">Registrati</button></div>
+    <form id="loginForm" class="portal-form" onsubmit="return false;"><label>Email<input id="loginEmail" type="email" autocomplete="email"></label><label>Password<input id="loginPass" type="password" autocomplete="current-password"></label><button class="portal-btn" type="button" id="overlayLogin">Accedi</button><div id="loginError" class="portal-msg error"></div></form>
+    <form id="registerForm" class="portal-form" style="display:none" onsubmit="return false;"><label>Email<input id="regEmail" type="email" autocomplete="email"></label><label>Nickname<input id="regName" type="text" maxlength="40"></label><label>Password<input id="regPass" type="password" autocomplete="new-password"></label><button class="portal-btn" type="button" id="overlayRegister">Crea account</button><div id="regError" class="portal-msg error"></div><div id="regSuccess" class="portal-msg success"></div></form>
+    <div class="portal-links"><a href="/login.html">Pagina login</a><a href="/register.html">Pagina registrazione</a></div>
   </div>
+</div>
 
-  <!-- CANVAS PRINCIPALE RICHIESTO DA CLIENT.JS -->
-  <canvas id="game"></canvas>
-
-  <div id="hud"><div id="mass"></div></div>
-  <div id="killfeed"></div>
-  <div id="respawn" style="display: none;">
-    <div class="respawn-inner">
-      <div class="respawn-title">💀 Sei stato eliminato!</div>
-      <div class="respawn-count">Respawn tra <span id="respawn-count">3</span>s</div>
-    </div>
-  </div>
-
-  <div id="leaderboard">
-    <div class="lb-title">Leaderboard</div>
-    <ol id="lb-list"></ol>
-  </div>
-
-  <div id="minimap">
-    <canvas id="minimap-canvas" width="160" height="160"></canvas>
-    <div id="minimap-label">Minimappa</div>
-  </div>
-
-  <div id="controls">
-    <button id="btn-split" type="button" title="Spazio">💥 Split</button>
-    <button id="btn-feed" type="button" title="W">🥏 Feed</button>
-    <button id="btn-virus" type="button" title="Q">🦠 Virus</button><button id="btn-godmode" type="button" title="G">🛡 GOD 10s</button>
-  </div>
-
-  <button id="btn-features" type="button" title="90 nuove funzioni">⚡ 90 Funzioni</button>
-  <div id="feature-panel">
-    <div class="feature-title">⚡ 90 FUNZIONI</div>
-    <div class="feature-section"><b>30 PvP</b><div class="feature-grid">
-      <button data-pvp-action="mark">🎯 Mark</button><button data-pvp-action="hunter">🏹 Hunter</button><button data-pvp-action="parry">🛡 Parry</button>
-      <button data-pvp-action="stun">💫 Stun</button><button data-pvp-action="slow">🐌 Slow</button><button data-pvp-action="knockback">💥 Knockback</button>
-      <button data-pvp-action="trap">🪤 Trappola</button><button data-pvp-action="mine">💣 Mina</button><button data-pvp-action="lifesteal">🩸 Lifesteal</button>
-      <button data-pvp-action="execute">☠ Esecuzione</button><button data-pvp-action="shieldbreak">💥 Rompi Scudo</button><button data-pvp-action="duel">⚔️ Sfida</button>
-      <button data-pvp-action="duelCancel">🚫 Annulla Duello</button><button data-pvp-action="arenaIn">🏟 Arena ON</button><button data-pvp-action="arenaOut">🚪 Arena OFF</button>
-      <button data-pvp-action="spectate">👁 Spettatore</button>
-      <button onclick="alert('Le altre funzioni PvP sono automatiche: combo, assist, bounty, streak, ELO, danno, eventi, anti-camp, ecc.')">ℹ️ 30/30</button>
-    </div></div>
-    <div class="feature-section"><b>30 Shop / Coins</b><div class="feature-grid">
-      <button data-shop-action="wallet">💰 Wallet</button><button data-shop-action="catalog">🛒 Catalogo</button><button data-shop-action="inventory">🎒 Inventario</button>
-      <button data-shop-action="history">📜 Storico</button><button data-shop-action="quests">🎯 Quest</button><button data-shop-action="daily">🎁 Daily</button>
-      <button data-shop-action="starter">🧰 Starter Gift</button><button data-shop-action="boost">✨ x2 Coins</button><button data-shop-action="stats">📊 Shop Stats</button>
-      <button data-shop-action="buy" data-item-id="skin_galaxy">🌌 Compra Galaxy</button><button data-shop-action="buy" data-item-id="skin_cyber">⚡ Compra Cyber</button>
-      <button data-shop-action="buy" data-item-id="boost_speed_60">🚀 Speed Boost</button><button data-shop-action="buy" data-item-id="boost_mass_60">🥩 Mass Boost</button>
-      <button data-shop-action="buy" data-item-id="shield_pack">🛡 Shield Pack</button><button data-shop-action="buy" data-item-id="bounty_badge">🏹 Badge</button>
-      <button data-shop-action="use" data-item-id="boost_speed_60">Usa Speed</button><button data-shop-action="use" data-item-id="boost_mass_60">Usa Mass</button>
-      <button data-shop-action="use" data-item-id="shield_pack">Usa Shield</button><button data-shop-action="equip" data-item-id="skin_galaxy">Equip Galaxy</button>
-      <button data-shop-action="equip" data-item-id="skin_cyber">Equip Cyber</button><button data-shop-action="unequip">↩ Default</button>
-      <button data-shop-action="claimQuest" data-quest-id="kills3">Claim 3 Kill</button><button data-shop-action="claimQuest" data-quest-id="kills10">Claim 10 Kill</button>
-      <button data-shop-action="claimQuest" data-quest-id="coins1000">Claim Coins</button><button data-shop-action="claimQuest" data-quest-id="play5">Claim Play</button>
-      <button data-shop-action="refund">↩ Refund</button><button onclick="alert('Earn/Spend, multiplier, reward kill/streak/team e altre API shop sono attive lato server.')">ℹ️ 30/30</button>
-    </div></div>
-    <div class="feature-section"><b>30 Admin / Bot</b>
-      <input id="admin-token" type="password" placeholder="ADMIN_TOKEN" autocomplete="off" style="width:100%;box-sizing:border-box;margin:4px 0">
-      <input id="admin-target" type="text" placeholder="Player ID / nome" style="width:100%;box-sizing:border-box;margin:4px 0">
-      <div class="feature-grid">
-        <button data-admin-action="list">📋 Lista</button><button data-admin-action="get">🔎 Get Player</button><button data-admin-action="kick">👢 Kick</button>
-        <button data-admin-action="ban">⛔ Ban</button><button data-admin-action="unban">✅ Unban</button><button data-admin-action="mute">🔇 Mute</button>
-        <button data-admin-action="unmute">🔊 Unmute</button><button data-admin-action="freeze">❄ Freeze</button><button data-admin-action="unfreeze">🔥 Unfreeze</button>
-        <button data-admin-action="setMass">⚖ Massa</button><button data-admin-action="setCoins">💰 Coins</button><button data-admin-action="teleport">📍 Teleport</button>
-        <button data-admin-action="heal">❤️ Heal</button><button data-admin-action="kill">💀 Kill</button><button data-admin-action="respawn">♻ Respawn</button>
-        <button data-admin-action="setTeam">🏳 Team</button><button data-admin-action="setColor">🎨 Color</button><button data-admin-action="broadcast">📢 Broadcast</button>
-        <button data-admin-action="clearEvents">🧹 Clear Events</button><button data-admin-action="spawnBots">🤖 Spawn Bot</button><button data-admin-action="removeBots">🗑 Remove Bot</button>
-        <button data-admin-action="botMode" data-value="aggressive">🔥 Bot Aggro</button><button data-admin-action="botTarget">🎯 Bot Target</button><button data-admin-action="botDifficulty">🧠 Bot Diff</button>
-        <button data-admin-action="botTeam">🏳 Bot Team</button><button data-admin-action="botName">✏ Bot Name</button><button data-admin-action="toggleBots" data-value="true">▶ Bots ON</button>
-        <button data-admin-action="pause">⏸ Pause</button><button data-admin-action="resume">▶ Resume</button><button data-admin-action="resetMatch">🔄 Reset Match</button>
-      </div>
-    </div>
-    <div id="feature-status">Pronto</div>
-  </div>
-
-  <button id="btn-season" type="button" title="Classifica stagionale">🏆 Stagione</button>
-  <div id="season-panel">
-    <div class="skin-title">🏆 Classifica stagionale</div>
-    <ol id="season-list"></ol>
-    <button id="season-close" type="button">Chiudi</button>
-  </div>
-
-  <div id="stats"></div>
-  <div id="chat">
-    <div id="chat-box"></div>
-    <input id="chat-input" type="text" placeholder="Scrivi in chat... (Invio per inviare)" maxlength="120" />
-  </div>
-
-  <button id="skin-btn" type="button" title="Personalizza">🎨 Skin</button>
-  <div id="skin-panel">
-    <div class="skin-title">Personalizza il tuo nick</div>
-    <div class="skin-colors" id="skin-colors"></div>
-    <div class="skin-title">Template nome</div>
-    <div class="skin-presets" id="skin-presets"></div>
-    <button id="skin-close" type="button">Chiudi</button>
-  </div>
-
-  <div id="bot-panel">
-    <details open>
-      <summary>🧪 Spawn Bot (allenamento)</summary>
-      <form id="bot-form">
-        <label>Numero <input id="bot-count" type="number" value="10" min="1" max="200" /></label>
-        <label>Massa <input id="bot-mass" type="number" value="30" min="1" max="10000" /></label>
-        <label>Nome <input id="bot-name" type="text" value="Bot" /></label>
-        <button type="submit">Spawna</button>
-      </form>
-      <div id="bot-status"></div>
-    </details>
-  </div>
-
-  <!-- SCHERMATA DI INGRESSO GIOCO -->
-  <div id="menu">
-    <h1>agar-server v2</h1>
-    <p>ZeroCoins: <span id="userCoins" style="color: #f1c40f; font-weight: bold;">1000</span> ZC | Utente: <span id="welcomeUser" style="color:#1abc9c; font-weight:bold;">Ospite</span> | <a href="#" onclick="effettuaLogout()" style="color:#e74c3c; font-size:12px;">Esci</a></p>
-    <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center">
-      <input id="game-server-url" type="url" placeholder="URL backend multiplayer (es. https://game.miodominio.it)" style="min-width:290px;max-width:420px">
-      <button id="save-server-url" type="button" class="btn-action">Salva server</button>
-    </div>
-    <div id="game-server-status" style="font-size:12px;color:#9aa8b8;min-height:18px"></div>
-    <input id="name" type="text" placeholder="Il tuo nickname" maxlength="16" />
-    <select id="team-select">
-      <option value="">— Nessuna squadra —</option>
-      <option value="0">🔴 ROSSI</option>
-      <option value="1">🔵 BLU</option>
-      <option value="2">🟢 VERDI</option>
-      <option value="3">🟡 GIALLI</option>
-      <option value="4">🟣 VIOLA</option>
-    </select>
-    <button id="play">Gioca</button>
-    <div class="hint">
-      <span>🖱️ Mouse = muoviti</span>
-      <span>⌨️ Spazio = split</span>
-      <span>⌨️ W = feed</span>
-      <span>⌨️ Q = virus</span><span>⌨️ G = GOD 10s</span>
-      <span>⌨️ ESC = Menu Utente</span>
-    </div>
-  </div>
-
-  <!-- OVERLAY MENU AVANZATO, ZERO SHOP E BOT (PREMENDO ESC) -->
-  <div id="gameMenuOverlay" style="display: none;">
-      <div class="menu-container">
-          <h2>🛒 ZeroShop & Pannello di Controllo</h2>
-          <p>I tuoi ZeroCoins: <span id="menuCoins" style="color:#f1c40f; font-weight:bold;">1000</span> ZC</p>
-          
-          <div class="menu-tabs">
-              <button onclick="cambiaScheda('schedaShop')" class="tab-btn">ZeroShop</button>
-              <button onclick="cambiaScheda('schedaBot')" class="tab-btn">Gestione Bot (4)</button>
-              <button onclick="cambiaScheda('schedaTasti')" class="tab-btn">Keybinds</button>
-              <button onclick="cambiaScheda('schedaImpostazioni')" class="tab-btn">Impostazioni</button>
-          </div>
-
-          <!-- SCHEDA ZERO SHOP -->
-          <div id="schedaShop" class="tab-content active">
-              <h3>Negozio Skin & Potenziamenti</h3>
-              <div class="shop-grid">
-                  <div class="shop-item">
-                      <h4>Skin Galattica 🌌</h4>
-                      <p>Prezzo: 300 ZC</p>
-                      <button onclick="acquistaOggetto('skin_galassia', 300)">Acquista</button>
-                  </div>
-                  <div class="shop-item">
-                      <h4>Skin Cyberpunk ⚡</h4>
-                      <p>Prezzo: 500 ZC</p>
-                      <button onclick="acquistaOggetto('skin_cyber', 500)">Acquista</button>
-                  </div>
-                  <div class="shop-item">
-                      <h4>Boost Velocità (+20%) 🚀</h4>
-                      <p>Prezzo: 200 ZC</p>
-                      <button onclick="acquistaOggetto('boost_speed', 200)">Acquista</button>
-                  </div>
-                  <div class="shop-item">
-                      <h4>Doppia Massa Iniziale 🥩</h4>
-                      <p>Prezzo: 400 ZC</p>
-                      <button onclick="acquistaOggetto('boost_mass', 400)">Acquista</button>
-                  </div>
-              </div>
-          </div>
-
-          <!-- SCHEDA GESTIONE BOT -->
-          <div id="schedaBot" class="tab-content">
-              <h3>Configurazione 4 Bot & Automazione</h3>
-              <div class="bots-grid">
-                  <label>Bot 1 Nome: <input type="text" id="botName1" value="Bot Alpha" oninput="salvaImpostazioni()"></label>
-                  <label>Bot 1 Colore: <input type="color" id="botColor1" value="#ff4757" onchange="salvaImpostazioni()"></label>
-                  <label>Bot 2 Nome: <input type="text" id="botName2" value="Bot Beta" oninput="salvaImpostazioni()"></label>
-                  <label>Bot 2 Colore: <input type="color" id="botColor2" value="#2ed573" onchange="salvaImpostazioni()"></label>
-                  <label>Bot 3 Nome: <input type="text" id="botName3" value="Bot Gamma" oninput="salvaImpostazioni()"></label>
-                  <label>Bot 3 Colore: <input type="color" id="botColor3" value="#1e90ff" onchange="salvaImpostazioni()"></label>
-                  <label>Bot 4 Nome: <input type="text" id="botName4" value="Bot Delta" oninput="salvaImpostazioni()"></label>
-                  <label>Bot 4 Colore: <input type="color" id="botColor4" value="#ffa502" onchange="salvaImpostazioni()"></label>
-              </div>
-              <div>
-                  <button id="btnFollow" class="btn-action" onclick="toggleBotAction('follow')">Seguimi (Follow): OFF</button>
-                  <button id="btnFarm" class="btn-action" onclick="toggleBotAction('farm')">Farming Cibo: OFF</button>
-              </div>
-          </div>
-
-          <!-- SCHEDA KEYBINDS -->
-          <div id="schedaTasti" class="tab-content">
-              <h3>Tasti Personalizzati</h3>
-              <p style="font-size:12px; color:#ccc;">Clicca sulla casella e premi un tasto per cambiarlo:</p>
-              <div class="settings-grid">
-                  <label>Tasto Split: <input type="text" id="keySplit" value="Space" readonly onclick="assegnaTasto('keySplit')"></label>
-                  <label>Tasto Feed: <input type="text" id="keyFeed" value="w" readonly onclick="assegnaTasto('keyFeed')"></label>
-                  <label>Tasto Virus: <input type="text" id="keyVirus" value="q" readonly onclick="assegnaTasto('keyVirus')"></label>
-                  <label>Tasto God Mode: <input type="text" id="keyGodmode" value="g" readonly onclick="assegnaTasto('keyGodmode')"></label>
-              </div>
-          </div>
-
-          <!-- SCHEDA IMPOSTAZIONI -->
-          <div id="schedaImpostazioni" class="tab-content">
-              <h3>Impostazioni di Gioco</h3>
-              <div class="settings-grid">
-                  <label><input type="checkbox" id="optMassa" onchange="salvaImpostazioni()"> Mostra Massa</label>
-                  <label><input type="checkbox" id="optNomi" onchange="salvaImpostazioni()" checked> Mostra Nomi</label>
-              </div>
-          </div>
-          
-          <p style="font-size: 12px; color: #aaa; margin-top: 20px; text-align:center;">Premi ESC per chiudere il menu</p>
-      </div>
-  </div>
-
-  <script src="game-config.js"></script>
-  <script src="auth.js?v=20260904-shopfix3"></script>
-  <script src="client.js?v=20260904-ejectfix1"></script>
-  <script src="compat.js"></script>
-  <script src="i18n.js?v=20260904-shopfix3"></script>
-  <script src="user-menu.js?v=20260904-shopfix3"></script>
-  <script src="menu-v2.js?v=20260904-v2"></script>
-</body>
-</html>
+<script src="/game-config.js"></script><script src="/auth.js"></script><script src="/portal.js"></script>
+<script>
+(function(){
+  const overlay=document.getElementById('portalOverlay');
+  function tab(t){const login=t==='login';document.getElementById('loginFormOverlay').style.display=login?'grid':'none';document.getElementById('registerFormOverlay').style.display=login?'none':'grid';document.querySelectorAll('[data-portal-tab]').forEach(x=>x.classList.toggle('active',x.dataset.portalTab===t));}
+  document.querySelectorAll('[data-portal-tab]').forEach(x=>x.onclick=()=>tab(x.dataset.portalTab));
+  async function doLogin(){document.getElementById('loginEmail').value=document.getElementById('loginEmailOverlay').value;document.getElementById('loginPass').value=document.getElementById('loginPassOverlay').value;document.getElementById('loginForm').requestSubmit();}
+  async function doReg(){document.getElementById('regEmail').value=document.getElementById('regEmailOverlay').value;document.getElementById('regName').value=document.getElementById('regNameOverlay').value;document.getElementById('regPass').value=document.getElementById('regPassOverlay').value;document.getElementById('registerForm').requestSubmit();}
+  document.getElementById('overlayLogin').onclick=doLogin;document.getElementById('overlayRegister').onclick=doReg;
+  window.addEventListener('auth-changed',()=>{const ok=!!window.ZLAuth?.getToken?.(); if(ok){overlay.style.display='none';document.body.classList.add('authenticated')}else{overlay.style.display='flex';document.body.classList.remove('authenticated')}});
+  document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{if(window.ZLAuth?.getToken?.()){overlay.style.display='none';document.body.classList.add('authenticated')}},250)});
+})();
+</script>
+</body></html>

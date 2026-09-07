@@ -72,7 +72,8 @@
     const token=window.ZLAuth?.getToken?.(); if(!token) throw new Error('Effettua il login.');
     const r=await fetch('/auth/auth.php',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({action,token,...extra}),cache:'no-store'});
     const raw=await r.text(); let d={}; try{d=JSON.parse(raw)}catch(_){throw new Error(`Auth non JSON (HTTP ${r.status})`)}
-    if(!r.ok||!d.ok) throw new Error(d.error||`Auth HTTP ${r.status}`);
+    if(!r.ok) throw new Error(d.error||`Auth HTTP ${r.status}`);
+    if(d.ok!==true) throw new Error(d.error||`Auth rifiutata (HTTP ${r.status})`);
     return d;
   }
   async function economyApi(action, extra = {}) {
@@ -158,7 +159,7 @@
     if(id.startsWith('admin')) return adminAction(id);
   }
   function toast(text){const s=$('zl-menu-status');if(s){s.textContent=text;clearTimeout(toast.t);toast.t=setTimeout(()=>s.textContent='',2200);}}
-  async function checkHealth(){const s=$('zl-menu-health');const base=window.GAME_CONFIG?.GAME_SERVER_URL||get('gameServerUrl','');if(!base){if(s)s.textContent='⚪ Server non configurato';return;}const url=String(base).replace(/^ws/i,'http').replace(/\/$/,'')+'/healthz';if(s)s.textContent='⏳ controllo…';try{const t=performance.now();const r=await fetch(url,{cache:'no-store'});const ms=Math.round(performance.now()-t);const d=await r.json().catch(()=>({}));if(s)s.textContent=r.ok?`🟢 Online · ${ms} ms`:`🔴 HTTP ${r.status}`;}catch(_){if(s)s.textContent='🔴 Non raggiungibile';}}
+  async function checkHealth(){const s=$('zl-menu-health');const base=window.GAME_CONFIG?.GAME_SERVER_URL||get('gameServerUrl','')||location.origin;if(!base){if(s)s.textContent='⚪ Server non configurato';return;}const url=String(base).replace(/^ws/i,'http').replace(/\/$/,'')+'/healthz';if(s)s.textContent='⏳ controllo…';try{const t=performance.now();const r=await fetch(url,{cache:'no-store'});const ms=Math.round(performance.now()-t);const d=await r.json().catch(()=>({}));if(s)s.textContent=r.ok?`🟢 Online · ${ms} ms`:`🔴 HTTP ${r.status}`;}catch(_){if(s)s.textContent='🔴 Non raggiungibile';}}
   function adminPayload(id){const target=$('zl-admin-target')?.value?.trim()||'';const token=$('zl-admin-token')?.value||'';const value=$('zl-admin-value')?.value||'';const actionMap={adminList:'list',adminGet:'get',adminKick:'kick',adminBan:'ban',adminUnban:'unban',adminMute:'mute',adminUnmute:'unmute',adminFreeze:'freeze',adminUnfreeze:'unfreeze',adminMass:'setMass',adminCoins:'setCoins',adminTeleport:'teleport',adminHeal:'heal',adminKill:'kill',adminRespawn:'respawn',adminTeam:'setTeam',adminColor:'setColor',adminBroadcast:'broadcast',adminClear:'clearEvents',adminSpawnBots:'spawnBots',adminRemoveBots:'removeBots',adminPause:'pause',adminResume:'resume',adminReset:'resetMatch'};return {action:actionMap[id],token,target,value};}
   async function adminAction(id){
     const p=adminPayload(id); const token=window.ZLAuth?.getToken?.(); if(!token){toast('❌ Effettua il login come admin.');return;}

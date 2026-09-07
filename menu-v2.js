@@ -62,6 +62,12 @@
 
   async function run(id) {
     const status = $('zl-v2-status');
+    if (!window.ZLGame?.connected?.()) {
+      updateConnBanner();
+      showToastV2('🔴 Non connesso alla partita — premi "▶ Gioca" e riprova');
+      if (status) status.textContent = '🔴 Non connesso alla partita. Vai su "Gioca" → ▶ Gioca, poi torna qui.';
+      return;
+    }
     let payload = {};
     if (needsPayload(id)) {
       const target = $('zl-v2-target')?.value?.trim();
@@ -73,18 +79,24 @@
       }
     }
     if (status) status.textContent = '⏳ ' + id + '…';
+    showToastV2('⏳ ' + id + '…');
     try {
       const res = await window.ZLGame?.f2?.(id, payload);
       if (!res) throw new Error('Connessione al server non attiva.');
       if (!res.ok) throw new Error(res.error || 'Azione rifiutata');
-      if (status) status.textContent = '✅ ' + id + ' → ' + (typeof res.data === 'object' ? JSON.stringify(res.data).slice(0, 140) : String(res.data));
+      const summary = typeof res.data === 'object' ? JSON.stringify(res.data).slice(0, 140) : String(res.data);
+      if (status) status.textContent = '✅ ' + id + ' → ' + summary;
+      showToastV2('✅ ' + id + ' completata');
     } catch (e) {
-      if (status) status.textContent = '❌ ' + (e?.message || 'Errore');
+      const msg = e?.message || 'Errore';
+      if (status) status.textContent = '❌ ' + msg;
+      showToastV2('❌ ' + id + ': ' + msg);
     }
   }
 
   function panelHtml() {
-    return `<p class="zl-note">Nuovo blocco di 100 funzionalità (Gameplay, PvP, Shop, Social, Admin). Alcune azioni richiedono un ID giocatore o un valore nei campi qui sotto.</p>
+    return `<div id="zl-v2-conn" class="zl-v2-banner">🔴 Verifico connessione…</div>
+      <p class="zl-note">Nuovo blocco di 100 funzionalità (Gameplay, PvP, Shop, Social, Admin). <strong>Richiedono una partita attiva</strong>: premi "▶ Gioca" nella scheda Gioca, poi riapri questo menu con ESC. Alcune azioni richiedono un ID giocatore o un valore nei campi qui sotto.</p>
       <div class="zl-upload-row">
         <input id="zl-v2-target" type="text" placeholder="ID giocatore / clan / torneo (se richiesto)">
         <input id="zl-v2-value" type="text" placeholder="Valore / importo / testo (se richiesto)">
@@ -92,6 +104,27 @@
       <div class="zl-tabs" id="zl-v2-subtabs">${CATS.map((c, i) => `<button type="button" class="zl-tab-btn${i === 0 ? ' active' : ''}" data-v2-cat="${c.id}">${c.label}</button>`).join('')}</div>
       ${CATS.map((c, i) => `<div class="zl-function-grid zl-v2-pane" data-v2-pane="${c.id}" style="${i === 0 ? '' : 'display:none'}">${c.items.map(([id, label]) => `<button type="button" class="zl-feature-card" data-v2-action="${id}"><span>›</span><b>${esc(label)}</b><em>${esc(id)}</em></button>`).join('')}</div>`).join('')}
       <div id="zl-v2-status" class="zl-menu-status"></div>`;
+  }
+
+  function updateConnBanner() {
+    const el = $('zl-v2-conn');
+    if (!el) return;
+    const connected = !!window.ZLGame?.connected?.();
+    el.textContent = connected ? '🟢 Connesso alla partita — le funzioni sono attive' : '🔴 Non connesso — premi "▶ Gioca" nella scheda Gioca, poi riapri questo menu (ESC) e riprova';
+    el.classList.toggle('ok', connected);
+  }
+
+  function showToastV2(text) {
+    let t = document.getElementById('zl-v2-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'zl-v2-toast';
+      document.body.appendChild(t);
+    }
+    t.textContent = text;
+    t.classList.add('show');
+    clearTimeout(showToastV2.timer);
+    showToastV2.timer = setTimeout(() => t.classList.remove('show'), 3200);
   }
 
   function injectTab() {
@@ -109,13 +142,30 @@
     btn.addEventListener('click', () => {
       document.querySelectorAll('.zl-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
       document.querySelectorAll('.zl-tab-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === 'v2'));
+      updateConnBanner();
     });
     pane.querySelectorAll('[data-v2-cat]').forEach(sb => sb.addEventListener('click', () => {
       pane.querySelectorAll('[data-v2-cat]').forEach(x => x.classList.toggle('active', x === sb));
       pane.querySelectorAll('[data-v2-pane]').forEach(p => { p.style.display = p.dataset.v2Pane === sb.dataset.v2Cat ? '' : 'none'; });
     }));
     pane.querySelectorAll('[data-v2-action]').forEach(b => b.addEventListener('click', () => run(b.dataset.v2Action)));
+    updateConnBanner();
+    setInterval(updateConnBanner, 4000);
+    injectStyles();
     return true;
+  }
+
+  function injectStyles() {
+    if (document.getElementById('zl-v2-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'zl-v2-styles';
+    style.textContent = `
+      .zl-v2-banner{margin-bottom:10px;padding:9px 12px;border-radius:9px;background:#3a1f1f;color:#ffb4b4;font-weight:700;font-size:13px}
+      .zl-v2-banner.ok{background:#123a2c;color:#7ef2c4}
+      #zl-v2-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:#141f2d;color:#eef6ff;border:1px solid #2a415b;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13px;z-index:99999;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:90vw;text-align:center}
+      #zl-v2-toast.show{opacity:1;transform:translate(-50%,0)}
+    `;
+    document.head.appendChild(style);
   }
 
   document.addEventListener('DOMContentLoaded', () => {

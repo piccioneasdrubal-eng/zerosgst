@@ -8,8 +8,20 @@
   function boot() {
     const qs = new URLSearchParams(location.search);
     const config = window.GAME_CONFIG || {};
-    const rawServer = qs.get('server') || localStorage.getItem('gameServerUrl') || String(config.GAME_SERVER_URL || '').trim();
+    // Il backend realtime Java viene scoperto automaticamente dal sito.
+    // Non usare localhost/127.0.0.1 dal sito online: indicano il PC del giocatore.
+    const isLocalServer = (value) => /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(String(value || '').trim());
+    const queryServer = qs.get('server') || '';
+    const storedServer = localStorage.getItem('gameServerUrl') || '';
+    if (isLocalServer(queryServer) || isLocalServer(storedServer)) {
+      try { localStorage.removeItem('gameServerUrl'); } catch (_) {}
+    }
+    const rawServer = (!isLocalServer(queryServer) ? queryServer : '') ||
+      (!isLocalServer(storedServer) ? storedServer : '') ||
+      String(config.GAME_SERVER_URL || '').trim();
+    // InfinityFree serve sito/PHP; il sottodominio ws.zerothelegend.gamer.gd serve Java/WebSocket.
     const serverUrl = rawServer.replace(/\/$/, '');
+    const sameOriginWsAllowed = false; // InfinityFree ospita PHP; il realtime usa il sottodominio WS
 
     function wsUrl(value) {
       if (/^wss?:\/\//i.test(value)) return value;
@@ -23,8 +35,22 @@
       return 'https://' + value;
     }
 
+    let autoWsUrl = '';
+    async function discoverWsServer() {
+      if (!config.AUTO_DISCOVER_WS) return;
+      try {
+        const endpoint = String(config.WS_CONFIG_URL || '/auth/ws-config.php');
+        const r = await fetch(endpoint, { cache: 'no-store', credentials: 'same-origin' });
+        const d = await r.json();
+        if (d && d.ok && d.wsUrl && !isLocalServer(d.wsUrl)) autoWsUrl = String(d.wsUrl).replace(/\/$/, '');
+      } catch (_) {}
+    }
+    const autoWsReady = discoverWsServer();
+
     const WS_ROOT = serverUrl ? wsUrl(serverUrl) : '';
-    const API_ROOT = serverUrl ? httpUrl(serverUrl) : '';
+    // Le API HTTP del sito restano disponibili sull'origine della pagina anche quando
+    // il backend realtime e' ospitato altrove.
+    const API_ROOT = location.origin;
 
     const canvas = document.getElementById('game');
     const mmCanvas = document.getElementById('minimap-canvas');
@@ -134,9 +160,23 @@
       try { return window.ZLAuth && typeof window.ZLAuth.getToken === 'function' ? window.ZLAuth.getToken() : localStorage.getItem('zl_auth_token') || ''; }
       catch (_) { return ''; }
     }
+    function isLegacyRender(value) { return /onrender\.com/i.test(String(value || '')); }
     function resolveServerUrl() {
       const configured = ui.gameServerUrl && ui.gameServerUrl.value ? ui.gameServerUrl.value.trim() : '';
-      return (configured || qs.get('server') || localStorage.getItem('gameServerUrl') || String(config.GAME_SERVER_URL || '').trim()).replace(/\/$/, '');
+      // Il backend realtime ufficiale viene sempre prima. I vecchi URL Render/localhost
+      // non devono poter tornare dal localStorage o da vecchi link salvati.
+      const candidates = [autoWsUrl, String(config.GAME_SERVER_URL || '').trim(), configured, qs.get('server') || '', localStorage.getItem('gameServerUrl') || ''];
+      const selected = candidates.find((value) => value && !isLocalServer(value) && !isLegacyRender(value));
+      try { if (isLegacyRender(localStorage.getItem('gameServerUrl') || '')) localStorage.removeItem('gameServerUrl'); } catch (_) {}
+      const normalized = String(selected || '').replace(/\/$/, '');
+      // Se il valore salvato/configurato coincide con il sito, cancellalo: non e' un WS server.
+      try {
+        if (normalized && new URL(normalized, location.origin).origin === location.origin && !/^wss?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(normalized)) {
+          localStorage.removeItem('gameServerUrl');
+          return '';
+        }
+      } catch (_) {}
+      return normalized;
     }
     function currentApiRoot() {
       const value = resolveServerUrl();
@@ -147,13 +187,39 @@
       ui.gameServerStatus.textContent = text || '';
       ui.gameServerStatus.style.color = ok ? '#6ee7ff' : '#9aa8b8';
     }
-    if (ui.gameServerUrl) ui.gameServerUrl.value = localStorage.getItem('gameServerUrl') || String(config.GAME_SERVER_URL || '');
+    if (ui.gameServerUrl) {
+      const saved = String(config.GAME_SERVER_URL || '');
+      ui.gameServerUrl.value = saved;
+      ui.gameServerUrl.readOnly = true;
+      ui.gameServerUrl.setAttribute('aria-readonly','true');
+      if (localStorage.getItem('gameServerUrl') && isLegacyRender(localStorage.getItem('gameServerUrl'))) {
+        try { localStorage.removeItem('gameServerUrl'); } catch (_) {}
+      }
+      updateServerStatus('🔌 WebSocket automatico ZeroLegend', true);
+    }
     if (ui.saveServerUrl) ui.saveServerUrl.addEventListener('click', () => {
+      updateServerStatus('🔌 Il server WebSocket è configurato automaticamente.', true);
+    });
+    /* Legacy manual-server validation below intentionally unreachable. */
+    if (false) {
       const value = ui.gameServerUrl ? ui.gameServerUrl.value.trim().replace(/\/$/, '') : '';
-      if (!value) { localStorage.removeItem('gameServerUrl'); updateServerStatus('Inserisci l URL del backend multiplayer.'); return; }
+      try {
+        const parsed = new URL(value, location.origin);
+        if (parsed.origin === location.origin) {
+          updateServerStatus('❌ Il sito InfinityFree non è un server WebSocket. Usa il backend automatico ZeroLegend.', false);
+          return;
+        }
+      } catch (_) {
+        updateServerStatus('❌ URL server non valido.', false);
+        return;
+      }
+      if (isLocalServer(value)) {
+        updateServerStatus('❌ Non usare localhost: dal sito online indica il PC del giocatore.', false);
+        return;
+      }
       localStorage.setItem('gameServerUrl', value);
       updateServerStatus('✅ Server salvato. Premi Gioca per connetterti.', true);
-    });
+      }
 
     const DEFAULT_KEYS = { split: ' ', feed: 'w', virus: 'q', godmode: 'g' };
     let keybinds = { ...DEFAULT_KEYS };
@@ -320,7 +386,14 @@
       if (connecting || connected) return;
       const currentServerUrl = resolveServerUrl();
       if (!currentServerUrl) {
-        updateServerStatus('❌ Backend multiplayer non configurato. Inserisci l URL del server e salva.', false);
+        updateServerStatus('❌ Backend WebSocket automatico non configurato.', false);
+        if (ui.menu) ui.menu.style.display = 'flex';
+        return;
+      }
+      let parsedServer;
+      try { parsedServer = new URL(currentServerUrl, location.origin); } catch (_) { parsedServer = null; }
+      if (parsedServer && parsedServer.origin === location.origin) {
+        updateServerStatus("❌ Il realtime usa il sottodominio WebSocket automatico ZeroLegend.", false);
         return;
       }
       const authToken = getAuthToken();
@@ -362,6 +435,7 @@
         clearTimeout(connectTimeout);
         connecting = false;
         connected = true;
+        authFailed = false;
         roomFull = false;
         reconnectAttempts = 0;
         setConnectionStatus('');
@@ -417,6 +491,8 @@
         }
         if (msg.type === 'welcome') {
           myId = msg.id;
+          roomFull = false;
+          reconnectAttempts = 0;
           const authUser = msg.auth?.user || {}; localCustomSkin = { url:String(authUser.custom_skin_url || ''), mime:String(authUser.custom_skin_mime || ''), title:String(authUser.custom_skin_title || '') };
           world = msg.world || world;
           teams = msg.teams || teams;

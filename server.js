@@ -35,7 +35,7 @@ const { attachFeaturesV2 } = require('./features-v2');
 
 const game = new GameServer();
 attachFeaturesV2(game, CONFIG);
-const PUBLIC_DIR = path.join(__dirname, 'public');
+const PUBLIC_DIR = fs.existsSync(path.join(__dirname, 'public')) ? path.join(__dirname, 'public') : __dirname;
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -131,9 +131,17 @@ async function verifyAuthToken(token) {
       body: JSON.stringify({ action: 'verify', token }),
       signal: controller.signal,
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.ok || !data.user) {
-      return { ok: false, error: String(data.error || `Auth HTTP ${response.status}`) };
+    const text = await response.text();
+    let data = {};
+    try { data = JSON.parse(text || '{}'); } catch (_) {
+      data = { ok: false, error: `Risposta auth non JSON (HTTP ${response.status})` };
+    }
+    if (!response.ok) {
+      return { ok: false, error: String(data.error || `Auth HTTP ${response.status}`), httpStatus: response.status };
+    }
+    if (!data || data.ok !== true || !data.user) {
+      const reason = String(data?.error || data?.code || 'Servizio auth ha risposto senza un utente valido.');
+      return { ok: false, error: reason, httpStatus: response.status, authResponseOk: Boolean(data?.ok) };
     }
     return { ok: true, user: data.user, premium: Boolean(data.premium) };
   } catch (err) {
@@ -146,7 +154,7 @@ async function verifyAuthToken(token) {
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token, X-Api-Secret');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -161,13 +169,21 @@ const server = http.createServer((req, res) => {
     return res.end('Bad Request');
   }
 
+  if (req.method === 'GET' && url.pathname === '/health') {
+    return sendJson(res, 200, { ok: true, service: 'zerothelegend-websocket', players: game.world.players.size, maxPlayers: CONFIG.SERVER.MAX_PLAYERS, bots: activeBotCount(), uptime: Math.floor(process.uptime()) });
+  }
+  if (req.method === 'GET' && url.pathname === '/api/room') {
+    return sendJson(res, 200, { ok: true, players: game.world.players.size, maxPlayers: CONFIG.SERVER.MAX_PLAYERS, bots: activeBotCount(), capacity: Math.max(0, CONFIG.SERVER.MAX_PLAYERS - game.world.players.size) });
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/admin') {
     void (async () => {
       const body = await readRequestJson(req);
       if (!body) return sendJson(res, 400, { ok:false, error:'JSON non valido.' });
       const auth = await verifyAuthToken(String(body.token || '').trim());
       const user = auth.ok ? (auth.user || {}) : null;
-      const isAdmin = !!user && (Number(user.is_admin) === 1 || ['admin','owner'].includes(String(user.role || '').toLowerCase()));
+      const role = String(user?.role || '').toLowerCase();
+      const isAdmin = !!user && (Number(user.is_admin) === 1 || ['admin','owner'].includes(role));
       if (!auth.ok || !isAdmin) return sendJson(res, 403, { ok:false, error:'Account non autorizzato.' });
       const action = String(body.action || '');
       const target = String(body.target || '');
@@ -355,6 +371,7 @@ wss.on('connection', (ws, req) => {
   ws.lastTargetAt = 0;
   ws.lastChatAt = 0;
   ws.lastAbilityAt = 0;
+  ws.lastActionAt = 0;
   ws.on('pong', () => { ws.isAlive = true; });
 
   let player = null;
@@ -447,9 +464,30 @@ wss.on('connection', (ws, req) => {
         }
         break;
       }
-      case 'split': { const ok = game.split(player); safeSend(ws, JSON.stringify({type:'action-result',action:'split',ok:!!ok})); break; }
-      case 'eject': { const ok = game.eject(player); safeSend(ws, JSON.stringify({type:'action-result',action:'eject',ok:!!ok})); break; }
-      case 'shoot-virus': { const ok = game.shootVirus(player); safeSend(ws, JSON.stringify({type:'action-result',action:'shoot-virus',ok:!!ok})); break; }
+      case 'split': {
+        const now = Date.now();
+        if (now - ws.lastActionAt < 70) return;
+        ws.lastActionAt = now;
+        const ok = game.split(player);
+        safeSend(ws, JSON.stringify({type:'action-result',action:'split',ok:!!ok}));
+        break;
+      }
+      case 'eject': {
+        const now = Date.now();
+        if (now - ws.lastActionAt < 80) return;
+        ws.lastActionAt = now;
+        const ok = game.eject(player);
+        safeSend(ws, JSON.stringify({type:'action-result',action:'eject',ok:!!ok}));
+        break;
+      }
+      case 'shoot-virus': {
+        const now = Date.now();
+        if (now - ws.lastActionAt < 100) return;
+        ws.lastActionAt = now;
+        const ok = game.shootVirus(player);
+        safeSend(ws, JSON.stringify({type:'action-result',action:'shoot-virus',ok:!!ok}));
+        break;
+      }
       case 'godmode': { const ok = game.godMode(player); safeSend(ws, JSON.stringify({type:'action-result',action:'godmode',ok:!!ok,durationMs:CONFIG.PHYSICS.GOD_MODE_DURATION,cooldownMs:CONFIG.PHYSICS.GOD_MODE_COOLDOWN})); break; }
       case 'sprint': player.sprinting = Boolean(msg.on); break;
       case 'dash': game.dash(player); break;

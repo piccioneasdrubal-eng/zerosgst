@@ -1,14 +1,21 @@
 services:
   - type: web
-    name: agar-server
+    name: zerothelegend-websocket
     runtime: node
     plan: free
-    buildCommand: npm ci --omit=dev
+    buildCommand: npm ci
     startCommand: npm start
-    healthCheckPath: /healthz
+    healthCheckPath: /health
     envVars:
-      - key: NODE_VERSION
-        value: "20"
-      - key: INITIAL_BOTS
-        value: "12"
-    autoDeploy: true
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_REQUIRED
+        value: "1"
+      - key: AUTH_VERIFY_URL
+        value: https://zerothelegend.gamer.gd/auth/auth.php
+      - key: ECONOMY_API_URL
+        value: https://zerothelegend.gamer.gd/auth/economy.php
+      - key: API_SECRET
+        sync: false
+      - key: ECONOMY_INTERNAL_SECRET
+        sync: false

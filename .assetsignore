@@ -1,1 +1,12 @@
+.git
 node_modules
+*.php
+*.sql
+*.md
+*.class
+*.jar
+java-backend
+backend
+auth
+payments
+uploads

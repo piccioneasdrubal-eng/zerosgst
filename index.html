@@ -55,11 +55,10 @@
 <script>
 (function(){
   const overlay=document.getElementById('portalOverlay');
-  function tab(t){const login=t==='login';document.getElementById('loginFormOverlay').style.display=login?'grid':'none';document.getElementById('registerFormOverlay').style.display=login?'none':'grid';document.querySelectorAll('[data-portal-tab]').forEach(x=>x.classList.toggle('active',x.dataset.portalTab===t));}
+  function tab(t){const login=t==='login';document.getElementById('loginForm').style.display=login?'grid':'none';document.getElementById('registerForm').style.display=login?'none':'grid';document.querySelectorAll('[data-portal-tab]').forEach(x=>x.classList.toggle('active',x.dataset.portalTab===t));}
   document.querySelectorAll('[data-portal-tab]').forEach(x=>x.onclick=()=>tab(x.dataset.portalTab));
-  async function doLogin(){document.getElementById('loginEmail').value=document.getElementById('loginEmailOverlay').value;document.getElementById('loginPass').value=document.getElementById('loginPassOverlay').value;document.getElementById('loginForm').requestSubmit();}
-  async function doReg(){document.getElementById('regEmail').value=document.getElementById('regEmailOverlay').value;document.getElementById('regName').value=document.getElementById('regNameOverlay').value;document.getElementById('regPass').value=document.getElementById('regPassOverlay').value;document.getElementById('registerForm').requestSubmit();}
-  document.getElementById('overlayLogin').onclick=doLogin;document.getElementById('overlayRegister').onclick=doReg;
+  document.getElementById('overlayLogin').onclick=()=>document.getElementById('loginForm').requestSubmit();
+  document.getElementById('overlayRegister').onclick=()=>document.getElementById('registerForm').requestSubmit();
   window.addEventListener('auth-changed',()=>{const ok=!!window.ZLAuth?.getToken?.(); if(ok){overlay.style.display='none';document.body.classList.add('authenticated')}else{overlay.style.display='flex';document.body.classList.remove('authenticated')}});
   document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{if(window.ZLAuth?.getToken?.()){overlay.style.display='none';document.body.classList.add('authenticated')}},250)});
 })();

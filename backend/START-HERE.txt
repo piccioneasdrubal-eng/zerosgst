@@ -1,0 +1,16 @@
+ZEROLEGEND WEBSOCKET BACKEND
+
+1) Install Node.js 18+.
+2) Open this folder in a terminal.
+3) Copy .env.example to .env.
+4) Set API_SECRET to the same secret used by the PHP auth API.
+5) Run: npm ci
+6) Run: npm start
+7) Check: http://127.0.0.1:3000/health
+
+For production, expose port 3000 through a Node-capable host, VPS, or Cloudflare Tunnel.
+The InfinityFree site itself cannot run this Node process.
+
+After the backend is public, put its HTTPS/WS URL in the game's "Server" field.
+Example: https://abc123.trycloudflare.com
+The browser will use wss://abc123.trycloudflare.com automatically.

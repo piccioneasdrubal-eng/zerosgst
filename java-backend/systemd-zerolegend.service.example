@@ -1,0 +1,21 @@
+[Unit]
+Description=ZeroLegend Java WebSocket Server
+After=network.target
+
+[Service]
+Type=simple
+User=zerolegend
+WorkingDirectory=/opt/zerolegend
+Environment=PORT=3000
+Environment=AUTH_REQUIRED=1
+Environment=AUTH_VERIFY_URL=https://zerothelegend.gamer.gd/auth/auth.php
+Environment=ECONOMY_API_URL=https://zerothelegend.gamer.gd/auth/economy.php
+Environment=API_SECRET=CHANGE_ME
+Environment=MAX_PLAYERS=160
+Environment=INITIAL_BOTS=8
+ExecStart=/usr/bin/java -jar /opt/zerolegend/zerolegend-java.jar
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

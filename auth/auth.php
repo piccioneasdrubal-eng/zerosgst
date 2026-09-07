@@ -442,6 +442,35 @@ try {
         respond(['ok'=>true,'user'=>$updated]);
     }
 
+    if ($action === 'admin_set_coins') {
+        $actor = token_user((string)($body['token'] ?? ''), $table);
+        if (!$actor) respond(['ok'=>false,'error'=>'Sessione non valida o scaduta.'],401);
+        $actorRole = strtolower((string)($actor['role'] ?? 'user'));
+        if (!in_array($actorRole, ['admin','owner'], true)) respond(['ok'=>false,'error'=>'Permessi admin richiesti.'],403);
+        $targetId = (int)($body['target_user_id'] ?? $body['target'] ?? 0);
+        $coins = max(0, min(2147483647, (int)($body['coins'] ?? 0)));
+        if ($targetId <= 0) respond(['ok'=>false,'error'=>'Utente target non valido.'],400);
+        $target = fetch_user_by_id($targetId, $table);
+        if (!$target) respond(['ok'=>false,'error'=>'Utente target non trovato.'],404);
+        db()->beginTransaction();
+        try {
+            $old=(int)($target['coins'] ?? 0);
+            db()->prepare("UPDATE `{$table}` SET coins=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")->execute([$coins,$targetId]);
+            if (function_exists('ensure_schema')) ensure_schema();
+            if (table_exists('zl_coin_ledger')) {
+                $delta=$coins-$old;
+                $ref='admin:'.bin2hex(random_bytes(12));
+                db()->prepare('INSERT INTO zl_coin_ledger(user_id,kind,amount,reason,ref_id) VALUES(?,?,?,?,?)')->execute([$targetId,'admin_adjust',$delta,'admin:setCoins:'.$actor['id'],$ref]);
+            }
+            db()->commit();
+        } catch (Throwable $e) {
+            if (db()->inTransaction()) db()->rollBack();
+            respond(['ok'=>false,'error'=>'Salvataggio ZeroCoins non riuscito.'],500);
+        }
+        $updated=fetch_user_by_id($targetId,$table);
+        respond(['ok'=>true,'user'=>public_user($updated),'wallet'=>['coins'=>(int)$updated['coins'],'equippedSkin'=>(string)($updated['equipped_skin'] ?? 'default')]]);
+    }
+
     if ($action === 'claim_daily') {
         $user = token_user((string)($body['token'] ?? ''),$table);
         if (!$user) respond(['ok'=>false,'error'=>'Sessione non valida o scaduta.'],401);

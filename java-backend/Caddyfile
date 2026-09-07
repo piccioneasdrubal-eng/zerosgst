@@ -1,0 +1,5 @@
+# ZeroLegend TLS reverse proxy for the Java WebSocket backend.
+# DNS: ws.zerothelegend.gamer.gd -> this server's public IP.
+ws.zerothelegend.gamer.gd {
+    reverse_proxy 127.0.0.1:3000
+}

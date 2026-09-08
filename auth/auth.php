@@ -112,15 +112,40 @@ function fetch_user_by_id(int $id, string $table): ?array {
     return $row ?: null;
 }
 
+function normalize_role(string $role): string {
+    $r = strtolower(trim($role));
+    return match ($r) {
+        'owner', 'administrator', 'administratoro', 'admin' => 'admin',
+        'moderator', 'mod', 'staff' => 'moderator',
+        'vip', 'premium' => 'vip',
+        'normal_user', 'normal-user', 'normal user', 'guest', 'member' => 'normal_user',
+        default => 'user',
+    };
+}
+
+function role_flags(string $role): array {
+    $r = normalize_role($role);
+    return [
+        'role' => $r,
+        'is_admin' => $r === 'admin' ? 1 : 0,
+        'is_moderator' => $r === 'moderator' ? 1 : 0,
+        'is_vip' => $r === 'vip' ? 1 : 0,
+        'is_staff' => in_array($r, ['admin','moderator'], true) ? 1 : 0,
+    ];
+}
+
 function public_user(array $u): array {
-    $role = (string)($u['role'] ?? 'user');
+    $flags = role_flags((string)($u['role'] ?? 'user'));
     return [
         'id' => (int)($u['id'] ?? 0),
         'username' => (string)($u['username'] ?? ''),
         'email' => (string)($u['email'] ?? ''),
         'name' => (string)($u['username'] ?? ''),
-        'role' => $role,
-        'is_admin' => in_array(strtolower($role), ['admin', 'owner'], true) ? 1 : 0,
+        'role' => $flags['role'],
+        'is_admin' => $flags['is_admin'],
+        'is_moderator' => $flags['is_moderator'],
+        'is_vip' => $flags['is_vip'],
+        'is_staff' => $flags['is_staff'],
         'level' => (int)($u['level'] ?? 1),
         'xp' => (int)($u['xp'] ?? 0),
         'coins' => (int)($u['coins'] ?? 1000),

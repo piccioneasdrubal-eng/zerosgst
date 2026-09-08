@@ -14,8 +14,8 @@ const CONFIG = {
     HEIGHT: 5000,
     PELLET_COUNT: 1200,
     MAX_PELLETS: 1700,
-    PELLET_MASS: 1,
-    START_MASS: 20,
+    PELLET_MASS: 50,
+    START_MASS: 200,
   },
   PHYSICS: {
     BASE_SPEED: 3.0,

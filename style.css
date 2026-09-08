@@ -544,3 +544,22 @@ html.zl-hide-minimap #minimap{display:none!important} html.zl-low-graphics #mini
 .zl-custom-skins-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.zl-custom-skin-card{background:#0f1824;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px;display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}.zl-custom-skin-card.equipped{border-color:rgba(26,188,156,.65);box-shadow:0 0 0 1px rgba(26,188,156,.18) inset}.zl-custom-skin-preview{width:64px;height:64px;border-radius:50%;overflow:hidden;background:#151f2d;display:grid;place-items:center;border:1px solid rgba(255,255,255,.08)}.zl-custom-skin-preview img{width:100%;height:100%;object-fit:cover;display:block}.zl-custom-skin-preview span{display:none;place-items:center;font-size:24px}.zl-custom-skin-meta b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.zl-custom-skin-meta small{display:block;color:#7f90a5;font-size:9px;margin-top:3px}.zl-custom-skin-actions{grid-column:1/-1;display:flex;gap:7px}.zl-custom-skin-actions button{flex:1;border:1px solid rgba(255,255,255,.09);background:#1d2a3b;color:#fff;border-radius:8px;padding:7px;font-size:10px;font-weight:700;cursor:pointer}.zl-custom-skin-actions button:hover{background:#26384e}.zl-custom-skin-actions button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:640px){.zl-custom-skins-grid{grid-template-columns:1fr}}
 .auto-ws-badge{display:inline-flex;align-items:center;justify-content:center;margin:10px auto;padding:8px 12px;border:1px solid rgba(67,228,255,.25);border-radius:10px;background:rgba(67,228,255,.07);color:#6ee7ff;font-size:12px;font-weight:800}
+
+/* Language picker (Menu Utente > Lingua). Previously fully unstyled, which
+   made the native <select> render as a near-invisible sliver in dark UIs. */
+.zl-language-box{background:#111a24;border-radius:14px;padding:14px}
+.zl-language-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.zl-language-head b{display:block;font-size:15px}
+.zl-language-head small{display:block;color:#8997aa;font-size:11px;margin-top:2px}
+select.zl-language-select{
+  appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  min-width:220px;width:100%;max-width:320px;
+  background:#1a2431 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'><path d='M1 1l6 6 6-6' stroke='%238997aa' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 12px center;
+  color:#eef5fb;border:1px solid rgba(255,255,255,.14);border-radius:10px;
+  padding:10px 34px 10px 12px;font-size:14px;font-weight:600;cursor:pointer;
+}
+select.zl-language-select:hover{border-color:rgba(255,255,255,.28)}
+select.zl-language-select:focus{outline:none;border-color:#1abc9c;box-shadow:0 0 0 3px rgba(26,188,156,.18)}
+select.zl-language-select optgroup{background:#1a2431;color:#6ee7ff;font-weight:800;font-style:normal}
+select.zl-language-select option{background:#1a2431;color:#eef5fb;padding:6px}
+@media(max-width:640px){select.zl-language-select{max-width:none}}

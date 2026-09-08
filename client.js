@@ -142,6 +142,14 @@
     let stats = { startedAt: 0, maxMass: 0 };
     let myStats = { kills: 0, deaths: 0 };
     let teams = { NAMES: [], COLORS: [] };
+    const ROLE_STYLE = {
+      admin:     { color: '#ff4d4d', badge: '👑', ring: '#ff4d4d' },
+      moderator: { color: '#4da6ff', badge: '🛡️', ring: '#4da6ff' },
+      vip:       { color: '#ffd24d', badge: '⭐', ring: '#ffd24d' },
+      premium:   { color: '#ffd24d', badge: '⭐', ring: '#ffd24d' },
+      user:      { color: '#ffffff', badge: '', ring: null },
+    };
+    function roleStyle(p) { return ROLE_STYLE[String(p && p.role || 'user').toLowerCase()] || ROLE_STYLE.user; }
     let renderCells = new Map();
     const customSkinImages = new Map();
     let localCustomSkin = { url:'', mime:'', title:'' };
@@ -251,7 +259,72 @@
     let audioCtx = null;
     function soundEnabled() { try { return JSON.parse(localStorage.getItem('zl_user_settings') || '{}').sfx === true; } catch (_) { return false; } }
     function ensureAudio() { try { const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return null; if(!audioCtx)audioCtx=new AC(); if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{}); return audioCtx; } catch (_) { return null; } }
-    function playSfx(kind) { if(!soundEnabled())return; const ac=ensureAudio(); if(!ac)return; const map={split:[320,0.09,'sawtooth'],eject:[220,0.07,'square'],eat:[620,0.06,'sine'],kill:[120,0.18,'triangle'],death:[75,0.35,'sawtooth'],godmode:[480,0.25,'sine'],error:[90,0.12,'square'],buy:[880,0.09,'sine']}; const [freq,dur,type]=map[kind]||map.eat; const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(freq,ac.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(45,freq*1.45),ac.currentTime+dur);g.gain.setValueAtTime(0.05,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+dur);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+dur); }
+    function playSfx(kind) { if(!soundEnabled())return; const ac=ensureAudio(); if(!ac)return; const map={split:[320,0.09,'sawtooth'],eject:[220,0.07,'square'],eat:[620,0.06,'sine'],kill:[120,0.18,'triangle'],death:[75,0.35,'sawtooth'],godmode:[480,0.25,'sine'],error:[90,0.12,'square'],buy:[880,0.09,'sine'],spawn:[520,0.14,'triangle']}; const [freq,dur,type]=map[kind]||map.eat; const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(freq,ac.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(45,freq*1.45),ac.currentTime+dur);g.gain.setValueAtTime(0.05,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+dur);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+dur); }
+    // --- Musica di sottofondo (generata via Web Audio, nessun file esterno) ---
+    let musicPlaying = false;
+    let musicTimer = null;
+    let musicMaster = null;
+    function musicSettings() {
+      try {
+        const s = JSON.parse(localStorage.getItem('zl_user_settings') || '{}');
+        return { on: s.music === true && s.muteAll !== true };
+      } catch (_) { return { on: false }; }
+    }
+    function playMusicChord(ac, master, freqs, dur) {
+      freqs.forEach((f, i) => {
+        const o = ac.createOscillator();
+        const g = ac.createGain();
+        o.type = i === 0 ? 'sine' : 'triangle';
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, ac.currentTime);
+        g.gain.linearRampToValueAtTime((i === 0 ? 0.55 : 0.85) / freqs.length, ac.currentTime + dur * 0.35);
+        g.gain.linearRampToValueAtTime(0.0001, ac.currentTime + dur);
+        o.connect(g); g.connect(master);
+        o.start();
+        o.stop(ac.currentTime + dur + 0.05);
+      });
+    }
+    function startMusic() {
+      if (musicPlaying) return;
+      const ac = ensureAudio(); if (!ac) return;
+      musicPlaying = true;
+      musicMaster = ac.createGain();
+      musicMaster.gain.value = 0.001;
+      musicMaster.gain.linearRampToValueAtTime(0.22, ac.currentTime + 1.2);
+      musicMaster.connect(ac.destination);
+      const progression = [
+        [261.63, 329.63, 392.00],
+        [293.66, 349.23, 440.00],
+        [220.00, 293.66, 349.23],
+        [246.94, 311.13, 392.00],
+      ];
+      let step = 0;
+      const bar = 8000;
+      const tick = () => {
+        if (!musicPlaying) return;
+        playMusicChord(ac, musicMaster, progression[step % progression.length], bar / 1000);
+        step += 1;
+      };
+      tick();
+      musicTimer = setInterval(tick, bar);
+    }
+    function stopMusic() {
+      musicPlaying = false;
+      if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+      if (musicMaster) {
+        try {
+          const ac = audioCtx;
+          if (ac) musicMaster.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.6);
+        } catch (_) {}
+        musicMaster = null;
+      }
+    }
+    function syncMusic() {
+      const { on } = musicSettings();
+      if (on) startMusic(); else stopMusic();
+    }
+    window.addEventListener('zl-settings-changed', syncMusic);
+
     function fx(type,x,y,color='#6ee7ff',r=40) {
       const count = type === 'death' ? 34 : (type === 'kill' || type === 'godmode' ? 24 : 10);
       const particles = Array.from({length: count}, () => {
@@ -308,7 +381,7 @@
       mouse.y = e.clientY;
     }, { passive: true });
 
-    canvas.addEventListener('pointerdown', () => ensureAudio(), { passive:true });
+    canvas.addEventListener('pointerdown', () => { ensureAudio(); syncMusic(); }, { passive:true });
     function applyOrbitCameraStyle() {
       const yaw = cameraOrbit360.yaw;
       const pitch = cameraOrbit360.pitch;
@@ -500,6 +573,9 @@
             }
           } else {
             if (msg.action === 'eject') { predictedEjects.length = 0; addChatMsg('⚠️', 'Massa insufficiente per lanciare (cresci un po\' prima di premere W).', '#ffb347'); }
+            else if (msg.action === 'shoot-virus') { addChatMsg('⚠️', 'Massa insufficiente per sparare un virus (serve massa ≥ 50: cresci mangiando prima di premere Q).', '#ffb347'); }
+            else if (msg.action === 'split') { addChatMsg('⚠️', 'Massa insufficiente o troppe celle per dividerti.', '#ffb347'); }
+            else if (msg.action === 'godmode') { addChatMsg('⚠️', 'God Mode non disponibile ora (cooldown attivo o già usato di recente).', '#ffb347'); }
             playSfx('error');
           }
           return;
@@ -614,7 +690,7 @@
           }
         } else if (msg.type === 'chat') {
           const teamTag = msg.team !== null && msg.team !== undefined ? `[${teams.NAMES[msg.team] || ''}] ` : '';
-          addChatMsg(msg.name, teamTag + msg.text, msg.id === myId ? '#6ee7ff' : '#fff');
+          addChatMsg(msg.name, teamTag + msg.text, msg.id === myId ? '#6ee7ff' : roleStyle(msg).color);
         }
       };
       sock.onclose = () => {
@@ -681,17 +757,36 @@
 
     function drawGrid() {
       try { if (JSON.parse(localStorage.getItem('zl_user_settings') || '{}').showGrid === false) return; } catch (_) {}
+      let use3D = true; try { use3D = JSON.parse(localStorage.getItem('zl_user_settings') || '{}').threeD !== false; } catch (_) {}
       const step = 100;
       const x0 = Math.floor((camera.x - viewW / 2 / camera.zoom) / step) * step;
       const x1 = camera.x + viewW / 2 / camera.zoom;
       const y0 = Math.floor((camera.y - viewH / 2 / camera.zoom) / step) * step;
       const y1 = camera.y + viewH / 2 / camera.zoom;
+      if (use3D) {
+        const floor = ctx.createRadialGradient(camera.x, camera.y, 0, camera.x, camera.y, Math.max(viewW, viewH) / camera.zoom);
+        floor.addColorStop(0, 'rgba(80,110,160,.05)');
+        floor.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = floor;
+        ctx.fillRect(x0 - step, y0 - step, x1 - x0 + step * 2, y1 - y0 + step * 2);
+      }
       ctx.strokeStyle = 'rgba(255,255,255,.03)';
       ctx.lineWidth = 1 / camera.zoom;
       ctx.beginPath();
       for (let x = x0; x <= x1; x += step) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
       for (let y = y0; y <= y1; y += step) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
       ctx.stroke();
+      if (use3D) {
+        const bigStep = step * 5;
+        const bx0 = Math.floor(x0 / bigStep) * bigStep;
+        const by0 = Math.floor(y0 / bigStep) * bigStep;
+        ctx.strokeStyle = 'rgba(120,170,255,.06)';
+        ctx.lineWidth = 1.5 / camera.zoom;
+        ctx.beginPath();
+        for (let x = bx0; x <= x1; x += bigStep) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+        for (let y = by0; y <= y1; y += bigStep) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+        ctx.stroke();
+      }
       ctx.strokeStyle = '#ff4d4d';
       ctx.lineWidth = 4 / camera.zoom;
       ctx.strokeRect(0, 0, world.width, world.height);
@@ -810,6 +905,14 @@
       if(item) return item.img;
       const img=new Image(); item={img,error:false}; customSkinImages.set(key,item);
       img.onload=()=>{item.error=false;}; img.onerror=()=>{item.error=true;}; img.src=key;
+      // Animated GIF/APNG/WebP skins only keep advancing frames while the <img>
+      // is actually attached to the page — most browsers pause decoding of
+      // detached/off-DOM images. Keep it in the DOM (fully hidden, out of
+      // layout flow) purely so the browser keeps animating it; we still read
+      // pixels from it via drawImage() into the game canvas every frame.
+      img.style.cssText='position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;';
+      img.setAttribute('aria-hidden','true');
+      document.body.appendChild(img);
       return img;
     }
 
@@ -828,6 +931,15 @@
           if (Math.abs(pos.x - camera.x) > viewW / 2 / camera.zoom + r || Math.abs(pos.y - camera.y) > viewH / 2 / camera.zoom + r) continue;
           ctx.globalAlpha = p.invisible && p.id !== myId ? 0.10 : 1;
           let use3D = true; try { use3D = JSON.parse(localStorage.getItem('zl_user_settings') || '{}').threeD !== false; } catch (_) {}
+          if (use3D && !(p.invisible && p.id !== myId)) {
+            ctx.save();
+            ctx.globalAlpha *= 0.35;
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.ellipse(pos.x + r * 0.10, pos.y + r * 0.18, r * 0.92, r * 0.55, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
           if (use3D) {
             const grad = ctx.createRadialGradient(pos.x - r*0.32, pos.y - r*0.38, Math.max(2,r*0.05), pos.x, pos.y, r);
             const base = p.color || '#fff';
@@ -864,14 +976,24 @@
           ctx.lineWidth = Math.max(1, Math.min(18, r * (p.shield ? 0.10 : 0.045)));
           ctx.stroke();
 
+          const rStyle = roleStyle(p);
+          if (rStyle.ring && !p.isBot) {
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            ctx.strokeStyle = rStyle.ring;
+            ctx.lineWidth = Math.max(1.5, r * 0.035);
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, r * 1.06, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+          }
+
           let showNamesSetting = true; try { showNamesSetting = JSON.parse(localStorage.getItem('zl_user_settings') || '{}').showNames !== false; } catch (_) {}
           const showName = showNamesSetting && (p.id === myId || (!p.isBot && !veryCrowded) || (!p.isBot && r > 46 && crowded) || (showNamesForBots && r > 70));
           if (showName) {
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = p.isBot ? '#fff' : rStyle.color;
             ctx.font = `bold ${Math.min(28, Math.max(11, r * 0.24))}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            let label = `${p.name || 'Player'}${p.isBot ? ' 🤖' : ''}`;
+            let label = `${rStyle.badge ? rStyle.badge + ' ' : ''}${p.name || 'Player'}${p.isBot ? ' 🤖' : ''}`;
             if (p.team !== null && p.team !== undefined) label = `[${teams.NAMES[p.team] || ''}] ${label}`;
             ctx.fillText(label, pos.x, pos.y);
             let showMassSetting = true; try { showMassSetting = JSON.parse(localStorage.getItem('zl_user_settings') || '{}').showMass !== false; } catch (_) {}
@@ -943,7 +1065,9 @@
       lastLeaderboardSignature = sig;
       let html = '';
       state.leaderboard.forEach((e, i) => {
-        html += `<li class="${e.id === myId ? 'me' : ''}${e.isBot ? ' bot' : ''}"><span class="rank">${i + 1}.</span><span class="name">${escapeHtml(e.name)}</span><span class="m">${e.mass}</span></li>`;
+        const rs = roleStyle(e);
+        const nameStyle = (!e.isBot && rs.color !== '#ffffff') ? ` style="color:${rs.color}"` : '';
+        html += `<li class="${e.id === myId ? 'me' : ''}${e.isBot ? ' bot' : ''}"><span class="rank">${i + 1}.</span><span class="name"${nameStyle}>${rs.badge ? rs.badge + ' ' : ''}${escapeHtml(e.name)}</span><span class="m">${e.mass}</span></li>`;
       });
       ui.lb.innerHTML = html;
     }
@@ -975,6 +1099,7 @@
 
     if (ui.play && ui.name) ui.play.addEventListener('click', () => {
       if (connecting || connected) return;
+      ensureAudio(); syncMusic();
       const name = ui.name.value.trim() || 'Player';
       localStorage.setItem('nickname', name);
       const mode = localStorage.getItem('zl_game_mode') || 'ffa';
@@ -992,10 +1117,17 @@
       try {
         const url = `${currentApiRoot()}/api/spawn-bot?count=${encodeURIComponent(ui.botCount?.value || '10')}&mass=${encodeURIComponent(ui.botMass?.value || '30')}&name=${encodeURIComponent(ui.botName?.value || 'Bot')}`;
         const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        let data = null;
+        try { data = await res.json(); } catch (_) {}
+        if (!res.ok) {
+          const reason = (data && data.error) ? data.error : `HTTP ${res.status}`;
+          ui.botStatus.textContent = `❌ ${reason}`;
+          playSfx('error');
+          return;
+        }
         ui.botStatus.textContent = `✅ Spawnati ${data.spawned} bot (massa ${data.mass}).`;
-      } catch (_) { ui.botStatus.textContent = '❌ Errore collegamento server.'; }
+        playSfx('spawn');
+      } catch (_) { ui.botStatus.textContent = '❌ Errore collegamento al server (verifica connessione).'; playSfx('error'); }
     });
 
     async function loadSeason() {
@@ -1037,6 +1169,7 @@
     };
     // API pubblica per il pannello legacy presente nell'HTML.
     window.ZLGame = {
+      applySettings: () => syncMusic(),
       send,
       connected: () => connected,
       connecting: () => connecting,

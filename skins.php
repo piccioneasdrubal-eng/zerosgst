@@ -170,6 +170,107 @@ function verify_image_from_chunks(string $chunks,string $uploadId,int $total,int
     return [$size,$w,$h,$mime,$ext];
 }
 
+// ---- Upload from an external image link (e.g. imgur, postimages, etc.) ----
+// Downloads the remote image server-side into the same chunk storage used by
+// the normal chunked upload, so it is verified/served exactly the same way
+// (no hotlinking, no mixed-content/CORS issues on the client).
+function url_is_safe(string $url): bool {
+    $parts = @parse_url($url);
+    if (!$parts || empty($parts['host'])) return false;
+    $scheme = strtolower($parts['scheme'] ?? '');
+    if ($scheme !== 'http' && $scheme !== 'https') return false;
+    $host = $parts['host'];
+    // Resolve to IP(s) and block loopback/private/link-local ranges (SSRF guard).
+    $ips = [];
+    if (filter_var($host, FILTER_VALIDATE_IP)) { $ips[] = $host; }
+    else { $rec = @dns_get_record($host, DNS_A + DNS_AAAA); if (is_array($rec)) foreach ($rec as $r) { if (!empty($r['ip'])) $ips[] = $r['ip']; if (!empty($r['ipv6'])) $ips[] = $r['ipv6']; } }
+    if (!$ips) return false;
+    foreach ($ips as $ip) {
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return false;
+    }
+    return true;
+}
+
+function download_url_to_chunks(string $url, string $uploadId, string $chunks, int $uid): array {
+    if (!url_is_safe($url)) out(['ok'=>false,'error'=>'Link non valido o non consentito.'],400);
+    $ctx = stream_context_create([
+        'http'  => ['timeout'=>15,'follow_location'=>1,'max_redirects'=>3,'header'=>"User-Agent: ZeroLegendSkinFetcher/1.0\r\nAccept: image/*\r\n",'ignore_errors'=>true],
+        'https' => ['timeout'=>15,'follow_location'=>1,'max_redirects'=>3,'header'=>"User-Agent: ZeroLegendSkinFetcher/1.0\r\nAccept: image/*\r\n",'ignore_errors'=>true],
+    ]);
+    $in = @fopen($url, 'rb', false, $ctx);
+    if (!$in) out(['ok'=>false,'error'=>'Impossibile scaricare l\'immagine dal link fornito.'],422);
+    $idx = 0; $totalBytes = 0; $buf = '';
+    while (!feof($in)) {
+        $piece = @fread($in, 65536);
+        if ($piece === false) { @fclose($in); cleanup_chunks($uploadId, $idx + 1); out(['ok'=>false,'error'=>'Download interrotto.'],422); }
+        $buf .= $piece; $totalBytes += strlen($piece);
+        if ($totalBytes > MAX_SKIN_BYTES) { @fclose($in); cleanup_chunks($uploadId, $idx + 1); out(['ok'=>false,'error'=>'L\'immagine dal link supera il limite di 50 MB.'],413); }
+        while (strlen($buf) >= CHUNK_BYTES) {
+            $part = substr($buf, 0, CHUNK_BYTES); $buf = substr($buf, CHUNK_BYTES);
+            @file_put_contents($chunks.'/'.$uploadId.'.'.$idx.'.bin', $part);
+            $idx++;
+        }
+    }
+    @fclose($in);
+    if ($buf !== '') { @file_put_contents($chunks.'/'.$uploadId.'.'.$idx.'.bin', $buf); $idx++; }
+    if ($totalBytes < 1) { cleanup_chunks($uploadId, $idx); out(['ok'=>false,'error'=>'Il link non contiene un\'immagine valida.'],422); }
+    $meta = ['uid'=>$uid,'total'=>$idx,'bytes'=>$totalBytes,'created'=>time()];
+    @file_put_contents($chunks.'/'.$uploadId.'.json', json_encode($meta, JSON_UNESCAPED_SLASHES));
+    return [$idx, $totalBytes];
+}
+
+// Shared finalize logic used by both the chunked-upload flow and the
+// download-from-link flow: verifies the assembled image, inserts the DB row
+// and publishes the chunk files under their permanent skin_key.
+function finalize_skin_upload(string $uploadId, string $title, int $uid): array {
+    [$base,$chunks]=paths();
+    $metaFile=$chunks.'/'.$uploadId.'.json'; if(!is_file($metaFile)) out(['ok'=>false,'error'=>'Sessione upload non trovata.'],404);
+    $meta=json_decode((string)file_get_contents($metaFile),true); if(!is_array($meta) || (int)($meta['uid']??0)!==$uid) out(['ok'=>false,'error'=>'Upload non autorizzato.'],403);
+    $total=(int)($meta['total']??0); $expected=(int)($meta['bytes']??0); if($total<1 || $expected<1 || $expected>MAX_SKIN_BYTES) out(['ok'=>false,'error'=>'Metadati upload non validi.'],400);
+    $sum=0;
+    for($i=0;$i<$total;$i++){
+        $part=$chunks.'/'.$uploadId.'.'.$i.'.bin';
+        if(!is_file($part)) { cleanup_chunks($uploadId,$total); out(['ok'=>false,'error'=>'Chunk mancante: '.$i.' di '.$total.'.'],409); }
+        $ps=@filesize($part); if($ps===false || $ps<1 || $sum+$ps>MAX_SKIN_BYTES){ cleanup_chunks($uploadId,$total); out(['ok'=>false,'error'=>'Chunk non valido.'],422); }
+        $sum+=(int)$ps;
+    }
+    if($sum!==$expected){ cleanup_chunks($uploadId,$total); out(['ok'=>false,'error'=>'Dimensione finale non valida: ricevuti '.$sum.' byte, attesi '.$expected.'.'],422); }
+
+    [$bytes,$w,$h,$mime,$ext]=verify_image_from_chunks($chunks,$uploadId,$total,$sum);
+    $skinKey='custom_'.bin2hex(random_bytes(12));
+    $filename=$skinKey.'.'.$ext;
+
+    try{
+        db()->beginTransaction();
+        $ins=db()->prepare('INSERT INTO zl_custom_skins(user_id,skin_key,title,filename,url,size_bytes,mime,width,height,active) VALUES(?,?,?,?,?,?,?,?,?,1)');
+        $ins->execute([$uid,$skinKey,$title,$filename,'', $bytes,$mime,$w,$h]);
+        $skinId=(int)db()->lastInsertId();
+        $url='/auth/skins.php?action=serve&id='.$skinId.'&key='.$skinKey;
+        $up=db()->prepare('UPDATE zl_custom_skins SET url=? WHERE id=?');
+        $up->execute([$url,$skinId]);
+        db()->commit();
+    } catch(Throwable $e){
+        if(db()->inTransaction()) db()->rollBack();
+        out(['ok'=>false,'error'=>'Impossibile salvare la skin nel database.','detail'=>$e->getMessage()],500);
+    }
+
+    $publishedMeta=['uid'=>$uid,'total'=>$total,'bytes'=>$bytes,'created'=>time(),'skin_id'=>$skinId,'mime'=>$mime,'ext'=>$ext];
+    if(@file_put_contents($chunks.'/'.$skinKey.'.json',json_encode($publishedMeta,JSON_UNESCAPED_SLASHES))===false){
+        try{ $d=db()->prepare('DELETE FROM zl_custom_skins WHERE id=? AND user_id=?'); $d->execute([$skinId,$uid]); }catch(Throwable $ignored){}
+        cleanup_chunks($uploadId,$total);
+        out(['ok'=>false,'error'=>'Impossibile creare il manifest della skin. Controlla i permessi della cartella uploads/skins/chunks.'],500);
+    }
+    for($i=0;$i<$total;$i++){
+        $src=$chunks.'/'.$uploadId.'.'.$i.'.bin'; $dst=$chunks.'/'.$skinKey.'.'.$i.'.bin';
+        if(!@rename($src,$dst)){
+            if(!@copy($src,$dst)){ cleanup_chunks($uploadId,$total); try{ $d=db()->prepare('DELETE FROM zl_custom_skins WHERE id=? AND user_id=?'); $d->execute([$skinId,$uid]); }catch(Throwable $ignored){} out(['ok'=>false,'error'=>'Impossibile pubblicare il chunk '.$i.'. Controlla i permessi della cartella chunks.'],500); }
+            @unlink($src);
+        }
+    }
+    @unlink($metaFile);
+    return ['id'=>$skinId,'skin_key'=>$skinKey,'title'=>$title,'url'=>$url,'size_bytes'=>$bytes,'mime'=>$mime,'width'=>$w,'height'=>$h];
+}
+
 function stream_chunks(string $chunks,string $uploadId,int $total,int $size,string $mime): void {
     while(ob_get_level()>0) @ob_end_clean();
     header('Content-Type: '.$mime);
@@ -290,56 +391,26 @@ if($action==='finalize'){
     if($uploadId==='') out(['ok'=>false,'error'=>'Upload ID non valido.'],400);
     if($title==='') $title='Skin personalizzata';
     $title=function_exists('mb_substr') ? mb_substr($title,0,MAX_NAME) : substr($title,0,MAX_NAME);
+    $skin=finalize_skin_upload($uploadId,$title,$uid);
+    out(['ok'=>true,'skin'=>$skin]);
+}
+
+// Upload a skin by pasting a direct image link (imgur, postimages, etc.)
+// instead of choosing a local file. The server downloads and verifies the
+// image itself, then stores/serves it exactly like a normal upload.
+if($action==='from_url'){
+    if(($_SERVER['REQUEST_METHOD']??'GET')!=='POST') out(['ok'=>false,'error'=>'Metodo non valido.'],405);
+    $url=trim((string)($body['url'] ?? ''));
+    $title=trim((string)($body['title'] ?? 'Skin personalizzata'));
+    if($url==='') out(['ok'=>false,'error'=>'Inserisci il link dell\'immagine.'],400);
+    if(!preg_match('#^https?://#i',$url)) out(['ok'=>false,'error'=>'Il link deve iniziare con http:// o https://'],400);
+    if($title==='') $title='Skin personalizzata';
+    $title=function_exists('mb_substr') ? mb_substr($title,0,MAX_NAME) : substr($title,0,MAX_NAME);
+    $uploadId=bin2hex(random_bytes(16));
     [$base,$chunks]=paths();
-    $metaFile=$chunks.'/'.$uploadId.'.json'; if(!is_file($metaFile)) out(['ok'=>false,'error'=>'Sessione upload non trovata.'],404);
-    $meta=json_decode((string)file_get_contents($metaFile),true); if(!is_array($meta) || (int)($meta['uid']??0)!==$uid) out(['ok'=>false,'error'=>'Upload non autorizzato.'],403);
-    $total=(int)($meta['total']??0); $expected=(int)($meta['bytes']??0); if($total<1 || $expected<1 || $expected>MAX_SKIN_BYTES) out(['ok'=>false,'error'=>'Metadati upload non validi.'],400);
-    $sum=0;
-    for($i=0;$i<$total;$i++){
-        $part=$chunks.'/'.$uploadId.'.'.$i.'.bin';
-        if(!is_file($part)) { cleanup_chunks($uploadId,$total); out(['ok'=>false,'error'=>'Chunk mancante: '.$i.' di '.$total.'.'],409); }
-        $ps=@filesize($part); if($ps===false || $ps<1 || $ps>CHUNK_BYTES || $sum+$ps>MAX_SKIN_BYTES){ cleanup_chunks($uploadId,$total); out(['ok'=>false,'error'=>'Chunk non valido.'],422); }
-        $sum+=(int)$ps;
-    }
-    if($sum!==$expected){ cleanup_chunks($uploadId,$total); out(['ok'=>false,'error'=>'Dimensione finale non valida: ricevuti '.$sum.' byte, attesi '.$expected.'.'],422); }
-
-    [$bytes,$w,$h,$mime,$ext]=verify_image_from_chunks($chunks,$uploadId,$total,$sum);
-    $skinKey='custom_'.bin2hex(random_bytes(12));
-    $filename=$skinKey.'.'.$ext;
-    $url='/auth/skins.php?action=serve&id=__ID__&key='.$skinKey;
-
-    try{
-        db()->beginTransaction();
-        // Insert first so we know the numeric id for the final URL.
-        $ins=db()->prepare('INSERT INTO zl_custom_skins(user_id,skin_key,title,filename,url,size_bytes,mime,width,height,active) VALUES(?,?,?,?,?,?,?,?,?,1)');
-        $ins->execute([$uid,$skinKey,$title,$filename,'', $bytes,$mime,$w,$h]);
-        $skinId=(int)db()->lastInsertId();
-        $url='/auth/skins.php?action=serve&id='.$skinId.'&key='.$skinKey;
-        $up=db()->prepare('UPDATE zl_custom_skins SET url=? WHERE id=?');
-        $up->execute([$url,$skinId]);
-        db()->commit();
-    } catch(Throwable $e){
-        if(db()->inTransaction()) db()->rollBack();
-        out(['ok'=>false,'error'=>'Impossibile salvare la skin nel database.','detail'=>$e->getMessage()],500);
-    }
-
-    $publishedMeta=['uid'=>$uid,'total'=>$total,'bytes'=>$bytes,'created'=>time(),'skin_id'=>$skinId,'mime'=>$mime,'ext'=>$ext];
-    if(@file_put_contents($chunks.'/'.$skinKey.'.json',json_encode($publishedMeta,JSON_UNESCAPED_SLASHES))===false){
-        // Roll back DB row if manifest cannot be written.
-        try{ $d=db()->prepare('DELETE FROM zl_custom_skins WHERE id=? AND user_id=?'); $d->execute([$skinId,$uid]); }catch(Throwable $ignored){}
-        cleanup_chunks($uploadId,$total);
-        out(['ok'=>false,'error'=>'Impossibile creare il manifest della skin. Controlla i permessi della cartella uploads/skins/chunks.'],500);
-    }
-    for($i=0;$i<$total;$i++){
-        $src=$chunks.'/'.$uploadId.'.'.$i.'.bin'; $dst=$chunks.'/'.$skinKey.'.'.$i.'.bin';
-        if(!@rename($src,$dst)){
-            // Copy fallback for hosts where rename between handles is restricted.
-            if(!@copy($src,$dst)){ cleanup_chunks($uploadId,$total); try{ $d=db()->prepare('DELETE FROM zl_custom_skins WHERE id=? AND user_id=?'); $d->execute([$skinId,$uid]); }catch(Throwable $ignored){} out(['ok'=>false,'error'=>'Impossibile pubblicare il chunk '.$i.'. Controlla i permessi della cartella chunks.'],500); }
-            @unlink($src);
-        }
-    }
-    @unlink($metaFile);
-    out(['ok'=>true,'skin'=>['id'=>$skinId,'skin_key'=>$skinKey,'title'=>$title,'url'=>$url,'size_bytes'=>$bytes,'mime'=>$mime,'width'=>$w,'height'=>$h]]);
+    download_url_to_chunks($url,$uploadId,$chunks,$uid);
+    $skin=finalize_skin_upload($uploadId,$title,$uid);
+    out(['ok'=>true,'skin'=>$skin]);
 }
 
 if($action==='delete'){

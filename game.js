@@ -10,12 +10,12 @@ const path = require('path');
 const CONFIG = {
   PORT: Number(process.env.PORT) || 3000,
   WORLD: {
-    WIDTH: 10000,
-    HEIGHT: 10000,
-    PELLET_COUNT: 4200,
-    MAX_PELLETS: 6700,
-    PELLET_MASS: 10,
-    START_MASS: 100,
+    WIDTH: 5000,
+    HEIGHT: 5000,
+    PELLET_COUNT: 1200,
+    MAX_PELLETS: 1700,
+    PELLET_MASS: 1,
+    START_MASS: 20,
   },
   PHYSICS: {
     BASE_SPEED: 3.0,
@@ -25,7 +25,7 @@ const CONFIG = {
     SPLIT_MASS_THRESHOLD: 20,
     EJECT_MASS: 14,
     MERGE_TIMEOUT: 30_000,
-    RESPAWN_TIME: 2000,
+    RESPAWN_TIME: 3000,
     BOT_RESPAWN_TIME: 700,
     SPRINT_COST: 1.2,
     SPRINT_SPEED: 1.9,
@@ -1871,6 +1871,7 @@ class GameServer {
       gameMode: p.gameMode,
       color: p.color,
       team: p.team,
+      role: p.isAdmin ? 'admin' : String(p.role || 'user').toLowerCase(),
       mass: Math.round(p.totalMass),
       dead: p.dead,
       respawnAt: p.dead ? p.respawnAt : null,
@@ -2045,7 +2046,7 @@ class GameServer {
 
   leaderboard() {
     return [...this.world.players.values()]
-      .map((p) => ({ id: p.id, name: p.name, mass: Math.round(p.totalMass), isBot: p.isBot }))
+      .map((p) => ({ id: p.id, name: p.name, mass: Math.round(p.totalMass), isBot: p.isBot, role: p.isAdmin ? 'admin' : String(p.role || 'user').toLowerCase() }))
       .sort((a, b) => b.mass - a.mass)
       .slice(0, 10);
   }

@@ -9,10 +9,9 @@ function body(): array { $r=file_get_contents('php://input'); $j=is_string($r)?j
 function table(string $t): bool { $s=db()->prepare("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?"); $s->execute([$t]); return (int)$s->fetchColumn()>0; }
 function ensure_column(string $t, string $col, string $def): void { try { db()->exec("ALTER TABLE `$t` ADD COLUMN $col $def"); } catch (Throwable $e) { /* colonna già presente: ignora */ } }
 function users_table(): string {
-  if (table('users')) return 'users';
   if (table('zl_users')) return 'zl_users';
-  out(['ok'=>false,'error'=>'Tabella utenti non trovata: crea/importa users oppure zl_users.'],500);
-  return 'users';
+  out(['ok'=>false,'error'=>'Tabella zl_users non trovata. Esegui auth/migrate.sql o la migrazione DB fornita.'],500);
+  return 'zl_users';
 }
 function ensure_schema(): void {
   db()->exec("CREATE TABLE IF NOT EXISTS zl_inventory (user_id INT UNSIGNED NOT NULL,item_id VARCHAR(80) NOT NULL,qty INT NOT NULL DEFAULT 1,equipped TINYINT(1) NOT NULL DEFAULT 0,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,PRIMARY KEY(user_id,item_id),INDEX idx_inv_user(user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");

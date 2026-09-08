@@ -50,48 +50,43 @@ function column_exists(string $table, string $column): bool {
 }
 
 function ensure_auth_schema(): string {
-    // Usa la tabella `users` del database già esistente del progetto.
-    // Solo se non esiste, crea una tabella di fallback `zl_users`.
-    if (table_exists('users')) {
-        // Le colonne che risultano presenti nel DB del progetto vengono mantenute.
-        // Aggiungiamo solo quelle indispensabili se un'installazione è più vecchia.
-        $alter = [];
-        if (!column_exists('users', 'username')) $alter[] = "ADD COLUMN username VARCHAR(80) NULL AFTER id";
-        if (!column_exists('users', 'email')) $alter[] = "ADD COLUMN email VARCHAR(190) NULL AFTER username";
-        if (!column_exists('users', 'password_hash')) $alter[] = "ADD COLUMN password_hash VARCHAR(255) NULL AFTER email";
-        if (!column_exists('users', 'provider')) $alter[] = "ADD COLUMN provider VARCHAR(30) NOT NULL DEFAULT 'local' AFTER password_hash";
-        if (!column_exists('users', 'role')) $alter[] = "ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user' AFTER provider";
-        if (!column_exists('users', 'level')) $alter[] = "ADD COLUMN level INT NOT NULL DEFAULT 1";
-        if (!column_exists('users', 'xp')) $alter[] = "ADD COLUMN xp INT NOT NULL DEFAULT 0";
-        if (!column_exists('users', 'coins')) $alter[] = "ADD COLUMN coins INT NOT NULL DEFAULT 1000";
-        if (!column_exists('users', 'skins')) $alter[] = "ADD COLUMN skins TEXT NULL";
-        if (!column_exists('users', 'equipped_skin')) $alter[] = "ADD COLUMN equipped_skin VARCHAR(80) NOT NULL DEFAULT 'default'";
-        if (!column_exists('users', 'created_at')) $alter[] = "ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP";
-        if (!column_exists('users', 'updated_at')) $alter[] = "ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
-        foreach ($alter as $sql) {
-            try { db()->exec('ALTER TABLE users ' . $sql); } catch (Throwable $e) { /* compatibilità con DB già completi */ }
-        }
-        return 'users';
+    // Installazione ZeroLegend: una sola tabella utenti canonica.
+    // Il database reale del progetto usa `zl_users`; non alternare più tra users/zl_users.
+    $table = 'zl_users';
+    if (!table_exists($table)) {
+        db()->exec("CREATE TABLE IF NOT EXISTS zl_users (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            username VARCHAR(80) NOT NULL,
+            email VARCHAR(190) NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            provider VARCHAR(30) NOT NULL DEFAULT 'local',
+            role VARCHAR(20) NOT NULL DEFAULT 'user',
+            level INT NOT NULL DEFAULT 1,
+            xp INT NOT NULL DEFAULT 0,
+            coins INT NOT NULL DEFAULT 1000,
+            skins TEXT NULL,
+            equipped_skin VARCHAR(80) NOT NULL DEFAULT 'default',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_zl_users_email (email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
-
-    db()->exec("CREATE TABLE IF NOT EXISTS zl_users (
-        id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-        username VARCHAR(80) NOT NULL,
-        email VARCHAR(190) NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        provider VARCHAR(30) NOT NULL DEFAULT 'local',
-        role VARCHAR(20) NOT NULL DEFAULT 'user',
-        level INT NOT NULL DEFAULT 1,
-        xp INT NOT NULL DEFAULT 0,
-        coins INT NOT NULL DEFAULT 1000,
-        skins TEXT NULL,
-        equipped_skin VARCHAR(80) NOT NULL DEFAULT 'default',
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (id),
-        UNIQUE KEY uq_zl_users_email (email)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-    return 'zl_users';
+    $alter = [];
+    if (!column_exists($table, 'username')) $alter[] = "ADD COLUMN username VARCHAR(80) NULL AFTER id";
+    if (!column_exists($table, 'email')) $alter[] = "ADD COLUMN email VARCHAR(190) NULL AFTER username";
+    if (!column_exists($table, 'password_hash')) $alter[] = "ADD COLUMN password_hash VARCHAR(255) NULL AFTER email";
+    if (!column_exists($table, 'provider')) $alter[] = "ADD COLUMN provider VARCHAR(30) NOT NULL DEFAULT 'local' AFTER password_hash";
+    if (!column_exists($table, 'role')) $alter[] = "ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user' AFTER provider";
+    if (!column_exists($table, 'level')) $alter[] = "ADD COLUMN level INT NOT NULL DEFAULT 1";
+    if (!column_exists($table, 'xp')) $alter[] = "ADD COLUMN xp INT NOT NULL DEFAULT 0";
+    if (!column_exists($table, 'coins')) $alter[] = "ADD COLUMN coins INT NOT NULL DEFAULT 1000";
+    if (!column_exists($table, 'skins')) $alter[] = "ADD COLUMN skins TEXT NULL";
+    if (!column_exists($table, 'equipped_skin')) $alter[] = "ADD COLUMN equipped_skin VARCHAR(80) NOT NULL DEFAULT 'default'";
+    if (!column_exists($table, 'created_at')) $alter[] = "ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP";
+    if (!column_exists($table, 'updated_at')) $alter[] = "ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
+    foreach ($alter as $sql) { try { db()->exec('ALTER TABLE `'.$table.'` '.$sql); } catch (Throwable $e) {} }
+    return $table;
 }
 
 function users_query_fields(string $table): string {

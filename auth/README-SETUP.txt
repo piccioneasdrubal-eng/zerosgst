@@ -5,7 +5,7 @@ ZEROLEGEND AUTH — FIX DEFINITIVO
 3. Verifica:
    https://zerothelegend.gamer.gd/auth/auth.php?health=1
 4. Deve rispondere con JSON e "database":"ok".
-5. auth.php crea automaticamente la tabella users se manca e aggiunge alcune colonne mancanti.
+5. auth.php crea automaticamente la tabella zl_users se manca e aggiunge alcune colonne mancanti.
 6. Esegui comunque migrate.sql una volta per avere lo schema completo.
 
 La API usa token firmati (non richiede la tabella auth_tokens per login/me/verify), quindi la registrazione non fallisce se la tabella token non è stata importata.

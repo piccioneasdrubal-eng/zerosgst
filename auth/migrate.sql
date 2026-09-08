@@ -1,5 +1,5 @@
 -- ZeroLegend Auth migration
--- Usa la tabella `users` già presente nel database del progetto quando esiste.
+-- Usa la tabella `zl_users` già presente nel database del progetto quando esiste.
 -- Non cancella dati esistenti.
 
 CREATE TABLE IF NOT EXISTS zl_users (
@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS zl_users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- IMPORTANTE:
--- Nel tuo database esiste già la tabella `users` con email/password_hash/username/role/level/xp/coins.
--- Il nuovo auth.php la usa direttamente e non usa `zl_users` quando `users` esiste.
+-- Nel tuo database esiste già la tabella `zl_users` con email/password_hash/username/role/level/xp/coins.
+-- Il nuovo auth.php la usa direttamente e non usa `zl_users` quando `zl_users` esiste.
 
 
 CREATE TABLE IF NOT EXISTS zl_player_stats (

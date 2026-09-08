@@ -14,8 +14,8 @@
   async function loadShop(){
     if(!$('shopGrid')) return;
     try{
-      const token = window.ZLAuth?.getToken?.();
-      if(!token) throw new Error('Effettua il login.');
+      const token = window.ZLAuth?.getToken?.() || localStorage.getItem('zl_token') || localStorage.getItem('token');
+      if(!token) throw new Error('Devi effettuare il login prima di acquistare.');
       async function economy(action, extra={}){
         const r = await fetch('/auth/economy.php',{
           method:'POST',

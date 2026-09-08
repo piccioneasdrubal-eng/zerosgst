@@ -80,6 +80,12 @@ const AUTH_VERIFY_URL = String(process.env.AUTH_VERIFY_URL || 'https://zerothele
 const API_SECRET = String(process.env.API_SECRET || 'agar-zero-secret-2026').trim();
 const ECONOMY_API_URL = String(process.env.ECONOMY_API_URL || 'https://zerothelegend.gamer.gd/auth/economy.php').trim();
 const ECONOMY_INTERNAL_SECRET = String(process.env.ECONOMY_INTERNAL_SECRET || API_SECRET).trim();
+function isAdminUser(user) {
+  if (!user || typeof user !== 'object') return false;
+  const role = String(user.role || '').trim().toLowerCase();
+  return user.is_admin === true || Number(user.is_admin) === 1 || ['admin','owner','administrator','administratoro'].includes(role);
+}
+
 
 function readRequestJson(req) {
   return new Promise((resolve) => {
@@ -185,7 +191,7 @@ const server = http.createServer((req, res) => {
       const role = String(user?.role || '').toLowerCase();
       const normalizedRole = ['owner','administrator','administratoro'].includes(role) ? 'admin'
         : (['mod','staff'].includes(role) ? 'moderator' : role);
-      const isAdmin = !!user && (Number(user.is_admin) === 1 || normalizedRole === 'admin');
+      const isAdmin = isAdminUser(user);
       const isModerator = !!user && (Number(user.is_moderator) === 1 || normalizedRole === 'moderator');
       if (!auth.ok || (!isAdmin && !isModerator)) return sendJson(res, 403, { ok:false, error:'Account non autorizzato.' });
       const action = String(body.action || '');
@@ -590,7 +596,7 @@ wss.on('connection', (ws, req) => {
         break;
       }
       case 'admin': {
-        const authenticatedAdmin = !!player && (player.isAdmin === true || ['admin','owner'].includes(String(player.role || '').toLowerCase()));
+        const authenticatedAdmin = !!player && (player.isAdmin === true || ['admin','owner','administrator','administratoro'].includes(String(player.role || '').toLowerCase()));
         if (!authenticatedAdmin && !game.adminAuthenticate(msg.token)) { safeSend(ws, JSON.stringify({type:'feature-result',requestId: msg.requestId || null,category:'admin',action:'auth',ok:false,error:'Account non autorizzato o ADMIN_TOKEN non valido'})); break; }
         const a = String(msg.action || '');
         let result = null, ok = true;
@@ -631,7 +637,7 @@ wss.on('connection', (ws, req) => {
         break;
       }
       case 'f2': {
-        const isAdmin = !!player && (player.isAdmin === true || ['admin', 'owner'].includes(String(player.role || '').toLowerCase()));
+        const isAdmin = !!player && (player.isAdmin === true || ['admin', 'owner', 'administrator', 'administratoro'].includes(String(player.role || '').toLowerCase()));
         const result = game.v2.handle(String(msg.action || ''), player, msg.payload || {}, { isAdmin });
         safeSend(ws, JSON.stringify({ type: 'feature-result', requestId: msg.requestId || null, category: 'f2', action: msg.action, ok: result.ok, data: result.data, error: result.error }));
         break;

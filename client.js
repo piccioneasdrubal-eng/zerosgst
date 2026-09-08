@@ -126,6 +126,8 @@
     let world = { width: 5000, height: 5000 };
     let state = { players: [], pellets: [], powerups: [], virusProjectiles: [], zones: [], killfeed: [], leaderboard: [], decoys: [], traps: [], mines: [], pvpLeaderboard: [], announcements: [], events: [] };
     let camera = { x: world.width / 2, y: world.height / 2, zoom: 1, userZoom: 1 };
+    // 3D orbit camera: 360° yaw + gentle pitch. Rendering stays lightweight on Canvas.
+    const cameraOrbit360 = { yaw: 0, pitch: 8, dragging: false, lastX: 0, lastY: 0 };
     const mouse = { x: viewW / 2, y: viewH / 2 };
     const target = { x: camera.x, y: camera.y };
     let lastSentTarget = { x: NaN, y: NaN };
@@ -307,6 +309,49 @@
     }, { passive: true });
 
     canvas.addEventListener('pointerdown', () => ensureAudio(), { passive:true });
+    function applyOrbitCameraStyle() {
+      const yaw = cameraOrbit360.yaw;
+      const pitch = cameraOrbit360.pitch;
+      canvas.style.transformOrigin = '50% 50%';
+      canvas.style.transformStyle = 'preserve-3d';
+      canvas.style.willChange = 'transform';
+      canvas.style.transform = `perspective(1100px) rotateX(${pitch}deg) rotateZ(${yaw}deg) scale(${1 + Math.abs(pitch)*0.001})`;
+      canvas.style.transition = cameraOrbit360.dragging ? 'none' : 'transform .08s ease-out';
+      canvas.style.cursor = cameraOrbit360.dragging ? 'grabbing' : 'default';
+    }
+    applyOrbitCameraStyle();
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('pointerdown', (e) => {
+      ensureAudio();
+      if (e.button === 2 || e.button === 1) {
+        cameraOrbit360.dragging = true;
+        cameraOrbit360.lastX = e.clientX; cameraOrbit360.lastY = e.clientY;
+        try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      if (!cameraOrbit360.dragging) return;
+      const dx = e.clientX - cameraOrbit360.lastX;
+      const dy = e.clientY - cameraOrbit360.lastY;
+      cameraOrbit360.lastX = e.clientX; cameraOrbit360.lastY = e.clientY;
+      cameraOrbit360.yaw = ((cameraOrbit360.yaw + dx * 0.35 + 540) % 360) - 180;
+      cameraOrbit360.pitch = clamp(cameraOrbit360.pitch - dy * 0.18, -18, 28);
+      applyOrbitCameraStyle();
+    });
+    const endOrbit = (e) => {
+      if (!cameraOrbit360.dragging) return;
+      cameraOrbit360.dragging = false;
+      try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+      applyOrbitCameraStyle();
+    };
+    canvas.addEventListener('pointerup', endOrbit);
+    canvas.addEventListener('pointercancel', endOrbit);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Home') { cameraOrbit360.yaw = 0; cameraOrbit360.pitch = 8; applyOrbitCameraStyle(); }
+    });
+
     canvas.addEventListener('wheel', (e) => {
       let cfg = {}; try { cfg = JSON.parse(localStorage.getItem('zl_user_settings') || '{}') || {}; } catch (_) {}
       if (cfg.wheelZoom === false) return;
@@ -1100,7 +1145,7 @@
       const token = ui.adminToken ? ui.adminToken.value : '';
       const target = ui.adminTarget ? ui.adminTarget.value.trim() : '';
       const meUser = window.ZLAuth?.getUser?.() || {};
-      const isAuthenticatedAdmin = meUser && (Number(meUser.is_admin) === 1 || ['admin','owner'].includes(String(meUser.role || '').toLowerCase()));
+      const isAuthenticatedAdmin = meUser && (Number(meUser.is_admin) === 1 || ['admin','owner','administrator','administratoro'].includes(String(meUser.role || '').toLowerCase()));
       if (!token && !isAuthenticatedAdmin) { if (ui.featureStatus) ui.featureStatus.textContent = '❌ Account non autorizzato: effettua il login come admin.'; return; }
       let value = b.dataset.value || '';
       let extra = {};

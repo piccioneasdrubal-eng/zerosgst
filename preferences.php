@@ -13,7 +13,7 @@ function token_user_p(string $token): ?array {
   $b=rtrim(strtr(base64_encode((string)hash_hmac('sha256',$p[1],(string)API_SECRET,true)),'+/','-_'),'='); if(!hash_equals($b,$p[2])) return null;
   $s=strtr($p[1],'-_','+/'); $pad=strlen($s)%4; if($pad)$s.=str_repeat('=',4-$pad); $json=base64_decode($s,true); $x=is_string($json)?json_decode($json,true):null;
   if(!is_array($x)||(int)($x['exp']??0)<time()) return null;
-  $st=db()->prepare('SELECT * FROM users WHERE id=? LIMIT 1'); $st->execute([(int)($x['uid']??0)]); return $st->fetch() ?: null;
+  $st=db()->prepare('SELECT * FROM zl_users WHERE id=? LIMIT 1'); $st->execute([(int)($x['uid']??0)]); return $st->fetch() ?: null;
 }
 function ensure_pref_schema(): void {
   db()->exec("CREATE TABLE IF NOT EXISTS zl_user_preferences (

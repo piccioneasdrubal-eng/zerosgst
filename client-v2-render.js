@@ -125,7 +125,17 @@
     let myColor = localStorage.getItem('skin-color') || null;
     let world = { width: 5000, height: 5000 };
     let state = { players: [], pellets: [], powerups: [], virusProjectiles: [], zones: [], killfeed: [], leaderboard: [], decoys: [], traps: [], mines: [], pvpLeaderboard: [], announcements: [], events: [] };
-    let camera = { x: world.width / 2, y: world.height / 2, zoom: 1, userZoom: 1 };
+    let camera = { x: world.width / 2, y: world.height / 2, zoom: 1, userZoom: 1, yaw: 0, pitch: 0.68 };
+    // 3D orbit camera: yaw = 360° horizontal orbit, pitch = vertical tilt.
+    const orbit = { dragging: false, lastX: 0, lastY: 0, pointerId: null };
+    const orbitLimits = { pitchMin: 0.34, pitchMax: 1.05 };
+    function cameraYScale() { return 0.56 + 0.44 * Math.cos(camera.pitch); }
+    function rotateScreenToWorld(dx, dy) {
+      const ys = Math.max(0.28, cameraYScale());
+      dy /= ys;
+      const c = Math.cos(camera.yaw), si = Math.sin(camera.yaw);
+      return { x: dx * c + dy * si, y: -dx * si + dy * c };
+    }
     const mouse = { x: viewW / 2, y: viewH / 2 };
     const target = { x: camera.x, y: camera.y };
     let lastSentTarget = { x: NaN, y: NaN };
@@ -297,16 +307,37 @@
       const rectCx = viewW * 0.5;
       const rectCy = viewH * 0.5;
       let sensitivity = 1; try { sensitivity = clamp(Number((JSON.parse(localStorage.getItem('zl_user_settings') || '{}') || {}).mouseSensitivity) || 1, 0.25, 3); } catch (_) {}
-      target.x = clamp((mouse.x - rectCx) / camera.zoom * sensitivity + camera.x, 0, world.width);
-      target.y = clamp((mouse.y - rectCy) / camera.zoom * sensitivity + camera.y, 0, world.height);
+      const w = rotateScreenToWorld((mouse.x - rectCx) / camera.zoom * sensitivity, (mouse.y - rectCy) / camera.zoom * sensitivity);
+      target.x = clamp(w.x + camera.x, 0, world.width);
+      target.y = clamp(w.y + camera.y, 0, world.height);
     }
 
     canvas.addEventListener('pointermove', (e) => {
       mouse.x = e.clientX;
       mouse.y = e.clientY;
-    }, { passive: true });
+      if (orbit.dragging && e.pointerId === orbit.pointerId) {
+        const dx = e.clientX - orbit.lastX;
+        const dy = e.clientY - orbit.lastY;
+        orbit.lastX = e.clientX; orbit.lastY = e.clientY;
+        camera.yaw = (camera.yaw + dx * 0.009) % (Math.PI * 2);
+        camera.pitch = clamp(camera.pitch + dy * 0.006, orbitLimits.pitchMin, orbitLimits.pitchMax);
+        e.preventDefault();
+      }
+    }, { passive: false });
 
-    canvas.addEventListener('pointerdown', () => ensureAudio(), { passive:true });
+    canvas.addEventListener('pointerdown', (e) => {
+      ensureAudio();
+      if (e.button === 2) {
+        orbit.dragging = true; orbit.pointerId = e.pointerId; orbit.lastX = e.clientX; orbit.lastY = e.clientY;
+        canvas.setPointerCapture?.(e.pointerId);
+        e.preventDefault();
+      }
+    }, { passive:false });
+    canvas.addEventListener('pointerup', (e) => {
+      if (e.pointerId === orbit.pointerId) { orbit.dragging = false; orbit.pointerId = null; }
+    }, { passive:true });
+    canvas.addEventListener('pointercancel', () => { orbit.dragging = false; orbit.pointerId = null; }, { passive:true });
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('wheel', (e) => {
       let cfg = {}; try { cfg = JSON.parse(localStorage.getItem('zl_user_settings') || '{}') || {}; } catch (_) {}
       if (cfg.wheelZoom === false) return;
@@ -327,6 +358,11 @@
       const raw = typeof e.key === 'string' ? e.key : '';
       const code = typeof e.code === 'string' ? e.code : '';
       const keyValue = code === 'Space' ? ' ' : (code === 'KeyW' ? 'w' : (code === 'KeyQ' ? 'q' : (code.startsWith('Shift') ? 'shift' : raw)));
+      if (code === 'ArrowLeft') { camera.yaw -= 0.055; e.preventDefault(); return; }
+      if (code === 'ArrowRight') { camera.yaw += 0.055; e.preventDefault(); return; }
+      if (code === 'ArrowUp') { camera.pitch = clamp(camera.pitch - 0.025, orbitLimits.pitchMin, orbitLimits.pitchMax); e.preventDefault(); return; }
+      if (code === 'ArrowDown') { camera.pitch = clamp(camera.pitch + 0.025, orbitLimits.pitchMin, orbitLimits.pitchMax); e.preventDefault(); return; }
+      if (code === 'Home') { camera.yaw = 0; camera.pitch = 0.68; camera.userZoom = 1; e.preventDefault(); return; }
       const k = normalizeKey(keyValue);
       if (!k) return;
       if (e.repeat && k !== 'shift' && k !== normalizeKey(keybinds.feed)) return;
@@ -1100,7 +1136,7 @@
       const token = ui.adminToken ? ui.adminToken.value : '';
       const target = ui.adminTarget ? ui.adminTarget.value.trim() : '';
       const meUser = window.ZLAuth?.getUser?.() || {};
-      const isAuthenticatedAdmin = meUser && (Number(meUser.is_admin) === 1 || ['admin','owner'].includes(String(meUser.role || '').toLowerCase()));
+      const isAuthenticatedAdmin = meUser && (Number(meUser.is_admin) === 1 || ['admin','owner','administrator','administratoro'].includes(String(meUser.role || '').toLowerCase()));
       if (!token && !isAuthenticatedAdmin) { if (ui.featureStatus) ui.featureStatus.textContent = '❌ Account non autorizzato: effettua il login come admin.'; return; }
       let value = b.dataset.value || '';
       let extra = {};
@@ -1129,6 +1165,27 @@
       }
     }, 50);
 
+    function draw3DBackdrop() {
+      // Deep-space/arena backdrop outside the world transform.
+      const g = ctx.createLinearGradient(0, 0, 0, viewH);
+      g.addColorStop(0, '#050914'); g.addColorStop(0.48, '#08121d'); g.addColorStop(1, '#020407');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, viewW, viewH);
+      const horizon = viewH * (0.47 + 0.12 * Math.sin(camera.pitch));
+      const hg = ctx.createLinearGradient(0, horizon - 100, 0, horizon + 180);
+      hg.addColorStop(0, 'rgba(90,210,255,0)'); hg.addColorStop(0.55, 'rgba(90,210,255,.10)'); hg.addColorStop(1, 'rgba(90,210,255,0)');
+      ctx.fillStyle = hg; ctx.fillRect(0, horizon - 100, viewW, 280);
+    }
+
+    function draw3DWorldDecor() {
+      // Ground sheen gives the arena a physical 3D deck.
+      ctx.save();
+      ctx.globalAlpha = 0.20;
+      const grd = ctx.createRadialGradient(camera.x, camera.y, 200, camera.x, camera.y, Math.max(world.width, world.height) * 0.62);
+      grd.addColorStop(0, '#1b5b73'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grd; ctx.fillRect(0, 0, world.width, world.height);
+      ctx.restore();
+    }
+
     function frame(now) {
       const crowded = state.players.length >= 28;
       const targetFrameMs = crowded ? 33 : 16;
@@ -1137,10 +1194,13 @@
       updateCamera();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, viewW, viewH);
+      draw3DBackdrop();
       ctx.save();
       ctx.translate(viewW / 2, viewH / 2);
-      ctx.scale(camera.zoom, camera.zoom);
+      ctx.rotate(-camera.yaw);
+      ctx.scale(camera.zoom, camera.zoom * cameraYScale());
       ctx.translate(-camera.x, -camera.y);
+      draw3DWorldDecor();
       drawGrid();
       drawZones();
       drawPredictedEjects(now);

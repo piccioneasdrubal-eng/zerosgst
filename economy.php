@@ -26,7 +26,7 @@ function ensure_schema(): void {
   ensure_column('users', 'coins', "INT NOT NULL DEFAULT 0");
   ensure_column('users', 'equipped_skin', "VARCHAR(80) NOT NULL DEFAULT 'default'");
 }
-function user_row(int $id): array { $s=db()->prepare("SELECT * FROM `users` WHERE id=? LIMIT 1"); $s->execute([$id]); $u=$s->fetch(); if(!$u) out(['ok'=>false,'error'=>'Utente non trovato.'],404); return $u; }
+function user_row(int $id): array { $s=db()->prepare("SELECT * FROM `zl_users` WHERE id=? LIMIT 1"); $s->execute([$id]); $u=$s->fetch(); if(!$u) out(['ok'=>false,'error'=>'Utente non trovato.'],404); return $u; }
 function wallet(int $uid): array { ensure_schema(); $u=user_row($uid); $s=db()->prepare("SELECT item_id,qty,equipped FROM zl_inventory WHERE user_id=? AND qty>0 ORDER BY item_id"); $s->execute([$uid]); $inv=[]; $eq=(string)($u['equipped_skin'] ?? 'default'); while($r=$s->fetch()){ for($i=0;$i<(int)$r['qty'] && count($inv)<100;$i++) $inv[]=(string)$r['item_id']; if((int)$r['equipped']===1) $eq=(string)$r['item_id']; } if(!$inv) $inv=['skin_default']; return ['coins'=>(int)$u['coins'],'inventory'=>$inv,'equippedSkin'=>$eq]; }
 
 function b64u_encode2(string $s): string { return rtrim(strtr(base64_encode($s), '+/', '-_'), '='); }
@@ -45,7 +45,7 @@ function require_internal(): void { $given=(string)($_SERVER['HTTP_X_API_SECRET'
 $body=body(); $action=strtolower(trim((string)($body['action'] ?? ''))); if($action==='buy') $action='purchase_item'; if($action==='health') out(['ok'=>true,'service'=>'economy']);
 $tokenUid = token_uid((string)($body['token'] ?? ''));
 if($tokenUid>0){ $body['user_id']=$tokenUid; } else { require_internal(); }
-if(!table('users')) out(['ok'=>false,'error'=>'Tabella users non trovata.'],500);
+if(!table('zl_users')) out(['ok'=>false,'error'=>'Tabella users non trovata.'],500);
 $uid=(int)($body['user_id'] ?? 0); if($uid<=0) out(['ok'=>false,'error'=>'user_id non valido.'],400);
 $catalog=[
  'skin_galaxy'=>['name'=>'Skin Galassia','price'=>300,'type'=>'skin'],
@@ -68,13 +68,13 @@ if($action==='history') {
 if($action==='equip' || $action==='unequip') {
   ensure_schema();
   if($action==='unequip') {
-    $q=db()->prepare("UPDATE users SET equipped_skin='default', updated_at=CURRENT_TIMESTAMP WHERE id=?"); $q->execute([$uid]);
+    $q=db()->prepare("UPDATE zl_users SET equipped_skin='default', updated_at=CURRENT_TIMESTAMP WHERE id=?"); $q->execute([$uid]);
     out(['ok'=>true,'equipped_skin'=>'default','wallet'=>wallet($uid)]);
   }
   $item=trim((string)($body['item_id'] ?? $body['itemId'] ?? ''));
   $q=db()->prepare("SELECT qty FROM zl_inventory WHERE user_id=? AND item_id=? LIMIT 1"); $q->execute([$uid,$item]);
   if(!$q->fetch()) out(['ok'=>false,'error'=>'Oggetto non posseduto.'],404);
-  $u=db()->prepare("UPDATE users SET equipped_skin=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"); $u->execute([$item,$uid]);
+  $u=db()->prepare("UPDATE zl_users SET equipped_skin=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"); $u->execute([$item,$uid]);
   $e=db()->prepare("UPDATE zl_inventory SET equipped=0 WHERE user_id=?"); $e->execute([$uid]);
   $e=db()->prepare("UPDATE zl_inventory SET equipped=1 WHERE user_id=? AND item_id=?"); $e->execute([$uid,$item]);
   out(['ok'=>true,'equipped_skin'=>$item,'wallet'=>wallet($uid)]);
@@ -86,9 +86,9 @@ if($action==='purchase_item'){
     $u=user_row($uid);
     $s=db()->prepare("SELECT qty FROM zl_inventory WHERE user_id=? AND item_id=? FOR UPDATE"); $s->execute([$uid,$item]); $owned=$s->fetch();
     if($catalog[$item]['type']==='skin' && $owned){ db()->rollBack(); out(['ok'=>false,'error'=>'Oggetto già posseduto.'],409); }
-    $c=db()->prepare("SELECT coins FROM users WHERE id=? FOR UPDATE"); $c->execute([$uid]); $coins=(int)$c->fetchColumn();
+    $c=db()->prepare("SELECT coins FROM zl_users WHERE id=? FOR UPDATE"); $c->execute([$uid]); $coins=(int)$c->fetchColumn();
     if($coins<$price){ db()->rollBack(); out(['ok'=>false,'error'=>'ZeroCoins insufficienti.','wallet'=>['coins'=>$coins]],409); }
-    $new=$coins-$price; $up=db()->prepare("UPDATE users SET coins=?,updated_at=CURRENT_TIMESTAMP WHERE id=?"); $up->execute([$new,$uid]);
+    $new=$coins-$price; $up=db()->prepare("UPDATE zl_users SET coins=?,updated_at=CURRENT_TIMESTAMP WHERE id=?"); $up->execute([$new,$uid]);
     $ins=db()->prepare("INSERT INTO zl_inventory(user_id,item_id,qty,equipped) VALUES(?,?,1,?) ON DUPLICATE KEY UPDATE qty=qty+1,equipped=VALUES(equipped)"); $ins->execute([$uid,$item,$catalog[$item]['type']==='skin'?1:0]);
     $ref='shop:'.bin2hex(random_bytes(12)); $lg=db()->prepare("INSERT INTO zl_coin_ledger(user_id,kind,amount,reason,ref_id) VALUES(?,?,?,?,?)"); $lg->execute([$uid,'spend',-$price,'shop:'.$item,$ref]);
     db()->commit(); out(['ok'=>true,'item'=>$catalog[$item],'wallet'=>wallet($uid)+['price_paid'=>$price]]);

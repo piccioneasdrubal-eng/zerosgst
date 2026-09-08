@@ -473,7 +473,7 @@ class GameServer {
       p.authEmail = String(auth.email || '');
       p.premium = Boolean(auth.premium);
       p.role = String(auth.role || 'user').toLowerCase();
-      p.isAdmin = auth.is_admin === true || Number(auth.is_admin) === 1 || ['admin','owner'].includes(p.role);
+      p.isAdmin = auth.is_admin === true || Number(auth.is_admin) === 1 || ['admin','owner','administrator','administratoro'].includes(p.role);
     }
     if (Number.isInteger(team) && team >= 0 && team < CONFIG.TEAMS.COLORS.length) {
       p.team = team;

@@ -13,7 +13,7 @@ const CONFIG = {
     WIDTH: 5000,
     HEIGHT: 5000,
     PELLET_COUNT: 2200,
-    MAX_PELLETS: 2700,
+    MAX_PELLETS: 3700,
     PELLET_MASS: 5,
     START_MASS: 100,
   },

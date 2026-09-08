@@ -183,9 +183,16 @@ const server = http.createServer((req, res) => {
       const auth = await verifyAuthToken(String(body.token || '').trim());
       const user = auth.ok ? (auth.user || {}) : null;
       const role = String(user?.role || '').toLowerCase();
-      const isAdmin = !!user && (Number(user.is_admin) === 1 || ['admin','owner'].includes(role));
-      if (!auth.ok || !isAdmin) return sendJson(res, 403, { ok:false, error:'Account non autorizzato.' });
+      const normalizedRole = ['owner','administrator','administratoro'].includes(role) ? 'admin'
+        : (['mod','staff'].includes(role) ? 'moderator' : role);
+      const isAdmin = !!user && (Number(user.is_admin) === 1 || normalizedRole === 'admin');
+      const isModerator = !!user && (Number(user.is_moderator) === 1 || normalizedRole === 'moderator');
+      if (!auth.ok || (!isAdmin && !isModerator)) return sendJson(res, 403, { ok:false, error:'Account non autorizzato.' });
       const action = String(body.action || '');
+      const moderatorActions = new Set(['list','get','kick','ban','unban','mute','unmute','freeze','unfreeze','broadcast']);
+      if (isModerator && !isAdmin && !moderatorActions.has(action)) {
+        return sendJson(res, 403, { ok:false, error:'Il ruolo moderatore non può eseguire questa azione.' });
+      }
       const target = String(body.target || '');
       const value = body.value == null ? '' : body.value;
       const x = Number(body.x), y = Number(body.y);

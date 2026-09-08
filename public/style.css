@@ -306,6 +306,20 @@ html, body {
 }
 .skin-colors span.active, .skin-presets span.active { border-color: #fff; }
 .skin-presets span { border-radius: 8px; background: rgba(255,255,255,.08); width: auto; padding: 0 8px; font-size: 12px; }
+.skin-custom-upload { margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
+.skin-custom-upload input[type="file"] { font-size: 11px; color: #cbd3e0; }
+.skin-custom-upload input[type="text"] {
+  width: 100%; box-sizing: border-box; padding: 6px 8px;
+  border-radius: 6px; border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06); color: #fff; font-size: 12px;
+}
+.skin-custom-actions { display: flex; gap: 6px; }
+.skin-custom-actions button {
+  flex: 1; padding: 6px; border: none; border-radius: 6px;
+  background: rgba(255,255,255,.1); color: #fff; font-size: 12px; cursor: pointer;
+}
+.skin-custom-actions button:hover { background: rgba(255,255,255,.18); }
+.skin-upload-status { font-size: 11px; color: #8a93a6; min-height: 14px; }
 #skin-close {
   width: 100%;
   padding: 7px;

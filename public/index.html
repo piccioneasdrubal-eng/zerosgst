@@ -340,6 +340,16 @@
     <div class="skin-colors" id="skin-colors"></div>
     <div class="skin-title">Template nome</div>
     <div class="skin-presets" id="skin-presets"></div>
+    <div class="skin-title">Skin personalizzata (immagine o GIF)</div>
+    <div class="skin-custom-upload">
+      <input id="skin-file" type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp,image/avif,image/*">
+      <input id="skin-title-input" type="text" placeholder="Nome skin (opzionale)" maxlength="64">
+      <div class="skin-custom-actions">
+        <button id="skin-upload-btn" type="button">⬆️ Carica</button>
+        <button id="skin-remove-btn" type="button">↩ Rimuovi</button>
+      </div>
+      <div id="skin-upload-status" class="skin-upload-status"></div>
+    </div>
     <button id="skin-close" type="button">Chiudi</button>
   </div>
 

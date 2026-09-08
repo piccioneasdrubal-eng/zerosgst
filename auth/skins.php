@@ -95,7 +95,7 @@ function token_user(string $token): ?array {
     $b=$parts[1]; $pad=strlen($b)%4; if($pad) $b.=str_repeat('=',4-$pad);
     $json=base64_decode(strtr($b,'-_','+/'),true); $payload=is_string($json)?json_decode($json,true):null;
     if(!is_array($payload) || (int)($payload['v']??0)!==1 || (int)($payload['exp']??0)<time()) return null;
-    $id=(int)($payload['uid']??0); if($id<=0 || !table_exists('users')) return null;
+    $id=(int)($payload['uid']??0); if($id<=0 || !table_exists('zl_users')) return null;
     $s=db()->prepare('SELECT * FROM `zl_users` WHERE id=? LIMIT 1'); $s->execute([$id]); $u=$s->fetch(); return $u?:null;
 }
 function require_user(string $token): array { $u=token_user($token); if(!$u) out(['ok'=>false,'error'=>'Sessione non valida.'],401); return $u; }

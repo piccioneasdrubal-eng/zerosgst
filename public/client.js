@@ -110,6 +110,8 @@
     let world = { width: 5000, height: 5000 };
     let state = { players: [], pellets: [], powerups: [], virusProjectiles: [], zones: [], killfeed: [], leaderboard: [], decoys: [], traps: [], mines: [], pvpLeaderboard: [], announcements: [], events: [] };
     let camera = { x: world.width / 2, y: world.height / 2, zoom: 1 };
+    // 3D orbit camera: 360° yaw + gentle pitch. Rendering stays lightweight on Canvas.
+    const cameraOrbit360 = { yaw: 0, pitch: 8, dragging: false, lastX: 0, lastY: 0 };
     const mouse = { x: viewW / 2, y: viewH / 2 };
     const target = { x: camera.x, y: camera.y };
     let lastSentTarget = { x: NaN, y: NaN };

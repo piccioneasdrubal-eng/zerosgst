@@ -160,14 +160,11 @@
       try { return window.ZLAuth && typeof window.ZLAuth.getToken === 'function' ? window.ZLAuth.getToken() : localStorage.getItem('zl_auth_token') || ''; }
       catch (_) { return ''; }
     }
-    function isLegacyRender(value) { return /onrender\.com/i.test(String(value || '')); }
     function resolveServerUrl() {
       const configured = ui.gameServerUrl && ui.gameServerUrl.value ? ui.gameServerUrl.value.trim() : '';
-      // Il backend realtime ufficiale viene sempre prima. I vecchi URL Render/localhost
-      // non devono poter tornare dal localStorage o da vecchi link salvati.
+      // Il backend realtime ufficiale viene sempre prima.
       const candidates = [autoWsUrl, String(config.GAME_SERVER_URL || '').trim(), configured, qs.get('server') || '', localStorage.getItem('gameServerUrl') || ''];
-      const selected = candidates.find((value) => value && !isLocalServer(value) && !isLegacyRender(value));
-      try { if (isLegacyRender(localStorage.getItem('gameServerUrl') || '')) localStorage.removeItem('gameServerUrl'); } catch (_) {}
+      const selected = candidates.find((value) => value && !isLocalServer(value));
       const normalized = String(selected || '').replace(/\/$/, '');
       // Se il valore salvato/configurato coincide con il sito, cancellalo: non e' un WS server.
       try {
@@ -192,9 +189,6 @@
       ui.gameServerUrl.value = saved;
       ui.gameServerUrl.readOnly = true;
       ui.gameServerUrl.setAttribute('aria-readonly','true');
-      if (localStorage.getItem('gameServerUrl') && isLegacyRender(localStorage.getItem('gameServerUrl'))) {
-        try { localStorage.removeItem('gameServerUrl'); } catch (_) {}
-      }
       updateServerStatus('🔌 WebSocket automatico ZeroLegend', true);
     }
     if (ui.saveServerUrl) ui.saveServerUrl.addEventListener('click', () => {

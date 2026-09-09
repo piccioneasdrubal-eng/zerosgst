@@ -10,8 +10,8 @@ const path = require('path');
 const CONFIG = {
   PORT: Number(process.env.PORT) || 3000,
   WORLD: {
-    WIDTH: 10000,
-    HEIGHT: 10000,
+    WIDTH: 100%,
+    HEIGHT: 100%,
     PELLET_COUNT: 4200,
     MAX_PELLETS: 4700,
     PELLET_MASS: 10,

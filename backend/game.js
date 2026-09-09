@@ -43,6 +43,11 @@ const CONFIG = {
     GOD_MODE_MASS_COST: 0,
     MOVE_ACCELERATION: 14,
     MOVE_FRICTION: 0.86,
+    // Split launch: the new half keeps a short, decaying impulse instead of
+    // being teleported to its final offset and immediately losing the burst.
+    SPLIT_IMPULSE: 900,
+    SPLIT_IMPULSE_DECAY: 8.5,
+    SPLIT_IMPULSE_TIME: 220,
     DASH_DISTANCE: 320,
     BLINK_COST: 18,
     BLINK_DISTANCE: 480,
@@ -1266,23 +1271,55 @@ class GameServer {
         const desiredVx = (dx / d) * speed;
         const desiredVy = (dy / d) * speed;
         const accel = 1 - Math.exp(-CONFIG.PHYSICS.MOVE_ACCELERATION * dt);
+
+        // Normal steering stays responsive, while splitImpulse is kept
+        // separately so the split burst does not get overwritten on the
+        // very next tick.
         cell.vx += (desiredVx - cell.vx) * accel;
         cell.vy += (desiredVy - cell.vy) * accel;
+
+        let moveVx = cell.vx;
+        let moveVy = cell.vy;
+        if (cell.splitUntil > now) {
+          const splitScale = Math.max(0, Math.min(1, (cell.splitUntil - now) / CONFIG.PHYSICS.SPLIT_IMPULSE_TIME));
+          moveVx += cell.splitVx * splitScale;
+          moveVy += cell.splitVy * splitScale;
+          const splitDecay = Math.exp(-CONFIG.PHYSICS.SPLIT_IMPULSE_DECAY * dt);
+          cell.splitVx *= splitDecay;
+          cell.splitVy *= splitDecay;
+        } else {
+          cell.splitVx = 0;
+          cell.splitVy = 0;
+        }
+
         const maxStep = d;
-        const step = Math.hypot(cell.vx, cell.vy) * dt;
+        const step = Math.hypot(moveVx, moveVy) * dt;
         if (step > maxStep) {
           const scale = maxStep / Math.max(step, 0.0001);
-          cell.vx *= scale;
-          cell.vy *= scale;
+          moveVx *= scale;
+          moveVy *= scale;
         }
-        cell.x += cell.vx * dt;
-        cell.y += cell.vy * dt;
+        cell.x += moveVx * dt;
+        cell.y += moveVy * dt;
       } else {
         const friction = Math.pow(CONFIG.PHYSICS.MOVE_FRICTION, dt * 30);
         cell.vx *= friction;
         cell.vy *= friction;
-        cell.x += cell.vx * dt;
-        cell.y += cell.vy * dt;
+        let moveVx = cell.vx;
+        let moveVy = cell.vy;
+        if (cell.splitUntil > now) {
+          const splitScale = Math.max(0, Math.min(1, (cell.splitUntil - now) / CONFIG.PHYSICS.SPLIT_IMPULSE_TIME));
+          moveVx += cell.splitVx * splitScale;
+          moveVy += cell.splitVy * splitScale;
+          const splitDecay = Math.exp(-CONFIG.PHYSICS.SPLIT_IMPULSE_DECAY * dt);
+          cell.splitVx *= splitDecay;
+          cell.splitVy *= splitDecay;
+        } else {
+          cell.splitVx = 0;
+          cell.splitVy = 0;
+        }
+        cell.x += moveVx * dt;
+        cell.y += moveVy * dt;
       }
       const r = cell.radius;
       if (cell.x <= r || cell.x >= CONFIG.WORLD.WIDTH - r) cell.vx *= -0.18;
@@ -1348,8 +1385,11 @@ class GameServer {
       p.id,
     );
     nc.bornAt = now;
-    nc.vx = Math.cos(dir) * 900;
-    nc.vy = Math.sin(dir) * 900;
+    nc.splitUntil = now + CONFIG.PHYSICS.SPLIT_IMPULSE_TIME;
+    nc.splitVx = Math.cos(dir) * CONFIG.PHYSICS.SPLIT_IMPULSE;
+    nc.splitVy = Math.sin(dir) * CONFIG.PHYSICS.SPLIT_IMPULSE;
+    nc.vx = 0;
+    nc.vy = 0;
     p.cells.push(nc);
     this.queueEvent(p, 'split', { x:nc.x, y:nc.y });
     return true;
@@ -1871,6 +1911,7 @@ class GameServer {
       gameMode: p.gameMode,
       color: p.color,
       team: p.team,
+      role: p.isAdmin ? 'admin' : String(p.role || 'user').toLowerCase(),
       mass: Math.round(p.totalMass),
       dead: p.dead,
       respawnAt: p.dead ? p.respawnAt : null,
@@ -1900,7 +1941,12 @@ class GameServer {
       godModeRemaining: Math.max(0, p.godUntil - now),
       coins: Math.round(p.coins),
       equippedSkin: p.equippedSkin,
-      cells: p.cells.map((c) => ({ x: c.x, y: c.y, mass: Math.max(0, Number(c.mass) || 0), id: c.id })),
+      cells: p.cells.map((c) => ({
+        x: c.x, y: c.y, mass: Math.max(0, Number(c.mass) || 0), id: c.id,
+        vx: Number(c.vx) || 0, vy: Number(c.vy) || 0,
+        splitVx: Number(c.splitVx) || 0, splitVy: Number(c.splitVy) || 0,
+        bornAt: Number(c.bornAt) || 0, splitUntil: Number(c.splitUntil) || 0,
+      })),
     };
   }
 
@@ -1931,10 +1977,22 @@ class GameServer {
   snapshotCells(p, limit) {
     if (!p || !p.cells.length) return [];
     const src = p.cells;
-    if (!limit || src.length <= limit) return src.map((c) => ({ x: c.x, y: c.y, mass: Math.round(Math.max(0, c.mass)), id: c.id }));
+    const pack = (c) => ({
+      x: c.x,
+      y: c.y,
+      mass: Math.round(Math.max(0, c.mass)),
+      id: c.id,
+      vx: Number(c.vx) || 0,
+      vy: Number(c.vy) || 0,
+      splitVx: Number(c.splitVx) || 0,
+      splitVy: Number(c.splitVy) || 0,
+      bornAt: Number(c.bornAt) || 0,
+      splitUntil: Number(c.splitUntil) || 0,
+    });
+    if (!limit || src.length <= limit) return src.map(pack);
     const top = [];
     for (const c of src) {
-      const item = { x: c.x, y: c.y, mass: Math.round(Math.max(0, c.mass)), id: c.id };
+      const item = pack(c);
       let pos = top.length;
       while (pos > 0 && top[pos - 1].mass < item.mass) pos--;
       if (pos < limit) {
@@ -2045,7 +2103,7 @@ class GameServer {
 
   leaderboard() {
     return [...this.world.players.values()]
-      .map((p) => ({ id: p.id, name: p.name, mass: Math.round(p.totalMass), isBot: p.isBot }))
+      .map((p) => ({ id: p.id, name: p.name, mass: Math.round(p.totalMass), isBot: p.isBot, role: p.isAdmin ? 'admin' : String(p.role || 'user').toLowerCase() }))
       .sort((a, b) => b.mass - a.mass)
       .slice(0, 10);
   }

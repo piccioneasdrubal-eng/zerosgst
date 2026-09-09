@@ -8,7 +8,66 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { WebSocketServer, WebSocket } = require('ws');
+
+// === Bypass della sfida anti-bot di InfinityFree (pagina "slowAES") ===
+// L'hosting PHP mette questa pagina davanti alle richieste che non sembrano
+// provenire da un browser reale (incluse le fetch() server-to-server di
+// questo backend). La sfida è solo una decifratura AES-128-CBC statica: la
+// risolviamo qui via codice invece di dover eseguire JavaScript reale.
+let antibotCookie = null;
+let antibotCookieAt = 0;
+const ANTIBOT_COOKIE_TTL_MS = 5 * 3600 * 1000; // un po' meno delle 6h di max-age dichiarate dalla sfida
+
+function isAntibotChallenge(text) {
+  return typeof text === 'string' && text.includes('slowAES') && text.includes('__test=');
+}
+
+function solveAntibotChallenge(html) {
+  const m = html.match(/toNumbers\("([0-9a-f]+)"\)\s*,\s*b\s*=\s*toNumbers\("([0-9a-f]+)"\)\s*,\s*c\s*=\s*toNumbers\("([0-9a-f]+)"\)/i);
+  if (!m) return null;
+  try {
+    const key = Buffer.from(m[1], 'hex');
+    const iv = Buffer.from(m[2], 'hex');
+    const ciphertext = Buffer.from(m[3], 'hex');
+    const decipher = crypto.createDecipheriv('aes-128-cbc', key, iv);
+    decipher.setAutoPadding(false);
+    const plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    return plain.toString('hex');
+  } catch (_) {
+    return null;
+  }
+}
+
+// Wrapper attorno a fetch(): usa il cookie anti-bot già risolto se valido,
+// e se la risposta è comunque la pagina di sfida la risolve al volo e riprova.
+async function fetchWithAntibotBypass(url, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  const now = Date.now();
+  if (antibotCookie && now - antibotCookieAt < ANTIBOT_COOKIE_TTL_MS) {
+    headers['Cookie'] = `__test=${antibotCookie}`;
+  }
+  let response = await fetch(url, { ...options, headers });
+  let text = await response.text();
+  if (isAntibotChallenge(text)) {
+    const cookieValue = solveAntibotChallenge(text);
+    if (cookieValue) {
+      antibotCookie = cookieValue;
+      antibotCookieAt = Date.now();
+      try {
+        const u = new URL(url);
+        await fetch(`${u.origin}${u.pathname}?i=1`, {
+          headers: { Cookie: `__test=${antibotCookie}`, 'User-Agent': headers['User-Agent'] || '' },
+        });
+      } catch (_) {}
+      const retryHeaders = { ...headers, Cookie: `__test=${antibotCookie}` };
+      response = await fetch(url, { ...options, headers: retryHeaders });
+      text = await response.text();
+    }
+  }
+  return { response, text };
+}
 
 // Carica automaticamente backend/.env senza richiedere la dipendenza dotenv.
 // Le variabili già presenti nell'ambiente hanno priorità.
@@ -105,7 +164,7 @@ async function economyRequest(action, payload = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 7000);
   try {
-    const response = await fetch(ECONOMY_API_URL, {
+    const { response, text } = await fetchWithAntibotBypass(ECONOMY_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type':'application/json',
@@ -117,7 +176,8 @@ async function economyRequest(action, payload = {}) {
       body: JSON.stringify({ action, ...payload }),
       signal: controller.signal,
     });
-    const data = await response.json().catch(() => ({}));
+    let data = {};
+    try { data = JSON.parse(text || '{}'); } catch (_) { data = {}; }
     if (!response.ok) return { ok:false, error:String(data.error || `Economy HTTP ${response.status}`) };
     return data;
   } catch (err) {
@@ -134,7 +194,7 @@ async function verifyAuthToken(token) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const response = await fetch(AUTH_VERIFY_URL, {
+    const { response, text } = await fetchWithAntibotBypass(AUTH_VERIFY_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -146,7 +206,6 @@ async function verifyAuthToken(token) {
       body: JSON.stringify({ action: 'verify', token }),
       signal: controller.signal,
     });
-    const text = await response.text();
     let data = {};
     try { data = JSON.parse(text || '{}'); } catch (_) {
       data = { ok: false, error: `Risposta auth non JSON (HTTP ${response.status})` };

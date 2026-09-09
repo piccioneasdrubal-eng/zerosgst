@@ -28,6 +28,7 @@ function respond(array $data, int $status = 200): void {
     exit;
 }
 
+
 function request_body(): array {
     $raw = file_get_contents('php://input');
     if (is_string($raw) && $raw !== '') {
@@ -85,12 +86,21 @@ function ensure_auth_schema(): string {
     if (!column_exists($table, 'equipped_skin')) $alter[] = "ADD COLUMN equipped_skin VARCHAR(80) NOT NULL DEFAULT 'default'";
     if (!column_exists($table, 'created_at')) $alter[] = "ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP";
     if (!column_exists($table, 'updated_at')) $alter[] = "ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
+    // Ban/mute persistenti (Fase 1 realtime + admin). banned_until/muted_until NULL = non attivo.
+    // Ban permanente = banned_until impostato a BAN_PERMANENT_SENTINEL (vedi sotto).
+    if (!column_exists($table, 'banned_until')) $alter[] = "ADD COLUMN banned_until DATETIME NULL DEFAULT NULL";
+    if (!column_exists($table, 'ban_reason')) $alter[] = "ADD COLUMN ban_reason VARCHAR(255) NULL DEFAULT NULL";
+    if (!column_exists($table, 'muted_until')) $alter[] = "ADD COLUMN muted_until DATETIME NULL DEFAULT NULL";
+    if (!column_exists($table, 'mute_reason')) $alter[] = "ADD COLUMN mute_reason VARCHAR(255) NULL DEFAULT NULL";
     foreach ($alter as $sql) { try { db()->exec('ALTER TABLE `'.$table.'` '.$sql); } catch (Throwable $e) {} }
     return $table;
 }
 
+// Sentinella per "ban permanente" (nessun valore MySQL rappresenta l'infinito in un DATETIME).
+const BAN_PERMANENT_SENTINEL = '9999-12-31 23:59:59';
+
 function users_query_fields(string $table): string {
-    return "id, username, email, password_hash, provider, role, level, xp, coins, skins, equipped_skin, created_at, updated_at";
+    return "id, username, email, password_hash, provider, role, level, xp, coins, skins, equipped_skin, created_at, updated_at, banned_until, ban_reason, muted_until, mute_reason";
 }
 
 function fetch_user_by_email(string $email, string $table): ?array {
@@ -129,8 +139,19 @@ function role_flags(string $role): array {
     ];
 }
 
+// true se la data (formato MySQL DATETIME) è nel futuro rispetto ad ora.
+function is_future_datetime(?string $v): bool {
+    if (!$v) return false;
+    $ts = strtotime($v);
+    return $ts !== false && $ts > time();
+}
+
 function public_user(array $u): array {
     $flags = role_flags((string)($u['role'] ?? 'user'));
+    $bannedUntil = $u['banned_until'] ?? null;
+    $mutedUntil = $u['muted_until'] ?? null;
+    $isBanned = is_future_datetime($bannedUntil);
+    $isMuted = is_future_datetime($mutedUntil);
     return [
         'id' => (int)($u['id'] ?? 0),
         'username' => (string)($u['username'] ?? ''),
@@ -146,6 +167,13 @@ function public_user(array $u): array {
         'coins' => (int)($u['coins'] ?? 1000),
         'skins' => (string)($u['skins'] ?? '["default"]'),
         'equipped_skin' => (string)($u['equipped_skin'] ?? 'default'),
+        'is_banned' => $isBanned,
+        'ban_reason' => $isBanned ? (string)($u['ban_reason'] ?? '') : '',
+        'banned_until' => $isBanned ? (string)$bannedUntil : null,
+        'ban_permanent' => $isBanned && (string)$bannedUntil === BAN_PERMANENT_SENTINEL,
+        'is_muted' => $isMuted,
+        'mute_reason' => $isMuted ? (string)($u['mute_reason'] ?? '') : '',
+        'muted_until' => $isMuted ? (string)$mutedUntil : null,
     ];
 }
 
@@ -437,6 +465,11 @@ try {
         if ($email === '' || $password === '') respond(['ok'=>false,'error'=>'Inserisci email e password.'],400);
         $user = fetch_user_by_email($email,$table);
         if (!$user || !password_verify($password,(string)$user['password_hash'])) respond(['ok'=>false,'error'=>'Credenziali non valide.'],401);
+        if (is_future_datetime($user['banned_until'] ?? null)) {
+            $permanent = (string)($user['banned_until']) === BAN_PERMANENT_SENTINEL;
+            $reason = trim((string)($user['ban_reason'] ?? ''));
+            respond(['ok'=>false,'code'=>'BANNED','error'=>'Account sospeso' . ($reason !== '' ? ": $reason" : '.'),'banned_until'=>$permanent?null:$user['banned_until'],'ban_permanent'=>$permanent],403);
+        }
         respond(['ok'=>true,'token'=>make_token((int)$user['id']),'user'=>public_full_user($user,$table)]);
     }
 
@@ -488,7 +521,76 @@ try {
             respond(['ok'=>false,'error'=>'Salvataggio ZeroCoins non riuscito.'],500);
         }
         $updated=fetch_user_by_id($targetId,$table);
+        notify_portal('wallet', $targetId, ['coins'=>(int)$updated['coins'],'reason'=>'admin_set_coins','actor'=>$actor['username']]);
         respond(['ok'=>true,'user'=>public_user($updated),'wallet'=>['coins'=>(int)$updated['coins'],'equippedSkin'=>(string)($updated['equipped_skin'] ?? 'default')]]);
+    }
+
+    // Attore admin/moderatore comune a ban/mute. Ritorna [actor, target] già validati o risponde 401/403/404.
+    $requireStaffActor = function(array $body, string $table, array $allowedRoles): array {
+        $actor = token_user((string)($body['token'] ?? ''), $table);
+        if (!$actor) respond(['ok'=>false,'error'=>'Sessione non valida o scaduta.'],401);
+        $actorRole = normalize_role((string)($actor['role'] ?? 'user'));
+        if (!in_array($actorRole, $allowedRoles, true)) respond(['ok'=>false,'error'=>'Permessi insufficienti.'],403);
+        $targetId = (int)($body['target_user_id'] ?? $body['target'] ?? 0);
+        if ($targetId <= 0) respond(['ok'=>false,'error'=>'Utente target non valido.'],400);
+        $target = fetch_user_by_id($targetId, $table);
+        if (!$target) respond(['ok'=>false,'error'=>'Utente target non trovato.'],404);
+        return [$actor, $target];
+    };
+
+    if ($action === 'admin_ban') {
+        [$actor, $target] = $requireStaffActor($body, $table, ['admin','moderator']);
+        $reason = trim((string)($body['reason'] ?? ''));
+        $minutes = (int)($body['duration_minutes'] ?? 0);
+        $until = $minutes > 0 ? date('Y-m-d H:i:s', time() + $minutes * 60) : BAN_PERMANENT_SENTINEL;
+        db()->prepare("UPDATE `{$table}` SET banned_until=?, ban_reason=?, updated_at=CURRENT_TIMESTAMP WHERE id=?")->execute([$until, $reason, $target['id']]);
+        notify_portal('ban', (int)$target['id'], ['reason'=>$reason,'until'=>$until,'permanent'=>$until===BAN_PERMANENT_SENTINEL,'actor'=>$actor['username']]);
+        respond(['ok'=>true,'user'=>public_user(fetch_user_by_id((int)$target['id'],$table))]);
+    }
+
+    if ($action === 'admin_unban') {
+        [$actor, $target] = $requireStaffActor($body, $table, ['admin','moderator']);
+        db()->prepare("UPDATE `{$table}` SET banned_until=NULL, ban_reason=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=?")->execute([$target['id']]);
+        notify_portal('unban', (int)$target['id'], ['actor'=>$actor['username']]);
+        respond(['ok'=>true,'user'=>public_user(fetch_user_by_id((int)$target['id'],$table))]);
+    }
+
+    if ($action === 'admin_mute') {
+        [$actor, $target] = $requireStaffActor($body, $table, ['admin','moderator']);
+        $reason = trim((string)($body['reason'] ?? ''));
+        $minutes = max(1, (int)($body['duration_minutes'] ?? 60));
+        $until = date('Y-m-d H:i:s', time() + $minutes * 60);
+        db()->prepare("UPDATE `{$table}` SET muted_until=?, mute_reason=?, updated_at=CURRENT_TIMESTAMP WHERE id=?")->execute([$until, $reason, $target['id']]);
+        notify_portal('mute', (int)$target['id'], ['reason'=>$reason,'until'=>$until,'actor'=>$actor['username']]);
+        respond(['ok'=>true,'user'=>public_user(fetch_user_by_id((int)$target['id'],$table))]);
+    }
+
+    if ($action === 'admin_unmute') {
+        [$actor, $target] = $requireStaffActor($body, $table, ['admin','moderator']);
+        db()->prepare("UPDATE `{$table}` SET muted_until=NULL, mute_reason=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=?")->execute([$target['id']]);
+        notify_portal('unmute', (int)$target['id'], ['actor'=>$actor['username']]);
+        respond(['ok'=>true,'user'=>public_user(fetch_user_by_id((int)$target['id'],$table))]);
+    }
+
+    // Elenco utenti registrati (per il pannello admin del portale) — indipendente da chi è online.
+    if ($action === 'admin_list_users') {
+        $actor = token_user((string)($body['token'] ?? ''), $table);
+        if (!$actor) respond(['ok'=>false,'error'=>'Sessione non valida o scaduta.'],401);
+        $actorRole = normalize_role((string)($actor['role'] ?? 'user'));
+        if (!in_array($actorRole, ['admin','moderator'], true)) respond(['ok'=>false,'error'=>'Permessi insufficienti.'],403);
+        $search = trim((string)($body['search'] ?? ''));
+        $limit = max(1, min(100, (int)($body['limit'] ?? 50)));
+        $offset = max(0, (int)($body['offset'] ?? 0));
+        if ($search !== '') {
+            $st = db()->prepare("SELECT " . users_query_fields($table) . " FROM `{$table}` WHERE username LIKE ? OR email LIKE ? ORDER BY id DESC LIMIT $limit OFFSET $offset");
+            $like = '%' . $search . '%';
+            $st->execute([$like, $like]);
+        } else {
+            $st = db()->prepare("SELECT " . users_query_fields($table) . " FROM `{$table}` ORDER BY id DESC LIMIT $limit OFFSET $offset");
+            $st->execute();
+        }
+        $rows = array_map('public_user', $st->fetchAll());
+        respond(['ok'=>true,'users'=>$rows]);
     }
 
     if ($action === 'claim_daily') {
@@ -565,7 +667,9 @@ try {
               db()->prepare('UPDATE `'.$table.'` SET equipped_skin=?,updated_at=CURRENT_TIMESTAMP WHERE id=?')->execute([$item,$uid]);
             }
             $ref='shop:'.bin2hex(random_bytes(12)); db()->prepare('INSERT INTO zl_coin_ledger(user_id,kind,amount,reason,ref_id) VALUES(?,?,?,?,?)')->execute([$uid,'spend',-$price,'shop:'.$item,$ref]);
-            db()->commit(); respond(['ok'=>true,'item'=>$shopCatalog[$item],'wallet'=>$walletFn($uid),'price_paid'=>$price]);
+            db()->commit();
+            notify_portal('wallet', $uid, ['coins'=>$new,'reason'=>'shop_purchase','item'=>$item]);
+            respond(['ok'=>true,'item'=>$shopCatalog[$item],'wallet'=>$walletFn($uid),'price_paid'=>$price]);
           }catch(Throwable $e){ if(db()->inTransaction()) db()->rollBack(); error_log('[ZeroLegend shop] '.$e->getMessage()); respond(['ok'=>false,'error'=>'Acquisto non riuscito.'],500); }
         }
     }

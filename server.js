@@ -30,7 +30,7 @@ function loadLocalEnv(file) {
   } catch (_) {}
 }
 loadLocalEnv(path.join(__dirname, '.env'));
-const { GameServer, CONFIG } = require('./game');
+const { GameServer, CONFIG } = require('./backend/game');
 const { attachFeaturesV2 } = require('./features-v2');
 
 const game = new GameServer();

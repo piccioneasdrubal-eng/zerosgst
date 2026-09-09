@@ -45,18 +45,9 @@ const CONFIG = {
     MOVE_FRICTION: 0.86,
     // Split launch: the new half keeps a short, decaying impulse instead of
     // being teleported to its final offset and immediately losing the burst.
-    SPLIT_IMPULSE: 1120,
-    SPLIT_IMPULSE_DECAY: 3.9,
-    SPLIT_IMPULSE_TIME: 760,
-    SPLIT_DRAG: 0.80,
-    SPLIT_CURVE: 0.34,
-    SPLIT_CURVE_FALLOFF: 1.15,
-    SPLIT_MIN_SPEED: 0,
-    MERGE_PULL_SPEED: 10.5,
-    MERGE_PULL_ACCEL: 13,
-    MERGE_SPRING: 18,
-    MERGE_DAMPING: 7.5,
-    MERGE_RADIUS_FACTOR: 0.96,
+    SPLIT_IMPULSE: 900,
+    SPLIT_IMPULSE_DECAY: 8.5,
+    SPLIT_IMPULSE_TIME: 220,
     DASH_DISTANCE: 320,
     BLINK_COST: 18,
     BLINK_DISTANCE: 480,
@@ -278,11 +269,6 @@ class Cell {
     this.bornAt = Date.now();
     this.vx = 0;
     this.vy = 0;
-    this.splitVx = 0;
-    this.splitVy = 0;
-    this.splitUntil = 0;
-    this.mergeVx = 0;
-    this.mergeVy = 0;
   }
   get radius() { return cellRadius(this.mass); }
 }
@@ -1295,23 +1281,16 @@ class GameServer {
         let moveVx = cell.vx;
         let moveVy = cell.vy;
         if (cell.splitUntil > now) {
-          const remain = Math.max(0, cell.splitUntil - now);
-          const splitScale = Math.min(1, remain / CONFIG.PHYSICS.SPLIT_IMPULSE_TIME);
+          const splitScale = Math.max(0, Math.min(1, (cell.splitUntil - now) / CONFIG.PHYSICS.SPLIT_IMPULSE_TIME));
           moveVx += cell.splitVx * splitScale;
           moveVy += cell.splitVy * splitScale;
           const splitDecay = Math.exp(-CONFIG.PHYSICS.SPLIT_IMPULSE_DECAY * dt);
-          const tangentialDamp = Math.pow(CONFIG.PHYSICS.SPLIT_DRAG, dt * 30);
-          cell.splitVx *= splitDecay * tangentialDamp;
-          cell.splitVy *= splitDecay * tangentialDamp;
+          cell.splitVx *= splitDecay;
+          cell.splitVy *= splitDecay;
         } else {
           cell.splitVx = 0;
           cell.splitVy = 0;
         }
-        moveVx += cell.mergeVx || 0;
-        moveVy += cell.mergeVy || 0;
-        const mergeDamp = Math.exp(-12 * dt);
-        cell.mergeVx = (cell.mergeVx || 0) * mergeDamp;
-        cell.mergeVy = (cell.mergeVy || 0) * mergeDamp;
 
         const maxStep = d;
         const step = Math.hypot(moveVx, moveVy) * dt;
@@ -1329,23 +1308,16 @@ class GameServer {
         let moveVx = cell.vx;
         let moveVy = cell.vy;
         if (cell.splitUntil > now) {
-          const remain = Math.max(0, cell.splitUntil - now);
-          const splitScale = Math.min(1, remain / CONFIG.PHYSICS.SPLIT_IMPULSE_TIME);
+          const splitScale = Math.max(0, Math.min(1, (cell.splitUntil - now) / CONFIG.PHYSICS.SPLIT_IMPULSE_TIME));
           moveVx += cell.splitVx * splitScale;
           moveVy += cell.splitVy * splitScale;
           const splitDecay = Math.exp(-CONFIG.PHYSICS.SPLIT_IMPULSE_DECAY * dt);
-          const tangentialDamp = Math.pow(CONFIG.PHYSICS.SPLIT_DRAG, dt * 30);
-          cell.splitVx *= splitDecay * tangentialDamp;
-          cell.splitVy *= splitDecay * tangentialDamp;
+          cell.splitVx *= splitDecay;
+          cell.splitVy *= splitDecay;
         } else {
           cell.splitVx = 0;
           cell.splitVy = 0;
         }
-        moveVx += cell.mergeVx || 0;
-        moveVy += cell.mergeVy || 0;
-        const mergeDamp = Math.exp(-12 * dt);
-        cell.mergeVx = (cell.mergeVx || 0) * mergeDamp;
-        cell.mergeVy = (cell.mergeVy || 0) * mergeDamp;
         cell.x += moveVx * dt;
         cell.y += moveVy * dt;
       }
@@ -1405,9 +1377,7 @@ class GameServer {
     cell.mass = half;
     const dir = p.target ? Math.atan2(p.target.y - cell.y, p.target.x - cell.x) : 0;
     const newR = cellRadius(half);
-    const offset = Math.max(4, cell.radius * 0.12 + newR * 0.18);
-    // Start close to the mother cell: the launch impulse creates the visible split motion.
-
+    const offset = cell.radius + newR + 8;
     const nc = new Cell(
       clamp(cell.x + Math.cos(dir) * offset, newR, CONFIG.WORLD.WIDTH - newR),
       clamp(cell.y + Math.sin(dir) * offset, newR, CONFIG.WORLD.HEIGHT - newR),
@@ -1418,14 +1388,8 @@ class GameServer {
     nc.splitUntil = now + CONFIG.PHYSICS.SPLIT_IMPULSE_TIME;
     nc.splitVx = Math.cos(dir) * CONFIG.PHYSICS.SPLIT_IMPULSE;
     nc.splitVy = Math.sin(dir) * CONFIG.PHYSICS.SPLIT_IMPULSE;
-    nc.splitCurve = CONFIG.PHYSICS.SPLIT_CURVE * (Math.random() < 0.5 ? -1 : 1);
-    nc.splitPhase = dir + (nc.splitCurve * 0.18);
-    nc.vx = cell.vx * 0.25;
-    nc.vy = cell.vy * 0.25;
-    cell.vx *= 0.82;
-    cell.vy *= 0.82;
-    nc.mergeVx = 0;
-    nc.mergeVy = 0;
+    nc.vx = 0;
+    nc.vy = 0;
     p.cells.push(nc);
     this.queueEvent(p, 'split', { x:nc.x, y:nc.y });
     return true;
@@ -1727,35 +1691,11 @@ class GameServer {
           for (let j = i + 1; j < p.cells.length; j++) {
             const a = p.cells[i], b = p.cells[j];
             if (now - a.bornAt <= CONFIG.PHYSICS.MERGE_TIMEOUT || now - b.bornAt <= CONFIG.PHYSICS.MERGE_TIMEOUT) continue;
-            const mergeReach = (a.radius + b.radius) * CONFIG.PHYSICS.MERGE_RADIUS_FACTOR;
-            const d2 = dist2(a, b);
-            if (d2 < mergeReach * mergeReach) {
-              const d = Math.sqrt(Math.max(d2, 0.0001));
-              const nx = (b.x - a.x) / d;
-              const ny = (b.y - a.y) / d;
-              const gap = Math.max(0, mergeReach - d);
-              const closing = CONFIG.PHYSICS.MERGE_PULL_SPEED * Math.min(2.5, 1 + gap / Math.max(mergeReach, 1));
-              const spring = Math.min(1.65, gap / Math.max(mergeReach * 0.45, 1));
-              const pull = 1 - Math.exp(-CONFIG.PHYSICS.MERGE_PULL_ACCEL / 30);
-              const impulse = (closing * pull) + (CONFIG.PHYSICS.MERGE_SPRING * spring);
-              a.mergeVx += nx * impulse;
-              a.mergeVy += ny * impulse;
-              b.mergeVx -= nx * impulse;
-              b.mergeVy -= ny * impulse;
-              const step = Math.min(gap, impulse / 30);
-              a.x += nx * step * 0.5; a.y += ny * step * 0.5;
-              b.x -= nx * step * 0.5; b.y -= ny * step * 0.5;
-              if (d > Math.max(a.radius, b.radius) * 0.34) continue;
+            if (dist2(a, b) < Math.pow(a.radius + b.radius, 2)) {
               const total = a.mass + b.mass;
-              const ax = a.x, ay = a.y, am = a.mass;
-              const bx = b.x, by = b.y, bm = b.mass;
-              const avx = a.vx, avy = a.vy, bvx = b.vx, bvy = b.vy;
-              a.x = (ax * am + bx * bm) / total;
-              a.y = (ay * am + by * bm) / total;
+              a.x = (a.x * a.mass + b.x * b.mass) / total;
+              a.y = (a.y * a.mass + b.y * b.mass) / total;
               a.mass = total;
-              a.vx = (avx * am + bvx * bm) / total;
-              a.vy = (avy * am + bvy * bm) / total;
-              a.mergeVx = 0; a.mergeVy = 0;
               p.cells.splice(j, 1);
               merged = true;
               break;
@@ -2005,8 +1945,6 @@ class GameServer {
         x: c.x, y: c.y, mass: Math.max(0, Number(c.mass) || 0), id: c.id,
         vx: Number(c.vx) || 0, vy: Number(c.vy) || 0,
         splitVx: Number(c.splitVx) || 0, splitVy: Number(c.splitVy) || 0,
-        splitCurve: Number(c.splitCurve) || 0, splitPhase: Number(c.splitPhase) || 0,
-        mergeVx: Number(c.mergeVx) || 0, mergeVy: Number(c.mergeVy) || 0,
         bornAt: Number(c.bornAt) || 0, splitUntil: Number(c.splitUntil) || 0,
       })),
     };

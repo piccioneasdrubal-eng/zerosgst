@@ -3,50 +3,6 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = id => document.getElementById(id);
 
-/**
- * Renderizza le informazioni utente con Ruolo, Tag e Colore personalizzati nel Menu Utenti.
- */
-function updateMenuUtentiHeader(userData) {
-  const container = document.getElementById('user-profile-header-container');
-  if (!container || !userData) return;
-
-  const roleClass = `role-${(userData.role || 'user').toLowerCase()}`;
-  const roleTagHtml = userData.roleTag ? `
-    <span class="role-badge ${roleClass}" style="border: 1px solid ${userData.roleColor};">
-      ${userData.roleTag} ${userData.roleName}
-    </span>
-  ` : '';
-
-  const avatarColor = userData.roleColor || '#00d2ff';
-  const initial = (userData.name || 'P').charAt(0).toUpperCase();
-
-  container.innerHTML = `
-    <div class="user-profile-header">
-      <div class="user-avatar-circle" style="background-color: ${avatarColor}; text-shadow: 0 0 5px #000;">
-        ${initial}
-      </div>
-      <div class="user-info-text">
-        <div class="user-details-title">
-          <span style="color: ${userData.roleColor || '#ffffff'}; margin-right: 4px;">
-            ${userData.name}
-          </span>
-          ${roleTagHtml}
-        </div>
-        <div class="user-details-sub">
-          ${userData.roleTag ? userData.roleTag + ' - ' : ''}ID ${userData.id} ${userData.authEmail ? '| ' + userData.authEmail : ''}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// Esempio di gestione ricezione dati dal WebSocket
-if (typeof socket !== 'undefined') {
-  socket.on('playerSummary', function(data) {
-    updateMenuUtentiHeader(data);
-  });
-}
-  
   // 20 Gameplay · 20 PvP · 20 Shop/Economia · 20 Social · 20 Admin
   const CATS = [
     { id: 'gameplay', label: '🎮 Gameplay', items: [

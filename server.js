@@ -107,13 +107,7 @@ async function economyRequest(action, payload = {}) {
   try {
     const response = await fetch(ECONOMY_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'Accept':'application/json',
-        'X-Api-Secret':ECONOMY_INTERNAL_SECRET,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': 'https://zerothelegend.gamer.gd/',
-      },
+      headers: { 'Content-Type':'application/json', 'Accept':'application/json', 'X-Api-Secret':ECONOMY_INTERNAL_SECRET },
       body: JSON.stringify({ action, ...payload }),
       signal: controller.signal,
     });
@@ -138,10 +132,7 @@ async function verifyAuthToken(token) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
         'X-Api-Secret': API_SECRET,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': 'https://zerothelegend.gamer.gd/',
       },
       body: JSON.stringify({ action: 'verify', token }),
       signal: controller.signal,

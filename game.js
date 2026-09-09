@@ -501,7 +501,6 @@ class GameServer {
     return targetId;
   }
 
-  // Aggiunto il metodo leaderboard mancante
   leaderboard() {
     const list = [];
     for (const p of this.world.players.values()) {
@@ -516,39 +515,35 @@ class GameServer {
         });
       }
     }
-    // Ordina i giocatori in base alla massa in ordine decrescente
     list.sort((a, b) => b.mass - a.mass);
-    // Restituisce i primi 10 giocatori
     return list.slice(0, 10);
   }
-}
 
-tick(dt = CONFIG.TICK / 1000) {
-        this.totalTicks++;
-        
-        // Ricostruisce la griglia dei pellet per le collisioni
-        this.world.rebuildPelletGrid();
+  tick(dt) {
+    dt = dt || (CONFIG.TICK / 1000);
+    this.totalTicks++;
+    
+    this.world.rebuildPelletGrid();
 
-        // Aggiorna la posizione o lo stato delle celle dei giocatori
-        for (const player of this.world.players.values()) {
-            if (player.dead) continue;
-            
-            // Esempio base di movimento verso il target del giocatore
-            for (const cell of player.cells) {
-                const dx = player.target.x - cell.x;
-                const dy = player.target.y - cell.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist > 1) {
-                    const speed = CONFIG.PHYSICS.BASE_SPEED;
-                    cell.x += (dx / dist) * Math.min(dist, speed);
-                    cell.y += (dy / dist) * Math.min(dist, speed);
-                }
-            }
+    for (const player of this.world.players.values()) {
+      if (player.dead) continue;
+      
+      for (const cell of player.cells) {
+        const dx = player.target.x - cell.x;
+        const dy = player.target.y - cell.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 1) {
+          const speed = CONFIG.PHYSICS.BASE_SPEED;
+          cell.x += (dx / dist) * Math.min(dist, speed);
+          cell.y += (dy / dist) * Math.min(dist, speed);
         }
+      }
     }
+  }
 
-    networkInterval() {
-        return CONFIG.NET_TICK;
-    }
+  networkInterval() {
+    return CONFIG.NET_TICK;
+  }
+}
 
 module.exports = { GameServer, CONFIG, STAFF_ROLES, getRoleData };

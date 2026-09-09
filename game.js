@@ -500,6 +500,27 @@ class GameServer {
     p.markedTargetId = targetId;
     return targetId;
   }
+
+  // Aggiunto il metodo leaderboard mancante
+  leaderboard() {
+    const list = [];
+    for (const p of this.world.players.values()) {
+      if (p.totalMass > 0 || !p.dead) {
+        const roleData = getRoleData(p.role);
+        list.push({
+          id: p.id,
+          name: p.name,
+          mass: Math.round(p.totalMass),
+          roleTag: roleData.tag,
+          roleColor: roleData.color
+        });
+      }
+    }
+    // Ordina i giocatori in base alla massa in ordine decrescente
+    list.sort((a, b) => b.mass - a.mass);
+    // Restituisce i primi 10 giocatori
+    return list.slice(0, 10);
+  }
 }
 
 module.exports = { GameServer, CONFIG, STAFF_ROLES, getRoleData };

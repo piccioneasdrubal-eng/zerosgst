@@ -43,6 +43,8 @@ const CONFIG = {
     GOD_MODE_MASS_COST: 0,
     MOVE_ACCELERATION: 14,
     MOVE_FRICTION: 0.86,
+    // Split launch: the new half keeps a short, decaying impulse instead of
+    // being teleported to its final offset and immediately losing the burst.
     SPLIT_IMPULSE: 1120,
     SPLIT_IMPULSE_DECAY: 3.9,
     SPLIT_IMPULSE_TIME: 760,
@@ -800,19 +802,10 @@ class GameServer {
     }).sort((a, b) => a.distance - b.distance).slice(0, 12);
   }
 
-  nearbyPlayers(x, y, radius) {
-    const r2 = radius * radius;
-    const out = [];
-    for (const p of this.world.players.values()) {
-      if (p.dead) continue;
-      const c = p.center;
-      if (!c) continue;
-      const dx = c.x - x, dy = c.y - y;
-      if (dx * dx + dy * dy <= r2) out.push(p);
-    }
-    return out;
-  }
 
+  // =========================
+  // 30 FUNZIONI PvP
+  // =========================
   getPlayer(idOrName) {
     if (!idOrName) return null;
     const raw = String(idOrName);
@@ -821,11 +814,6 @@ class GameServer {
     const lower = raw.trim().toLowerCase();
     for (const p of this.world.players.values()) if (p.name.toLowerCase() === lower) return p;
     return null;
-  }
-
-  setTarget(p, x, y) {
-    if (!p || !finite(x) || !finite(y)) return;
-    p.target = { x: clamp(x, 0, CONFIG.WORLD.WIDTH), y: clamp(y, 0, CONFIG.WORLD.HEIGHT) };
   }
 
   updateKillStreak(p) {
@@ -1151,492 +1139,1077 @@ class GameServer {
     return true;
   }
 
+  // =========================
+  // 30 FUNZIONI SHOP / COINS
+  // =========================
   getCatalog() {
     return [
-      { id: 'skin_default', name: 'Skin Default', price: 0, type: 'skin' },
-      { id: 'skin_galaxy', name: 'Skin Galattica', price: 300, type: 'skin' },
-      { id: 'skin_cyber', name: 'Skin Cyberpunk', price: 500, type: 'skin' },
-      { id: 'boost_speed_60', name: 'Boost Velocità 60s', price: 220, type: 'consumable' },
-      { id: 'boost_mass_60', name: 'Boost Massa 60s', price: 260, type: 'consumable' },
-      { id: 'shield_pack', name: 'Scudo 15s', price: 280, type: 'consumable' },
-      { id: 'coins_500', name: 'Pacchetto 500 ZC', price: 350, type: 'consumable' },
-      { id: 'bounty_badge', name: 'Badge Cacciatore', price: 450, type: 'skin' },
+      { id:'skin_default', name:'Skin Default', price:0, type:'skin' },
+      { id:'skin_galaxy', name:'Skin Galattica', price:300, type:'skin' },
+      { id:'skin_cyber', name:'Skin Cyberpunk', price:500, type:'skin' },
+      { id:'boost_speed_60', name:'Boost Velocità 60s', price:220, type:'consumable' },
+      { id:'boost_mass_60', name:'Boost Massa 60s', price:260, type:'consumable' },
+      { id:'shield_pack', name:'Scudo 15s', price:280, type:'consumable' },
+      { id:'coins_500', name:'Pacchetto 500 ZC', price:350, type:'consumable' },
+      { id:'bounty_badge', name:'Badge Cacciatore', price:450, type:'skin' },
     ];
   }
-
   getWallet(p) { return p ? { coins: Math.round(p.coins), multiplier: this.getCoinMultiplier(p), inventory: [...p.inventory], equipped: p.equippedSkin } : null; }
-
   addCoins(p, amount, reason = 'reward') {
     if (!p) return 0; const base = Math.max(0, Math.round(Number(amount)||0)); const gained = Math.round(base * this.getCoinMultiplier(p));
     p.coins = clamp(p.coins + gained, 0, 100000000); p.shopHistory.push({ type:'earn', amount:gained, reason, at:Date.now() }); if (p.shopHistory.length > 40) p.shopHistory.shift(); this.markSeasonDirty(); return gained;
   }
-
   spendCoins(p, amount, reason = 'purchase') {
     if (!p) return false; const n = Math.max(0, Math.round(Number(amount)||0)); if (p.coins < n) return false; p.coins -= n; p.shopHistory.push({ type:'spend', amount:n, reason, at:Date.now() }); if (p.shopHistory.length > 40) p.shopHistory.shift(); this.markSeasonDirty(); return true;
   }
-
   isOwned(p, itemId) { return !!(p && p.inventory.has(String(itemId))); }
   addInventoryItem(p, itemId) { if (!p || !itemId) return false; p.inventory.add(String(itemId).slice(0,60)); this.markSeasonDirty(); return true; }
   removeInventoryItem(p, itemId) { if (!p || itemId === 'skin_default') return false; return p.inventory.delete(String(itemId)); }
   equipItem(p, itemId) { if (!p || !this.isOwned(p,itemId)) return false; p.equippedSkin = String(itemId).replace(/^skin_/,'').slice(0,40); this.queueEvent(p,'shop',{action:'equip',itemId}); this.markSeasonDirty(); return true; }
   unequipItem(p) { if (!p) return false; p.equippedSkin='default'; this.markSeasonDirty(); return true; }
-
-  applySalePrice(price) {
-    if (!this.shopSale || this.shopSale.endsAt <= Date.now() || !this.shopSale.percent) return price;
-    return Math.max(0, Math.round(price * (1 - this.shopSale.percent / 100)));
-  }
-
-  buyItem(p, itemId) {
-    const item = this.getCatalog().find((x) => x.id === itemId);
-    if (!p || !item || this.isOwned(p, item.id)) return false;
-    const price = this.applySalePrice(item.price);
-    if (!this.spendCoins(p, price, `buy_${itemId}`)) return false;
-    this.addInventoryItem(p, item.id);
-    if (item.type === 'skin') this.equipItem(p, item.id);
-    this.queueEvent(p, 'shop', { action: 'buy', itemId, price });
-    return true;
-  }
-
+  buyItem(p, itemId) { const item = this.getCatalog().find(x=>x.id===itemId); if (!p || !item || this.isOwned(p,item.id)) return false; const price=this.applySalePrice(item.price); if (!this.spendCoins(p,price,'buy:'+item.id)) return false; this.addInventoryItem(p,item.id); p.shopHistory.push({type:'buy',item:item.id,price,at:Date.now()}); if (item.type==='skin') this.equipItem(p,item.id); return true; }
   useItem(p, itemId) {
-    if (!p || !this.isOwned(p, itemId)) return false;
-    const item = this.getCatalog().find((x) => x.id === itemId);
-    if (!item || item.type !== 'consumable') return false;
-    if (itemId === 'boost_speed_60') p.speedBoost = Date.now() + 60000;
-    else if (itemId === 'boost_mass_60') { for (const c of p.cells) c.mass += 50; }
-    else if (itemId === 'shield_pack') p.shield = Date.now() + 15000;
-    else if (itemId === 'coins_500') this.addCoins(p, 500, 'item_use');
-    this.removeInventoryItem(p, itemId);
-    this.queueEvent(p, 'shop', { action: 'use', itemId });
-    return true;
+    if (!p || !this.isOwned(p,itemId)) return false;
+    const now=Date.now();
+    if (itemId==='boost_speed_60') p.speedBoost=Math.max(p.speedBoost, now+60000);
+    else if (itemId==='boost_mass_60') { for(const c of p.cells) c.mass += 12; }
+    else if (itemId==='shield_pack') p.shield=Math.max(p.shield, now+15000);
+    else if (itemId==='coins_500') this.addCoins(p,500,'item');
+    else return false;
+    if (!itemId.startsWith('skin_') && itemId!=='bounty_badge') this.removeInventoryItem(p,itemId);
+    this.queueEvent(p,'shop',{action:'use',itemId}); this.markSeasonDirty(); return true;
   }
-
-  getInventory(p) {
-    if (!p) return [];
-    return [...p.inventory].map((id) => this.getCatalog().find((x) => x.id === id) || { id, name: id, type: 'skin' });
-  }
-
-  getPurchaseHistory(p) { return p ? p.shopHistory || [] : []; }
-
-  getCoinMultiplier(p) {
-    if (!p) return 1;
-    return (p.coinMultiplierUntil && p.coinMultiplierUntil > Date.now()) ? p.coinMultiplierValue : 1;
-  }
-
-  activateCoinBoost(p, mult = 2, duration = 60000) {
-    if (!p) return false;
-    p.coinMultiplierValue = mult;
-    p.coinMultiplierUntil = Date.now() + duration;
-    this.queueEvent(p, 'boost', { mult, duration });
-    return true;
-  }
-
-  rewardKillCoins(p, victimMass) {
-    if (!p) return 0;
-    const reward = Math.max(10, Math.round(Number(victimMass) * 0.15));
-    return this.addCoins(p, reward, 'kill');
-  }
-
-  rewardStreakCoins(p) {
-    if (!p || !p.killStreak) return 0;
-    const bonus = p.killStreak * 15;
-    return this.addCoins(p, bonus, `streak_${p.killStreak}`);
-  }
-
-  getQuests(p) {
-    const state = p ? p.questState || {} : {};
-    return [
-      { id: 'quest_kills_5', name: 'Elimina 5 giocatori', target: 5, current: state.kills || 0, reward: 250, claimed: !!state.claimed_kills_5 },
-      { id: 'quest_mass_1000', name: 'Raggiungi 1000 massa', target: 1000, current: state.maxMass || 0, reward: 300, claimed: !!state.claimed_mass_1000 },
-      { id: 'quest_play_10m', name: 'Gioca per 10 minuti', target: 10, current: state.playTimeMinutes || 0, reward: 200, claimed: !!state.claimed_play_10m },
-    ];
-  }
-
-  addQuestProgress(p, type, amount = 1) {
-    if (!p) return;
-    if (!p.questState) p.questState = {};
-    if (type === 'kill') p.questState.kills = (p.questState.kills || 0) + amount;
-    if (type === 'mass') p.questState.maxMass = Math.max(p.questState.maxMass || 0, amount);
-    if (type === 'play') p.questState.playTimeMinutes = (p.questState.playTimeMinutes || 0) + amount;
+  getInventory(p) { return p ? [...p.inventory].sort() : []; }
+  getPurchaseHistory(p) { return p ? p.shopHistory.slice(-20).reverse() : []; }
+  currentSale() { const now=Date.now(); if(this.shopSale && this.shopSale.endsAt>now) return {discount:this.shopSale.percent,endsAt:this.shopSale.endsAt}; const hour=Math.floor(now/3600000); return { discount:(hour%6===0)?25:0, endsAt:0 }; }
+  applySalePrice(price) { const n=Math.max(0,Math.round(Number(price)||0)); const sale=this.currentSale(); return Math.max(0,Math.round(n*(1-(Number(sale.discount)||0)/100))); }
+  createSale(percent=15,durationMs=3600000) { this.shopSale={percent:clamp(Number(percent)||0,0,70),endsAt:Date.now()+clamp(Number(durationMs)||3600000,60000,86400000)}; return this.shopSale; }
+  refreshQuests(p) { if(!p) return []; const d=new Date().toISOString().slice(0,10); if(p.questState.date!==d){ p.questState={date:d,kills:0,coins:0,plays:0,claimed:[]}; } return p.questState; }
+  getQuests(p) { this.refreshQuests(p); return [{id:'kills3',label:'3 uccisioni',goal:3,progress:p.questState.kills||0,reward:150},{id:'kills10',label:'10 uccisioni',goal:10,progress:p.questState.kills||0,reward:450},{id:'coins1000',label:'Guadagna 1000 ZC',goal:1000,progress:p.questState.coins||0,reward:180},{id:'play5',label:'5 minuti online',goal:5,progress:p.questState.plays||0,reward:120}].map(q=>({...q,complete:q.progress>=q.goal,claimed:(p.questState.claimed||[]).includes(q.id)})); }
+  addQuestProgress(p,type,amount=1) { if(!p) return; this.refreshQuests(p); if(type==='kill') p.questState.kills+=amount; if(type==='coins') p.questState.coins+=amount; if(type==='play') p.questState.plays+=amount; this.markSeasonDirty(); }
+  claimQuest(p,questId) { const q=this.getQuests(p).find(x=>x.id===questId); if(!q || !q.complete || q.claimed) return false; p.questState.claimed.push(q.id); this.addCoins(p,q.reward,'quest:'+q.id); return true; }
+  claimDailyReward(p) { if(!p) return false; const now=Date.now(); if(now-p.dailyClaimAt<86400000) return false; p.dailyClaimAt=now; this.addCoins(p,250,'daily'); this.queueEvent(p,'daily',{reward:250}); return true; }
+  rewardMatchCoins(p, base=30) { return this.addCoins(p,base,'match'); }
+  rewardKillCoins(p, mass=0) { const n=35+Math.min(300,Math.round(Number(mass)/2)); this.addQuestProgress(p,'kill',1); const g=this.addCoins(p,n,'kill'); this.addQuestProgress(p,'coins',g); return g; }
+  rewardStreakCoins(p) { const n=Math.min(400,Math.max(0,(p.killStreak||0)*30)); return n?this.addCoins(p,n,'streak'):0; }
+  rewardTeamWin(p,rank=1) { if(!p) return 0; return this.addCoins(p,Math.max(50,300-(rank-1)*50),'team-win'); }
+  getCoinMultiplier(p) { return p && p.coinMultiplierUntil>Date.now()?Math.max(1,Number(p.coinMultiplierValue)||1):1; }
+  activateCoinBoost(p,multiplier=2,durationMs=60000) { if(!p || !this.spendCoins(p,200,'coin-boost')) return false; p.coinMultiplierValue=clamp(Number(multiplier)||2,1,5); p.coinMultiplierUntil=Date.now()+clamp(Number(durationMs)||60000,10000,3600000); return true; }
+  starterGift(p) { if(!p || p.starterGiftClaimed) return false; p.starterGiftClaimed=true; this.addCoins(p,500,'starter'); this.addInventoryItem(p,'shield_pack'); return true; }
+  grantPurchasedItem(p, itemId, wallet) {
+    const item = this.getCatalog().find(x => x.id === itemId);
+    if (!p || !item || !wallet || !Number.isFinite(Number(wallet.coins))) return false;
+    p.coins = clamp(Number(wallet.coins), 0, 100000000);
+    if (Array.isArray(wallet.inventory)) p.inventory = new Set(wallet.inventory.map(String).slice(0, 100));
+    if (wallet.equippedSkin) p.equippedSkin = String(wallet.equippedSkin).slice(0, 40);
+    p.shopHistory.push({ type:'buy', item:item.id, price:Number(wallet.price_paid || item.price), at:Date.now(), source:'db' });
+    if (p.shopHistory.length > 40) p.shopHistory.shift();
     this.markSeasonDirty();
-  }
-
-  claimQuest(p, questId) {
-    if (!p) return false;
-    const quest = this.getQuests(p).find((q) => q.id === questId);
-    if (!quest || quest.claimed || quest.current < quest.target) return false;
-    p.questState[`claimed_${questId.replace('quest_', '')}`] = true;
-    this.addCoins(p, quest.reward, `quest_${questId}`);
-    this.queueEvent(p, 'quest', { action: 'claim', questId, reward: quest.reward });
     return true;
   }
 
-  shopStats(p) {
-    if (!p) return null;
-    return { coins: Math.round(p.coins), inventoryCount: p.inventory.size, dailyClaimAt: p.dailyClaimAt, starterClaimed: p.starterGiftClaimed };
+  refundLastPurchase(p) { if(!p) return false; const idx=[...p.shopHistory].map((e,i)=>[e,i]).reverse().find(([e])=>e.type==='buy' && !e.refunded); if(!idx) return false; const [e,i]=idx; e.refunded=true; this.addCoins(p,e.price,'refund'); this.removeInventoryItem(p,e.item); if(String(e.item).startsWith('skin_') && p.equippedSkin===String(e.item).replace(/^skin_/,'').slice(0,40)) p.equippedSkin='default'; this.markSeasonDirty(); return true; }
+  shopStats(p) { return p?{coins:Math.round(p.coins),inventory:this.getInventory(p).length,earned:p.shopHistory.filter(x=>x.type==='earn').reduce((a,x)=>a+x.amount,0),spent:p.shopHistory.filter(x=>x.type==='spend').reduce((a,x)=>a+x.amount,0),multiplier:this.getCoinMultiplier(p)}:null; }
+
+  // =========================
+  // 30 FUNZIONI ADMIN / BOT
+  // =========================
+  adminAuthenticate(token) { const expected=String(process.env.ADMIN_TOKEN||''); return !!expected && String(token||'')===expected; }
+  adminListPlayers() { return [...this.world.players.values()].map(p=>this.playerSummary(p)); }
+  adminGetPlayer(idOrName) { const p=this.getPlayer(idOrName); return p?this.playerSnapshot(p):null; }
+  adminKick(idOrName) { const p=this.getPlayer(idOrName); if(!p) return false; p.adminKicked=true; return p; }
+  adminBan(idOrName) { const p=this.getPlayer(idOrName); if(!p) return false; this.bannedNames.add(p.name.toLowerCase()); return this.adminKick(p.id); }
+  adminUnban(name) { return this.bannedNames.delete(String(name||'').trim().toLowerCase()); }
+  adminMute(idOrName,durationMs=600000) { const p=this.getPlayer(idOrName); if(!p) return false; p.mutedUntil=Date.now()+clamp(Number(durationMs)||600000,1000,86400000); this.mutedNames.add(p.name.toLowerCase()); return true; }
+  adminUnmute(idOrName) { const p=this.getPlayer(idOrName); const name=p?p.name:String(idOrName||''); this.mutedNames.delete(name.toLowerCase()); if(p) p.mutedUntil=0; return true; }
+  adminFreeze(idOrName) { const p=this.getPlayer(idOrName); if(!p) return false; p.adminFrozen=true; p.freezeUntil=Date.now()+86400000; return true; }
+  adminUnfreeze(idOrName) { const p=this.getPlayer(idOrName); if(!p) return false; p.adminFrozen=false; p.freezeUntil=0; return true; }
+  adminSetMass(idOrName,mass) { const p=this.getPlayer(idOrName); if(!p) return false; const m=clamp(Number(mass)||20,5,CONFIG.PHYSICS.MAX_CELL_MASS); if(!p.cells.length)p.spawnCell(); p.cells[0].mass=m; return true; }
+  adminSetCoins(idOrName,coins) { const p=this.getPlayer(idOrName); if(!p) return false; p.coins=clamp(Number(coins)||0,0,100000000); this.markSeasonDirty(); return true; }
+  adminTeleport(idOrName,x,y) { const p=this.getPlayer(idOrName); if(!p) return false; for(const c of p.cells){c.x=clamp(Number(x)||c.x,c.radius,CONFIG.WORLD.WIDTH-c.radius);c.y=clamp(Number(y)||c.y,c.radius,CONFIG.WORLD.HEIGHT-c.radius);} return true; }
+  adminHeal(idOrName) { const p=this.getPlayer(idOrName); if(!p) return false; if(!p.cells.length)p.spawnCell(); for(const c of p.cells)c.mass+=25; this.queueEvent(p,'admin',{action:'heal'}); return true; }
+  adminKill(idOrName,killerId=null) { const p=this.getPlayer(idOrName); const k=killerId?this.getPlayer(killerId):null; return p?this.eliminatePlayer(p,k,'admin'):false; }
+  adminRespawn(idOrName) { const p=this.getPlayer(idOrName); if(!p) return false; p.dead=true; p.respawnAt=Date.now(); return true; }
+  adminSetTeam(idOrName,team) { const p=this.getPlayer(idOrName); if(!p) return false; p.team=Number.isInteger(Number(team))&&Number(team)>=0&&Number(team)<CONFIG.TEAMS.COLORS.length?Number(team):null; if(p.team!==null)p.color=CONFIG.TEAMS.COLORS[p.team]; return true; }
+  adminSetColor(idOrName,color) { const p=this.getPlayer(idOrName); if(!p || !/^#[0-9a-fA-F]{6}$/.test(String(color||''))) return false; p.color=String(color); return true; }
+  adminBroadcast(text) { const msg=String(text||'').replace(/[<>]/g,'').slice(0,160); this.world.announcements.unshift({id:uid(),text:msg,at:Date.now()}); this.world.announcements.length=Math.min(this.world.announcements.length,10); for(const p of this.world.players.values()) this.queueEvent(p,'announcement',{text:msg}); return {ok:true,text:msg}; }
+  adminClearEvents() { for(const p of this.world.players.values()) p.events=[]; this.world.announcements=[]; return true; }
+  adminSpawnBots(count=1,mass=30,mode='balanced') { if(!this.botAutomationEnabled) return 0; const current=[...this.world.players.values()].filter(p=>p.isBot).length; const roomBotCap=Math.min(CONFIG.BOTS.MAX_COUNT, Math.max(0, Math.floor(CONFIG.SERVER.MAX_PLAYERS * CONFIG.BOTS.ROOM_SHARE_LIMIT))); const n=Math.min(clamp(Number(count)||1,1,100),Math.max(0,roomBotCap-current),Math.max(0,CONFIG.SERVER.MAX_PLAYERS-this.world.players.size)); for(let i=0;i<n;i++){const p=this.addPlayer(`AdminBot${Date.now().toString().slice(-4)}_${i+1}`,true);p.cells[0].mass=clamp(Number(mass)||30,5,10000);p.botMode=String(mode||'balanced').slice(0,20);} return n; }
+  adminRemoveBots(count=999) { let left=clamp(Number(count)||999,1,CONFIG.BOTS.MAX_COUNT); let removed=0; for(const p of [...this.world.players.values()]){ if(left<=0)break; if(p.isBot){this.removePlayer(p.id);left--;removed++;} } return removed; }
+  adminSetBotMode(mode) { const m=['balanced','aggressive','farmer','defender','hunter','passive'].includes(mode)?mode:'balanced'; for(const p of this.world.players.values()) if(p.isBot)p.botMode=m; return m; }
+  adminSetBotTarget(botId,targetId) { const b=this.getPlayer(botId),t=this.getPlayer(targetId); if(!b||!b.isBot||!t||t.dead) return false; b.botTargetId=t.id; return true; }
+  adminSetBotDifficulty(level) { const v=clamp(Number(level)||1,1,5); for(const p of this.world.players.values()) if(p.isBot)p.botDifficulty=v; CONFIG.BOTS.AGGRESSION=0.55+v*0.09; return v; }
+  adminSetBotTeam(team) { const t=Number.isInteger(Number(team))&&Number(team)>=0&&Number(team)<CONFIG.TEAMS.COLORS.length?Number(team):null; for(const p of this.world.players.values()) if(p.isBot){p.team=t;if(t!==null)p.color=CONFIG.TEAMS.COLORS[t];} return t; }
+  adminSetBotName(botId,name) { const b=this.getPlayer(botId); if(!b||!b.isBot)return false; b.name=String(name||'Bot').replace(/[<>]/g,'').slice(0,16)||'Bot'; return true; }
+  adminToggleBots(enabled) { this.botAutomationEnabled=Boolean(enabled); return this.botAutomationEnabled; }
+  adminPause() { this.paused=true; return true; }
+  adminResume() { this.paused=false; return true; }
+  adminResetMatch() { for(const p of this.world.players.values()){ if(!p.isBot){p.coins=Math.max(p.coins,1000);} p.cells=[]; p.dead=false; const spot=p.isBot?this.findSafeSpawn(p):null; if(spot)p.spawnCellAt(spot.x,spot.y); else p.spawnCell(); p.resetForMatch = true; } this.matchStartedAt=Date.now(); this.world.killfeed=[]; this.world.traps=[]; this.world.mines=[]; this.world.duels.clear(); return true; }
+
+  consumeEvents(p) {
+    if (!p || !p.events || !p.events.length) return [];
+    const out = p.events.slice(); p.events.length = 0; return out;
   }
 
-  claimDailyReward(p) {
-    if (!p) return false;
+  movePlayer(p, dt) {
+    if (!p.cells.length) return;
+    const center = p.center;
+    if (!center) return;
+    const t = p.target || center;
     const now = Date.now();
-    if (now - p.dailyClaimAt < 86400000) return false;
-    p.dailyClaimAt = now;
-    this.addCoins(p, 400, 'daily_reward');
-    this.queueEvent(p, 'shop', { action: 'daily', reward: 400 });
-    return true;
-  }
 
-  starterGift(p) {
-    if (!p || p.starterGiftClaimed) return false;
-    p.starterGiftClaimed = true;
-    this.addCoins(p, 500, 'starter_gift');
-    this.addInventoryItem(p, 'skin_galaxy');
-    this.queueEvent(p, 'shop', { action: 'starter', reward: 500 });
-    return true;
-  }
+    if (p.freezeUntil > now || p.adminFrozen) return;
 
-  grantPurchasedItem(p, itemId, wallet = null) {
-    if (!p || !itemId) return false;
-    this.addInventoryItem(p, itemId);
-    if (wallet && typeof wallet === 'object') {
-      if (Number.isFinite(wallet.coins)) p.coins = Number(wallet.coins);
-      if (Array.isArray(wallet.inventory)) p.inventory = new Set(wallet.inventory.map(String));
+    if (p.sprinting && !p.isBot) {
+      for (const cell of p.cells) {
+        cell.mass = Math.max(10, cell.mass - CONFIG.PHYSICS.SPRINT_COST * dt);
+      }
     }
-    if (itemId.startsWith('skin_')) this.equipItem(p, itemId);
-    this.queueEvent(p, 'shop', { action: 'grant', itemId });
-    return true;
+
+    for (const cell of p.cells) {
+      const dx = t.x - cell.x;
+      const dy = t.y - cell.y;
+      const d2v = dx * dx + dy * dy;
+      let speed = this.speedAt(cell);
+      if (p.speedBoost > now) speed *= 1.7;
+      if (p.rageUntil > now) speed *= 1.55;
+      if (p.slowUntil > now) speed *= 0.48;
+      if (p.hunterUntil > now) speed *= 1.12;
+      if (p.sprinting && !p.isBot) speed *= CONFIG.PHYSICS.SPRINT_SPEED;
+
+      if (p.dashUntil > now) {
+        cell.x += p.dashVx * dt;
+        cell.y += p.dashVy * dt;
+      } else if (d2v > 1) {
+        const d = Math.sqrt(d2v);
+        const desiredVx = (dx / d) * speed;
+        const desiredVy = (dy / d) * speed;
+        const accel = 1 - Math.exp(-CONFIG.PHYSICS.MOVE_ACCELERATION * dt);
+
+        // Normal steering stays responsive, while splitImpulse is kept
+        // separately so the split burst does not get overwritten on the
+        // very next tick.
+        cell.vx += (desiredVx - cell.vx) * accel;
+        cell.vy += (desiredVy - cell.vy) * accel;
+
+        let moveVx = cell.vx;
+        let moveVy = cell.vy;
+        if (cell.splitUntil > now) {
+          const remain = Math.max(0, cell.splitUntil - now);
+          const splitScale = Math.min(1, remain / CONFIG.PHYSICS.SPLIT_IMPULSE_TIME);
+          moveVx += cell.splitVx * splitScale;
+          moveVy += cell.splitVy * splitScale;
+          const splitDecay = Math.exp(-CONFIG.PHYSICS.SPLIT_IMPULSE_DECAY * dt);
+          const tangentialDamp = Math.pow(CONFIG.PHYSICS.SPLIT_DRAG, dt * 30);
+          cell.splitVx *= splitDecay * tangentialDamp;
+          cell.splitVy *= splitDecay * tangentialDamp;
+        } else {
+          cell.splitVx = 0;
+          cell.splitVy = 0;
+        }
+        moveVx += cell.mergeVx || 0;
+        moveVy += cell.mergeVy || 0;
+        const mergeDamp = Math.exp(-12 * dt);
+        cell.mergeVx = (cell.mergeVx || 0) * mergeDamp;
+        cell.mergeVy = (cell.mergeVy || 0) * mergeDamp;
+
+        const maxStep = d;
+        const step = Math.hypot(moveVx, moveVy) * dt;
+        if (step > maxStep) {
+          const scale = maxStep / Math.max(step, 0.0001);
+          moveVx *= scale;
+          moveVy *= scale;
+        }
+        cell.x += moveVx * dt;
+        cell.y += moveVy * dt;
+      } else {
+        const friction = Math.pow(CONFIG.PHYSICS.MOVE_FRICTION, dt * 30);
+        cell.vx *= friction;
+        cell.vy *= friction;
+        let moveVx = cell.vx;
+        let moveVy = cell.vy;
+        if (cell.splitUntil > now) {
+          const remain = Math.max(0, cell.splitUntil - now);
+          const splitScale = Math.min(1, remain / CONFIG.PHYSICS.SPLIT_IMPULSE_TIME);
+          moveVx += cell.splitVx * splitScale;
+          moveVy += cell.splitVy * splitScale;
+          const splitDecay = Math.exp(-CONFIG.PHYSICS.SPLIT_IMPULSE_DECAY * dt);
+          const tangentialDamp = Math.pow(CONFIG.PHYSICS.SPLIT_DRAG, dt * 30);
+          cell.splitVx *= splitDecay * tangentialDamp;
+          cell.splitVy *= splitDecay * tangentialDamp;
+        } else {
+          cell.splitVx = 0;
+          cell.splitVy = 0;
+        }
+        moveVx += cell.mergeVx || 0;
+        moveVy += cell.mergeVy || 0;
+        const mergeDamp = Math.exp(-12 * dt);
+        cell.mergeVx = (cell.mergeVx || 0) * mergeDamp;
+        cell.mergeVy = (cell.mergeVy || 0) * mergeDamp;
+        cell.x += moveVx * dt;
+        cell.y += moveVy * dt;
+      }
+      const r = cell.radius;
+      if (cell.x <= r || cell.x >= CONFIG.WORLD.WIDTH - r) cell.vx *= -0.18;
+      if (cell.y <= r || cell.y >= CONFIG.WORLD.HEIGHT - r) cell.vy *= -0.18;
+      cell.x = clamp(cell.x, r, CONFIG.WORLD.WIDTH - r);
+      cell.y = clamp(cell.y, r, CONFIG.WORLD.HEIGHT - r);
+    }
+
+    // Cheap local separation only between the player's own cells.
+    if (p.cells.length > 1) {
+      for (let i = 0; i < p.cells.length; i++) {
+        const a = p.cells[i];
+        for (let j = i + 1; j < p.cells.length; j++) {
+          const b = p.cells[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const d2v = dx * dx + dy * dy;
+          const minD = a.radius + b.radius;
+          if (d2v <= 0 || d2v >= minD * minD) continue;
+          const d = Math.sqrt(d2v);
+          const push = (minD - d) * 0.5;
+          const nx = dx / d;
+          const ny = dy / d;
+          a.x = clamp(a.x + nx * push, a.radius, CONFIG.WORLD.WIDTH - a.radius);
+          a.y = clamp(a.y + ny * push, a.radius, CONFIG.WORLD.HEIGHT - a.radius);
+          b.x = clamp(b.x - nx * push, b.radius, CONFIG.WORLD.WIDTH - b.radius);
+          b.y = clamp(b.y - ny * push, b.radius, CONFIG.WORLD.HEIGHT - b.radius);
+        }
+      }
+    }
   }
 
-  refundLastPurchase(p) {
-    if (!p || !p.shopHistory.length) return false;
-    const last = [...p.shopHistory].reverse().find((x) => x.type === 'spend');
-    if (!last) return false;
-    this.addCoins(p, last.amount, 'refund');
-    this.queueEvent(p, 'shop', { action: 'refund', amount: last.amount });
-    return true;
+  speedAt(cell) {
+    return CONFIG.PHYSICS.BASE_SPEED * 100 * Math.pow(Math.max(1, cell.mass), -CONFIG.PHYSICS.SPEED_MASS_DECAY);
+  }
+
+  setTarget(p, x, y) {
+    if (!finite(x) || !finite(y)) return;
+    p.target = {
+      x: clamp(x, 0, CONFIG.WORLD.WIDTH),
+      y: clamp(y, 0, CONFIG.WORLD.HEIGHT),
+    };
   }
 
   split(p) {
-    if (!p || p.dead || !p.cells.length) return false;
+    if (p.dead || !p.cells.length || p.cells.length >= this.activeCellLimit(p)) return false;
     const now = Date.now();
     if (now - p.lastSplit < CONFIG.PHYSICS.SPLIT_COOLDOWN) return false;
-    const maxCells = this.activeCellLimit(p);
-    if (p.cells.length >= maxCells) return false;
+    let cell = null;
+    for (const c of p.cells) if (!cell || c.mass > cell.mass) cell = c;
+    if (!cell || cell.mass < CONFIG.PHYSICS.SPLIT_MASS_THRESHOLD) return false;
 
-    const target = p.target || p.center;
-    let didSplit = false;
-    const newCells = [];
+    p.lastSplit = now;
+    const half = cell.mass / 2;
+    cell.mass = half;
+    const dir = p.target ? Math.atan2(p.target.y - cell.y, p.target.x - cell.x) : 0;
+    const newR = cellRadius(half);
+    const offset = Math.max(4, cell.radius * 0.12 + newR * 0.18);
+    // Start close to the mother cell: the launch impulse creates the visible split motion.
 
-    for (const cell of [...p.cells].sort((a, b) => b.mass - a.mass)) {
-      if (p.cells.length + newCells.length >= maxCells) break;
-      if (cell.mass < CONFIG.PHYSICS.SPLIT_MASS_THRESHOLD) continue;
-
-      const halfMass = cell.mass / 2;
-      cell.mass = halfMass;
-
-      const dx = target.x - cell.x;
-      const dy = target.y - cell.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      const nx = dx / dist;
-      const ny = dy / dist;
-
-      const newCell = new Cell(cell.x + nx * (cell.radius + 10), cell.y + ny * (cell.radius + 10), halfMass, p.id);
-      newCell.splitVx = nx * CONFIG.PHYSICS.SPLIT_IMPULSE;
-      newCell.splitVy = ny * CONFIG.PHYSICS.SPLIT_IMPULSE;
-      newCell.splitUntil = now + CONFIG.PHYSICS.SPLIT_IMPULSE_TIME;
-      newCells.push(newCell);
-      didSplit = true;
-    }
-
-    if (didSplit) {
-      p.cells.push(...newCells);
-      p.lastSplit = now;
-      this.queueEvent(p, 'split', { count: newCells.length });
-    }
-    return didSplit;
+    const nc = new Cell(
+      clamp(cell.x + Math.cos(dir) * offset, newR, CONFIG.WORLD.WIDTH - newR),
+      clamp(cell.y + Math.sin(dir) * offset, newR, CONFIG.WORLD.HEIGHT - newR),
+      half,
+      p.id,
+    );
+    nc.bornAt = now;
+    nc.splitUntil = now + CONFIG.PHYSICS.SPLIT_IMPULSE_TIME;
+    nc.splitVx = Math.cos(dir) * CONFIG.PHYSICS.SPLIT_IMPULSE;
+    nc.splitVy = Math.sin(dir) * CONFIG.PHYSICS.SPLIT_IMPULSE;
+    nc.splitCurve = CONFIG.PHYSICS.SPLIT_CURVE * (Math.random() < 0.5 ? -1 : 1);
+    nc.splitPhase = dir + (nc.splitCurve * 0.18);
+    nc.vx = cell.vx * 0.25;
+    nc.vy = cell.vy * 0.25;
+    cell.vx *= 0.82;
+    cell.vy *= 0.82;
+    nc.mergeVx = 0;
+    nc.mergeVy = 0;
+    p.cells.push(nc);
+    this.queueEvent(p, 'split', { x:nc.x, y:nc.y });
+    return true;
   }
 
   eject(p) {
-    if (!p || p.dead || !p.cells.length) return false;
-    const ejectMass = CONFIG.PHYSICS.EJECT_MASS;
-    let ejected = false;
-    const target = p.target || p.center;
-
-    for (const cell of p.cells) {
-      if (cell.mass <= ejectMass + 15) continue;
-      cell.mass -= ejectMass;
-      const dx = target.x - cell.x;
-      const dy = target.y - cell.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      const nx = dx / dist;
-      const ny = dy / dist;
-      const px = cell.x + nx * (cell.radius + 15);
-      const py = cell.y + ny * (cell.radius + 15);
-      this.world.addPellet(px, py, ejectMass, nx * 600, ny * 600, p.color, p.id);
-      ejected = true;
-    }
-    if (ejected) this.queueEvent(p, 'eject', {});
-    return ejected;
+    if (p.dead || !p.cells.length) return false;
+    let cell = p.cells[0];
+    for (const c of p.cells) if (c.mass > cell.mass) cell = c;
+    const cost = CONFIG.PHYSICS.EJECT_MASS;
+    if (cell.mass < cost + 5) return false;
+    if (this.world.pellets.length >= CONFIG.WORLD.MAX_PELLETS) return false;
+    const dir = p.target ? Math.atan2(p.target.y - cell.y, p.target.x - cell.x) : 0;
+    const launchDist = cell.radius + 28;
+    const pelletX = cell.x + Math.cos(dir) * launchDist;
+    const pelletY = cell.y + Math.sin(dir) * launchDist;
+    const pellet = this.world.addPellet(pelletX, pelletY, cost, Math.cos(dir) * 1700, Math.sin(dir) * 1700, p.color, p.id);
+    if (!pellet) return false;
+    cell.mass -= cost;
+    this.queueEvent(p, 'eject', { x:pelletX, y:pelletY });
+    return true;
   }
 
   shootVirus(p) {
-    if (!p || p.dead || !p.cells.length) return false;
-    const cost = CONFIG.PHYSICS.VIRUS_SHOOT_COST;
-    if (!this.spendMass(p, cost)) return false;
-    const c = p.center;
-    const t = p.target || c;
-    const ang = Math.atan2(t.y - c.y, t.x - c.x);
-    const vx = Math.cos(ang) * 750;
-    const vy = Math.sin(ang) * 750;
+    if (p.dead || !p.cells.length || p.totalMass < CONFIG.PHYSICS.VIRUS_SHOOT_COST + 20) return false;
+    let cell = p.cells[0];
+    for (const c of p.cells) if (c.mass > cell.mass) cell = c;
+    if (cell.mass <= CONFIG.PHYSICS.VIRUS_SHOOT_COST + 5) return false;
+    cell.mass -= CONFIG.PHYSICS.VIRUS_SHOOT_COST;
+    const dir = p.target ? Math.atan2(p.target.y - cell.y, p.target.x - cell.x) : 0;
     this.world.virusProjectiles.push({
       id: uid(),
-      x: c.x + Math.cos(ang) * (cellRadius(c.mass) + 20),
-      y: c.y + Math.sin(ang) * (cellRadius(c.mass) + 20),
-      vx, vy,
+      x: cell.x + Math.cos(dir) * (cell.radius + 6),
+      y: cell.y + Math.sin(dir) * (cell.radius + 6),
+      vx: Math.cos(dir) * 600,
+      vy: Math.sin(dir) * 600,
       mass: CONFIG.PHYSICS.VIRUS_PROJECTILE_MASS,
       ownerId: p.id,
-      bornAt: Date.now(),
+      createdAt: Date.now(),
     });
-    this.queueEvent(p, 'shoot-virus', {});
     return true;
   }
 
-  adminAuthenticate(token) {
-    const adminSecret = process.env.ADMIN_TOKEN || 'agar-admin-secret-2026';
-    return String(token || '').trim() === adminSecret;
-  }
-
-  adminListPlayers() {
-    return [...this.world.players.values()].map((p) => ({
-      id: p.id, name: p.name, isBot: p.isBot, mass: Math.round(p.totalMass),
-      coins: Math.round(p.coins), team: p.team, role: p.role,
-      frozen: p.adminFrozen, muted: p.mutedUntil > Date.now(),
-    }));
-  }
-
-  adminGetPlayer(target) {
-    const p = this.getPlayer(target);
-    return p ? this.playerSummary(p) : null;
-  }
-
-  adminKick(target) {
-    const p = this.getPlayer(target);
-    if (!p) return null;
-    this.removePlayer(p.id);
-    return p;
-  }
-
-  adminBan(target) {
-    const p = this.getPlayer(target);
-    if (!p) return null;
-    this.bannedNames.add(p.name.toLowerCase());
-    this.removePlayer(p.id);
-    return p;
-  }
-
-  adminUnban(target) {
-    const lower = String(target || '').trim().toLowerCase();
-    return this.bannedNames.delete(lower);
-  }
-
-  adminMute(target, duration = 60000) {
-    const p = this.getPlayer(target);
-    if (!p) return false;
-    p.mutedUntil = Date.now() + Number(duration);
-    this.mutedNames.add(p.name.toLowerCase());
-    return true;
-  }
-
-  adminUnmute(target) {
-    const p = this.getPlayer(target);
-    if (p) p.mutedUntil = 0;
-    const lower = String(target || '').trim().toLowerCase();
-    this.mutedNames.delete(lower);
-    return true;
-  }
-
-  adminFreeze(target) {
-    const p = this.getPlayer(target);
-    if (!p) return false;
-    p.adminFrozen = true;
-    return true;
-  }
-
-  adminUnfreeze(target) {
-    const p = this.getPlayer(target);
-    if (!p) return false;
-    p.adminFrozen = false;
-    return true;
-  }
-
-  adminSetMass(target, mass) {
-    const p = this.getPlayer(target);
-    if (!p || !p.cells.length) return false;
-    const m = clamp(Number(mass) || 10, 10, CONFIG.PHYSICS.MAX_PLAYER_MASS);
-    p.cells[0].mass = m;
-    p.cells.length = 1;
-    return true;
-  }
-
-  adminSetCoins(target, coins) {
-    const p = this.getPlayer(target);
-    if (!p) return false;
-    p.coins = clamp(Number(coins) || 0, 0, 100000000);
-    this.markSeasonDirty();
-    return true;
-  }
-
-  adminTeleport(target, x, y) {
-    const p = this.getPlayer(target);
-    if (!p || !p.cells.length) return false;
-    const tx = clamp(Number(x) || 0, 50, CONFIG.WORLD.WIDTH - 50);
-    const ty = clamp(Number(y) || 0, 50, CONFIG.WORLD.HEIGHT - 50);
-    for (const c of p.cells) { c.x = tx; c.y = ty; }
-    return true;
-  }
-
-  adminHeal(target) {
-    const p = this.getPlayer(target);
-    if (!p) return false;
-    for (const c of p.cells) c.mass += 100;
-    return true;
-  }
-
-  adminKill(target, killerName = 'Admin') {
-    const p = this.getPlayer(target);
-    if (!p || p.dead) return false;
-    this.eliminatePlayer(p, null, 'admin');
-    return true;
-  }
-
-  adminRespawn(target) {
-    const p = this.getPlayer(target);
-    if (!p) return false;
-    const spot = this.findSafeSpawn(p);
-    p.spawnCellAt(spot.x, spot.y);
-    this.grantRespawnShield(p, 3500);
-    return true;
-  }
-
-  adminSetTeam(target, team) {
-    const p = this.getPlayer(target);
-    if (!p) return false;
-    const t = Number(team);
-    if (Number.isInteger(t) && t >= 0 && t < CONFIG.TEAMS.COLORS.length) {
-      p.team = t;
-      p.color = CONFIG.TEAMS.COLORS[t];
-      return true;
-    }
-    return false;
-  }
-
-  adminSetColor(target, color) {
-    const p = this.getPlayer(target);
-    if (!p || typeof color !== 'string') return false;
-    p.color = color;
-    return true;
-  }
-
-  adminBroadcast(message) {
-    const text = String(message || '').trim().slice(0, 160);
-    if (!text) return null;
-    const announcement = { id: uid(), text, at: Date.now() };
-    this.world.announcements.push(announcement);
-    return announcement;
-  }
-
-  adminClearEvents() {
-    for (const p of this.world.players.values()) p.events = [];
-    return true;
-  }
-
-  adminSpawnBots(count = 1, mass = 30, mode = 'balanced') {
-    const n = clamp(Number(count) || 1, 1, 50);
-    let spawned = 0;
-    for (let i = 0; i < n; i++) {
-      if (this.world.players.size >= CONFIG.SERVER.MAX_PLAYERS) break;
-      const bot = this.addPlayer(`Bot_${randInt(100, 999)}`, true);
-      if (bot.cells[0]) bot.cells[0].mass = clamp(Number(mass) || 30, 10, 1000);
-      bot.botMode = mode;
-      spawned++;
-    }
-    return spawned;
-  }
-
-  adminRemoveBots(count = 1) {
-    const n = clamp(Number(count) || 1, 1, 100);
-    let removed = 0;
-    for (const p of [...this.world.players.values()]) {
-      if (p.isBot) {
-        this.removePlayer(p.id);
-        removed++;
-        if (removed >= n) break;
+  resolvePellets() {
+    const now = Date.now();
+    for (const player of this.world.players.values()) {
+      if (player.dead) continue;
+      const magnet = player.magnet > now;
+      for (const cell of player.cells) {
+        const pickupRadius = magnet ? cell.radius * 3 : cell.radius;
+        const rr = pickupRadius + 8;
+        for (const pellet of this.world.nearbyPellets(cell.x, cell.y, rr)) {
+          if (pellet.consumed) continue;
+          if (pellet.ownerId === player.id && Date.now() - (pellet.releasedAt || 0) < 850) continue;
+          if (dist2(cell, pellet) <= pickupRadius * pickupRadius) {
+            pellet.consumed = true;
+            cell.mass += pellet.mass;
+          }
+        }
       }
     }
-    return removed;
   }
 
-  adminSetBotMode(mode) {
-    const m = String(mode || 'balanced').toLowerCase();
-    for (const p of this.world.players.values()) if (p.isBot) p.botMode = m;
-    return m;
+  resolvePlayerCollisions() {
+    const cells = [];
+    const grid = new Map();
+    const key = (gx, gy) => `${gx}:${gy}`;
+
+    for (const p of this.world.players.values()) {
+      if (p.dead) continue;
+      for (const c of p.cells) {
+        const idx = cells.length;
+        cells.push({ p, c });
+        const minGX = Math.floor((c.x - c.radius) / PLAYER_GRID_SIZE);
+        const maxGX = Math.floor((c.x + c.radius) / PLAYER_GRID_SIZE);
+        const minGY = Math.floor((c.y - c.radius) / PLAYER_GRID_SIZE);
+        const maxGY = Math.floor((c.y + c.radius) / PLAYER_GRID_SIZE);
+        for (let gx = minGX; gx <= maxGX; gx++) {
+          for (let gy = minGY; gy <= maxGY; gy++) {
+            const k = key(gx, gy);
+            let bucket = grid.get(k);
+            if (!bucket) { bucket = []; grid.set(k, bucket); }
+            bucket.push(idx);
+          }
+        }
+      }
+    }
+
+    if (cells.length < 2) return;
+    const eatenCells = new Set();
+    const killedBy = new Map();
+    const marks = new Int32Array(cells.length);
+    let stamp = 1;
+    const now = Date.now();
+
+    for (let i = 0; i < cells.length; i++) {
+      const a = cells[i];
+      if (eatenCells.has(a.c.id)) continue;
+      stamp++;
+      if (stamp >= 2147483647) { marks.fill(0); stamp = 1; }
+
+      const minGX = Math.floor((a.c.x - a.c.radius) / PLAYER_GRID_SIZE);
+      const maxGX = Math.floor((a.c.x + a.c.radius) / PLAYER_GRID_SIZE);
+      const minGY = Math.floor((a.c.y - a.c.radius) / PLAYER_GRID_SIZE);
+      const maxGY = Math.floor((a.c.y + a.c.radius) / PLAYER_GRID_SIZE);
+
+      for (let gx = minGX; gx <= maxGX; gx++) {
+        for (let gy = minGY; gy <= maxGY; gy++) {
+          const bucket = grid.get(key(gx, gy));
+          if (!bucket) continue;
+          for (const j of bucket) {
+            if (j <= i || marks[j] === stamp) continue;
+            marks[j] = stamp;
+            const b = cells[j];
+            if (eatenCells.has(b.c.id) || a.p.id === b.p.id) continue;
+            if (a.p.team !== null && a.p.team === b.p.team) continue;
+            if (a.p.shield > now || b.p.shield > now) continue;
+            if (a.p.godUntil > now || b.p.godUntil > now) continue;
+
+            const d2v = dist2(a.c, b.c);
+            const ar = Math.max(0, a.c.radius - b.c.radius * 0.4);
+            const br = Math.max(0, b.c.radius - a.c.radius * 0.4);
+            const eatA = a.c.mass > b.c.mass * CONFIG.PHYSICS.EAT_FACTOR && d2v < ar * ar;
+            const eatB = b.c.mass > a.c.mass * CONFIG.PHYSICS.EAT_FACTOR && d2v < br * br;
+            if (!eatA && !eatB) continue;
+
+            if (eatA && b.p.parryUntil > now) {
+              b.p.parryUntil = 0;
+              for (const cell of a.p.cells) {
+                cell.x = clamp(cell.x - (b.c.x - a.c.x) * 0.15, cell.radius, CONFIG.WORLD.WIDTH - cell.radius);
+                cell.y = clamp(cell.y - (b.c.y - a.c.y) * 0.15, cell.radius, CONFIG.WORLD.HEIGHT - cell.radius);
+              }
+              this.queueEvent(b.p, 'parry-success', { attacker: a.p.name });
+              continue;
+            }
+            if (eatB && a.p.parryUntil > now) {
+              a.p.parryUntil = 0;
+              for (const cell of b.p.cells) {
+                cell.x = clamp(cell.x - (a.c.x - b.c.x) * 0.15, cell.radius, CONFIG.WORLD.WIDTH - cell.radius);
+                cell.y = clamp(cell.y - (a.c.y - b.c.y) * 0.15, cell.radius, CONFIG.WORLD.HEIGHT - cell.radius);
+              }
+              this.queueEvent(a.p, 'parry-success', { attacker: b.p.name });
+              continue;
+            }
+
+            if (eatA && (!eatB || a.c.mass >= b.c.mass)) {
+              const victimMass = Math.max(0, b.c.mass);
+              a.c.mass += victimMass;
+              eatenCells.add(b.c.id);
+              killedBy.set(b.c.id, { killer: a.p, mass: victimMass });
+              this.recordPvpDamage(a.p, b.p, Math.min(victimMass, a.c.mass * 0.25));
+            } else {
+              const victimMass = Math.max(0, a.c.mass);
+              b.c.mass += victimMass;
+              eatenCells.add(a.c.id);
+              killedBy.set(a.c.id, { killer: b.p, mass: victimMass });
+              this.recordPvpDamage(b.p, a.p, Math.min(victimMass, b.c.mass * 0.25));
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!eatenCells.size) return;
+    for (const p of this.world.players.values()) {
+      const before = p.cells.length;
+      p.cells = p.cells.filter((c) => !eatenCells.has(c.id));
+      if (before > 0 && p.cells.length === 0 && !p.dead) {
+        let killer = null;
+        let mass = 0;
+        for (const { c } of cells) {
+          if (c.ownerId !== p.id) continue;
+          const hit = killedBy.get(c.id);
+          if (hit) { killer = hit.killer; mass += hit.mass; }
+        }
+        if (killer) {
+          this.handlePvpKill(killer, p, mass, 'eat');
+          p.stats.deaths += 1;
+          if (!p.isBot) this.recordDeath(p);
+        }
+        this.startRespawn(p);
+      }
+    }
   }
 
-  adminSetBotTarget(target, botTargetId) {
-    const bot = this.getPlayer(target);
-    if (!bot || !bot.isBot) return false;
-    bot.botTargetId = botTargetId ? String(botTargetId) : null;
+  resolvePowerups() {
+    const now = Date.now();
+    for (const player of this.world.players.values()) {
+      if (player.dead) continue;
+      for (const cell of player.cells) {
+        for (let i = this.world.powerups.length - 1; i >= 0; i--) {
+          const pu = this.world.powerups[i];
+          if (dist2(cell, pu) < cell.radius * cell.radius) {
+            this.applyPowerup(player, cell, pu, now);
+            this.world.powerups.splice(i, 1);
+          }
+        }
+      }
+    }
+    while (this.world.powerups.length < 20) this.world.spawnPowerup();
+  }
+
+  applyPowerup(player, cell, pu, now = Date.now()) {
+    switch (pu.type) {
+      case 'mass': cell.mass += pu.mass; break;
+      case 'virus': this.explodeFromVirus(player, cell); break;
+      case 'speed': player.speedBoost = now + 8000; break;
+      case 'invisible': player.invisible = now + 5000; break;
+      case 'magnet': player.magnet = now + 6000; break;
+      case 'shield': player.shield = now + CONFIG.PHYSICS.SHIELD_TIME; break;
+    }
+  }
+
+  explodeFromVirus(player, cell) {
+    if (!cell || cell.mass < 50 || player.cells.length >= this.activeCellLimit(player)) return false;
+    const maxPieces = this.activeCellLimit(player) - player.cells.length + 1;
+    const pieces = Math.min(16, Math.floor(cell.mass / 10), Math.max(1, maxPieces));
+    if (pieces < 2) return false;
+    const perPiece = cell.mass / pieces;
+    player.cells = player.cells.filter((c) => c !== cell);
+    for (let i = 0; i < pieces; i++) {
+      const ang = rand(0, Math.PI * 2);
+      const m = new Cell(
+        clamp(cell.x + Math.cos(ang) * (cell.radius + 20), 10, CONFIG.WORLD.WIDTH - 10),
+        clamp(cell.y + Math.sin(ang) * (cell.radius + 20), 10, CONFIG.WORLD.HEIGHT - 10),
+        perPiece,
+        player.id,
+      );
+      player.cells.push(m);
+    }
     return true;
   }
 
-  adminSetBotDifficulty(diff) {
-    const d = clamp(Number(diff) || 1, 0.5, 3);
-    for (const p of this.world.players.values()) if (p.isBot) p.botDifficulty = d;
-    return d;
+  updateVirusProjectiles(dt) {
+    if (!this.world.virusProjectiles.length) return;
+    for (let i = this.world.virusProjectiles.length - 1; i >= 0; i--) {
+      const v = this.world.virusProjectiles[i];
+      v.x += v.vx * dt;
+      v.y += v.vy * dt;
+      if (v.x < -100 || v.x > CONFIG.WORLD.WIDTH + 100 || v.y < -100 || v.y > CONFIG.WORLD.HEIGHT + 100 || Date.now() - v.createdAt > 6000) {
+        this.world.virusProjectiles.splice(i, 1);
+        continue;
+      }
+      const owner = this.world.players.get(v.ownerId);
+      let hit = false;
+      for (const p of this.nearbyPlayers(v.x, v.y, 850)) {
+        if (p.dead || p.id === v.ownerId) continue;
+        if (owner && owner.team !== null && owner.team === p.team) continue;
+        for (const c of p.cells) {
+          if (dist2(v, c) < Math.pow(c.radius + 10, 2)) {
+            this.explodeFromVirus(p, c);
+            hit = true;
+            break;
+          }
+        }
+        if (hit) break;
+      }
+      if (hit) this.world.virusProjectiles.splice(i, 1);
+    }
   }
 
-  adminSetBotTeam(team) {
-    const t = Number(team);
-    for (const p of this.world.players.values()) if (p.isBot) p.team = t;
-    return t;
+  resolveZones(dt) {
+    for (const player of this.world.players.values()) {
+      if (player.dead) continue;
+      const center = player.center;
+      if (!center) continue;
+      for (const z of this.world.zones) {
+        if (z.kind !== 'hazard' || dist2(center, z) >= z.r * z.r) continue;
+        for (const cell of player.cells) {
+          cell.mass = Math.max(3, cell.mass - CONFIG.ZONES.HAZARD_DPS * dt);
+        }
+        break;
+      }
+    }
   }
 
-  adminSetBotName(target, newName) {
-    const bot = this.getPlayer(target);
-    if (!bot || !bot.isBot) return false;
-    bot.name = String(newName || 'Bot').slice(0, 16);
-    return true;
+  zoneTick(now) {
+    if (now - this.lastZoneTick < CONFIG.ZONES.BONUS_INTERVAL) return;
+    this.lastZoneTick = now;
+    if (this.world.pellets.length >= CONFIG.WORLD.MAX_PELLETS - 20) return;
+    let added = 0;
+    for (const z of this.world.zones) {
+      if (z.kind !== 'bonus' || added >= CONFIG.ZONES.MAX_BONUS_PER_TICK) continue;
+      const angle = rand(0, Math.PI * 2);
+      const radius = Math.sqrt(Math.random()) * z.r;
+      if (this.world.addPellet(z.x + Math.cos(angle) * radius, z.y + Math.sin(angle) * radius, CONFIG.WORLD.PELLET_MASS * CONFIG.ZONES.BONUS_PELLET_MULT)) added++;
+    }
   }
 
-  adminToggleBots(enabled) {
-    this.botAutomationEnabled = Boolean(enabled);
-    return this.botAutomationEnabled;
+  mergeCells() {
+    const now = Date.now();
+    for (const p of this.world.players.values()) {
+      if (p.dead || p.cells.length < 2) continue;
+      let merged = true;
+      while (merged && p.cells.length > 1) {
+        merged = false;
+        for (let i = 0; i < p.cells.length && !merged; i++) {
+          for (let j = i + 1; j < p.cells.length; j++) {
+            const a = p.cells[i], b = p.cells[j];
+            if (now - a.bornAt <= CONFIG.PHYSICS.MERGE_TIMEOUT || now - b.bornAt <= CONFIG.PHYSICS.MERGE_TIMEOUT) continue;
+            const mergeReach = (a.radius + b.radius) * CONFIG.PHYSICS.MERGE_RADIUS_FACTOR;
+            const d2 = dist2(a, b);
+            if (d2 < mergeReach * mergeReach) {
+              const d = Math.sqrt(Math.max(d2, 0.0001));
+              const nx = (b.x - a.x) / d;
+              const ny = (b.y - a.y) / d;
+              const gap = Math.max(0, mergeReach - d);
+              const closing = CONFIG.PHYSICS.MERGE_PULL_SPEED * Math.min(2.5, 1 + gap / Math.max(mergeReach, 1));
+              const spring = Math.min(1.65, gap / Math.max(mergeReach * 0.45, 1));
+              const pull = 1 - Math.exp(-CONFIG.PHYSICS.MERGE_PULL_ACCEL / 30);
+              const impulse = (closing * pull) + (CONFIG.PHYSICS.MERGE_SPRING * spring);
+              a.mergeVx += nx * impulse;
+              a.mergeVy += ny * impulse;
+              b.mergeVx -= nx * impulse;
+              b.mergeVy -= ny * impulse;
+              const step = Math.min(gap, impulse / 30);
+              a.x += nx * step * 0.5; a.y += ny * step * 0.5;
+              b.x -= nx * step * 0.5; b.y -= ny * step * 0.5;
+              if (d > Math.max(a.radius, b.radius) * 0.34) continue;
+              const total = a.mass + b.mass;
+              const ax = a.x, ay = a.y, am = a.mass;
+              const bx = b.x, by = b.y, bm = b.mass;
+              const avx = a.vx, avy = a.vy, bvx = b.vx, bvy = b.vy;
+              a.x = (ax * am + bx * bm) / total;
+              a.y = (ay * am + by * bm) / total;
+              a.mass = total;
+              a.vx = (avx * am + bvx * bm) / total;
+              a.vy = (avy * am + bvy * bm) / total;
+              a.mergeVx = 0; a.mergeVy = 0;
+              p.cells.splice(j, 1);
+              merged = true;
+              break;
+            }
+          }
+        }
+      }
+    }
   }
 
-  adminPause() { this.paused = true; return true; }
-  adminResume() { this.paused = false; return true; }
-  adminResetMatch() {
-    this.matchStartedAt = Date.now();
-    this.world.killfeed = [];
-    this.world.announcements = [];
-    return true;
+  rebuildPlayerGrid() {
+    this.playerGrid.clear();
+    for (const p of this.world.players.values()) {
+      if (p.dead) continue;
+      const c = p.center;
+      if (!c) continue;
+      const gx = Math.floor(c.x / PLAYER_GRID_SIZE);
+      const gy = Math.floor(c.y / PLAYER_GRID_SIZE);
+      const key = `${gx}:${gy}`;
+      let bucket = this.playerGrid.get(key);
+      if (!bucket) {
+        bucket = [];
+        this.playerGrid.set(key, bucket);
+      }
+      bucket.push(p);
+    }
+  }
+
+  nearbyPlayers(x, y, radius) {
+    const minGX = Math.floor((x - radius) / PLAYER_GRID_SIZE);
+    const maxGX = Math.floor((x + radius) / PLAYER_GRID_SIZE);
+    const minGY = Math.floor((y - radius) / PLAYER_GRID_SIZE);
+    const maxGY = Math.floor((y + radius) / PLAYER_GRID_SIZE);
+    const out = [];
+    for (let gx = minGX; gx <= maxGX; gx++) {
+      for (let gy = minGY; gy <= maxGY; gy++) {
+        const bucket = this.playerGrid.get(`${gx}:${gy}`);
+        if (bucket) out.push(...bucket);
+      }
+    }
+    return out;
   }
 
   chooseBotTarget(p, now) {
-    if (!p || p.dead || !p.cells.length) return;
-    if (!p.botState) {
-      p.botState = { wanderTheta: rand(0, Math.PI * 2), targetX: p.target.x, targetY: p.target.y, nextDecisionAt: 0, nextWanderAt: now + rand(300, 1200) };
-    }
-    if (now < p.botState.nextDecisionAt) return;
+    if (!p.botState || !p.cells.length || now < p.botState.nextDecisionAt) return;
     p.botState.nextDecisionAt = now + CONFIG.BOTS.DECISION_INTERVAL;
-
     const c = p.center;
     if (!c) return;
 
-    let bestTarget = null;
-    let maxPriority = -Infinity;
+    let nearestHuman = null, nearestHumanD2 = Infinity;
+    let prey = null, preyD2 = Infinity;
+    let threat = null, threatD2 = Infinity;
+    const pm = p.totalMass;
 
     for (const other of this.nearbyPlayers(c.x, c.y, CONFIG.BOTS.VIEW_RADIUS)) {
-      if (other.id === p.id || other.dead || (p.team !== null && p.team === other.team)) continue;
-      const oc = other.center;
-      if (!oc) continue;
-     const dist = Math.sqrt(dist2(player, nemico));
+      if (other.id === p.id || other.dead) continue;
+      const o = other.center;
+      if (!o) continue;
+      const d2v = dist2(c, o);
+      if (d2v > CONFIG.BOTS.VIEW_RADIUS * CONFIG.BOTS.VIEW_RADIUS) continue;
+      if (!other.isBot && d2v < nearestHumanD2) { nearestHumanD2 = d2v; nearestHuman = o; }
+      const canHuntBots = p.botMode === 'aggressive' || p.botMode === 'hunter';
+      if ((canHuntBots || !other.isBot) && o.mass * CONFIG.PHYSICS.EAT_FACTOR < pm && d2v < preyD2) { preyD2 = d2v; prey = o; }
+      if (pm * CONFIG.PHYSICS.EAT_FACTOR < o.mass && d2v < threatD2) { threatD2 = d2v; threat = o; }
+    }
+
+    let tx = c.x, ty = c.y;
+    const forced = p.botTargetId ? this.getPlayer(p.botTargetId) : null;
+    if (forced && !forced.dead) { tx = forced.center.x; ty = forced.center.y; }
+    if (!forced && (p.botMode === 'hunter' || p.botMode === 'aggressive') && nearestHuman && nearestHumanD2 < CONFIG.BOTS.CHASE_RANGE * CONFIG.BOTS.CHASE_RANGE && Math.random() < CONFIG.BOTS.AGGRESSION) {
+      tx = nearestHuman.x;
+      ty = nearestHuman.y;
+    } else if (threat) {
+      const ang = Math.atan2(c.y - threat.y, c.x - threat.x);
+      tx = c.x + Math.cos(ang) * 500;
+      ty = c.y + Math.sin(ang) * 500;
+    } else if (prey && Math.random() < CONFIG.BOTS.AGGRESSION) {
+      tx = prey.x;
+      ty = prey.y;
+    } else {
+      const pellets = this.world.nearbyPellets(c.x, c.y, 450);
+      let best = null, bestD2 = Infinity;
+      for (const pellet of pellets) {
+        if (pellet.consumed) continue;
+        const d2v = dist2(c, pellet);
+        if (d2v < bestD2) { bestD2 = d2v; best = pellet; }
+      }
+      if (best) {
+        tx = best.x;
+        ty = best.y;
+      } else {
+        if (now >= p.botState.nextWanderAt) {
+          p.botState.wanderTheta = rand(0, Math.PI * 2);
+          p.botState.nextWanderAt = now + rand(500, 2500);
+        }
+        tx = c.x + Math.cos(p.botState.wanderTheta) * 300;
+        ty = c.y + Math.sin(p.botState.wanderTheta) * 300;
+      }
+    }
+
+    p.botState.targetX = tx;
+    p.botState.targetY = ty;
+    this.setTarget(p, tx, ty);
+    if (prey && preyD2 < 200 * 200 && p.cells.length < this.activeCellLimit(p) && pm > CONFIG.PHYSICS.SPLIT_MASS_THRESHOLD * 3 && Math.random() < 0.012) this.split(p);
+  }
+
+  updateBot(p, dt, now) {
+    if (p.dead) {
+      this.respawnIfReady(p);
+      return;
+    }
+    if (!p.cells.length) {
+      p.spawnCell();
+      return;
+    }
+    this.chooseBotTarget(p, now);
+    if (p.botState) this.setTarget(p, p.botState.targetX, p.botState.targetY);
+    this.movePlayer(p, dt);
+  }
+
+  startRespawn(p) {
+    p.combo = 0;
+    p.killStreak = 0;
+    p.cells = [];
+    p.dead = true;
+    p.respawnAt = Date.now() + (p.isBot ? CONFIG.PHYSICS.BOT_RESPAWN_TIME : CONFIG.PHYSICS.RESPAWN_TIME);
+    p.speedBoost = 0;
+    p.invisible = 0;
+    p.magnet = 0;
+    p.shield = 0;
+    p.godUntil = 0;
+    p.sprinting = false;
+  }
+
+  respawnIfReady(p) {
+    if (p.dead && Date.now() >= p.respawnAt) {
+      const spot = this.findSafeSpawn(p);
+      p.spawnCellAt(spot.x, spot.y);
+      this.grantRespawnShield(p);
+      this.queueEvent(p, 'status', { name: 'respawn-shield' });
+    }
+  }
+
+  tick() {
+    const tickStarted = Date.now();
+    const now = tickStarted;
+    if (this.paused) { this.totalTicks += 1; this.lastTickDuration = Date.now() - tickStarted; return; }
+    const dt = clamp((now - this.lastTick) / 1000, 0, CONFIG.PHYSICS.MAX_DT);
+    this.lastTick = now;
+
+    for (const p of this.world.players.values()) this.normalizePlayerMass(p);
+    this.rebuildPlayerGrid();
+    for (const p of this.world.players.values()) {
+      if (p.isBot && this.botAutomationEnabled && p.adminBotEnabled) this.updateBot(p, dt, now);
+      else {
+        this.respawnIfReady(p);
+        if (!p.dead) {
+          if (p.autoPilot && p.botState) this.chooseBotTarget(p, now);
+          this.movePlayer(p, dt);
+        }
+      }
+    }
+
+    this.updateTimedEffects(now);
+    // Ejected food visibly launches outward, then slows down.
+    for (const pellet of this.world.pellets) {
+      if (!pellet || pellet.consumed) continue;
+      const pv = Math.hypot(Number(pellet.vx) || 0, Number(pellet.vy) || 0);
+      if (pv > 1) {
+        pellet.x += (Number(pellet.vx) || 0) * dt;
+        pellet.y += (Number(pellet.vy) || 0) * dt;
+        pellet.vx *= Math.pow(0.055, dt);
+        pellet.vy *= Math.pow(0.055, dt);
+        pellet.x = clamp(pellet.x, 4, CONFIG.WORLD.WIDTH - 4);
+        pellet.y = clamp(pellet.y, 4, CONFIG.WORLD.HEIGHT - 4);
+      }
+    }
+    this.resolvePellets();
+    this.resolvePlayerCollisions();
+    this.resolvePowerups();
+    this.resolveZones(dt);
+    this.updateVirusProjectiles(dt);
+    this.zoneTick(now);
+    const heavyEvery = this.world.players.size >= 80 ? 3 : 1;
+    if (this.totalTicks % heavyEvery === 0) {
+      this.triggerTraps();
+      this.triggerMines();
+      this.resolveDuels();
+      this.antiCampTick(now);
+    }
+    if (this.totalTicks % (this.world.players.size >= 80 ? 3 : 2) === 0) this.mergeCells();
+    for (const p of this.world.players.values()) this.normalizePlayerMass(p);
+
+    const before = this.world.pellets.length;
+    this.world.pellets = this.world.pellets.filter((p) => !p.consumed);
+    while (this.world.pellets.length < CONFIG.WORLD.PELLET_COUNT) this.world.spawnPellet();
+    if (this.world.pellets.length !== before || this.world.pelletGrid.size === 0) this.world.rebuildPelletGrid();
+    else this.world.rebuildPelletGrid();
+
+    const cutoff = now - 6000;
+    if (this.world.killfeed.length) this.world.killfeed = this.world.killfeed.filter((k) => k.at > cutoff);
+    this.cleanupExpiredEntities(now);
+    this.totalTicks += 1;
+    this.lastTickDuration = Date.now() - tickStarted;
+    this.flushSeason(false);
+  }
+
+  playerSnapshot(p, now = Date.now()) {
+    return {
+      id: p.id,
+      name: p.name,
+      isBot: p.isBot,
+      gameMode: p.gameMode,
+      color: p.color,
+      team: p.team,
+      role: p.isAdmin ? 'admin' : String(p.role || 'user').toLowerCase(),
+      mass: Math.round(p.totalMass),
+      dead: p.dead,
+      respawnAt: p.dead ? p.respawnAt : null,
+      invisible: p.invisible > now,
+      speedBoost: p.speedBoost > now,
+      magnet: p.magnet > now,
+      shield: p.shield > now,
+      respawnShield: p.respawnShieldUntil > now,
+      frozen: p.freezeUntil > now,
+      rage: p.rageUntil > now,
+      reveal: p.revealUntil > now,
+      autoPilot: p.autoPilot,
+      combo: p.combo,
+      assists: p.assists,
+      bounty: Math.round(p.bounty),
+      kills: p.stats.kills,
+      deaths: p.stats.deaths,
+      pvpPoints: Math.round(p.pvpPoints),
+      elo: Math.round(p.elo),
+      damageDealt: Math.round(p.damageDealt),
+      damageTaken: Math.round(p.damageTaken),
+      killStreak: p.killStreak,
+      hunter: p.hunterUntil > now,
+      parry: p.parryUntil > now,
+      slow: p.slowUntil > now,
+      godMode: p.godUntil > now,
+      godModeRemaining: Math.max(0, p.godUntil - now),
+      coins: Math.round(p.coins),
+      equippedSkin: p.equippedSkin,
+      cells: p.cells.map((c) => ({
+        x: c.x, y: c.y, mass: Math.max(0, Number(c.mass) || 0), id: c.id,
+        vx: Number(c.vx) || 0, vy: Number(c.vy) || 0,
+        splitVx: Number(c.splitVx) || 0, splitVy: Number(c.splitVy) || 0,
+        splitCurve: Number(c.splitCurve) || 0, splitPhase: Number(c.splitPhase) || 0,
+        mergeVx: Number(c.mergeVx) || 0, mergeVy: Number(c.mergeVy) || 0,
+        bornAt: Number(c.bornAt) || 0, splitUntil: Number(c.splitUntil) || 0,
+      })),
+    };
+  }
+
+  networkProfile() {
+    const players = this.world.players.size;
+    const cells = this.activeCellCount();
+    if (players >= 120 || cells >= 700) return { view: 1350, pelletView: 1550, players: CONFIG.NETWORK.MAX_VISIBLE_PLAYERS_FULL, cells: CONFIG.NETWORK.MAX_VISIBLE_CELLS_FULL, pellets: CONFIG.NETWORK.MAX_VISIBLE_PELLETS_FULL };
+    if (players >= 80 || cells >= 450) return { view: 1500, pelletView: 1700, players: 36, cells: 5, pellets: 200 };
+    if (players >= 50 || cells >= 260) return { view: 1600, pelletView: 1780, players: 40, cells: 6, pellets: 230 };
+    return { view: CONFIG.NETWORK.VIEW_RADIUS, pelletView: CONFIG.NETWORK.PELLET_VIEW_RADIUS, players: CONFIG.NETWORK.MAX_VISIBLE_PLAYERS, cells: CONFIG.NETWORK.MAX_VISIBLE_CELLS_PER_OTHER, pellets: CONFIG.NETWORK.MAX_VISIBLE_PELLETS };
+  }
+
+  activeCellCount() {
+    let count = 0;
+    for (const p of this.world.players.values()) if (!p.dead) count += p.cells.length;
+    return count;
+  }
+
+  networkInterval() {
+    const players = this.world.players.size;
+    const cells = this.activeCellCount();
+    if (players >= 120 || cells >= 700) return 125;
+    if (players >= 80 || cells >= 450) return 100;
+    if (players >= 50 || cells >= 260) return 80;
+    return CONFIG.NET_TICK;
+  }
+
+  snapshotCells(p, limit) {
+    if (!p || !p.cells.length) return [];
+    const src = p.cells;
+    const pack = (c) => ({
+      x: c.x,
+      y: c.y,
+      mass: Math.round(Math.max(0, c.mass)),
+      id: c.id,
+      vx: Number(c.vx) || 0,
+      vy: Number(c.vy) || 0,
+      splitVx: Number(c.splitVx) || 0,
+      splitVy: Number(c.splitVy) || 0,
+      bornAt: Number(c.bornAt) || 0,
+      splitUntil: Number(c.splitUntil) || 0,
+    });
+    if (!limit || src.length <= limit) return src.map(pack);
+    const top = [];
+    for (const c of src) {
+      const item = pack(c);
+      let pos = top.length;
+      while (pos > 0 && top[pos - 1].mass < item.mass) pos--;
+      if (pos < limit) {
+        top.splice(pos, 0, item);
+        if (top.length > limit) top.pop();
+      }
+    }
+    return top;
+  }
+
+  playerSnapshot(p, now = Date.now(), self = false, cellLimit = 0) {
+    const out = {
+      id: p.id, name: p.name, isBot: p.isBot, gameMode: p.gameMode, color: p.color, team: p.team,
+      mass: Math.round(p.totalMass), dead: p.dead,
+      respawnAt: p.dead ? p.respawnAt : null,
+      invisible: p.invisible > now, speedBoost: p.speedBoost > now,
+      magnet: p.magnet > now, shield: p.shield > now, respawnShield: p.respawnShieldUntil > now,
+      frozen: p.freezeUntil > now, rage: p.rageUntil > now, reveal: p.revealUntil > now, godMode: p.godUntil > now,
+      godModeRemaining: Math.max(0, p.godUntil - now),
+      autoPilot: p.autoPilot, bounty: Math.round(p.bounty),
+      customSkinUrl: p.customSkinUrl || '', customSkinMime: p.customSkinMime || '', customSkinTitle: p.customSkinTitle || '',
+      cells: this.snapshotCells(p, cellLimit),
+    };
+    if (self) Object.assign(out, {
+      kills: p.stats.kills, deaths: p.stats.deaths, assists: p.assists, combo: p.combo,
+      pvpPoints: Math.round(p.pvpPoints), elo: Math.round(p.elo), damageDealt: Math.round(p.damageDealt),
+      damageTaken: Math.round(p.damageTaken), killStreak: p.killStreak, hunter: p.hunterUntil > now,
+      parry: p.parryUntil > now, slow: p.slowUntil > now, coins: Math.round(p.coins), equippedSkin: p.equippedSkin,
+    });
+    return out;
+  }
+
+  snapshotFor(viewer) {
+    const center = viewer && viewer.center;
+    if (!center) return { players: [], pellets: [], powerups: [], virusProjectiles: [], zones: this.world.zones, killfeed: this.world.killfeed, decoys: [], traps: [], mines: [], world: { width: CONFIG.WORLD.WIDTH, height: CONFIG.WORLD.HEIGHT } };
+    const now = Date.now();
+    const profile = this.networkProfile();
+    const r2 = profile.view * profile.view;
+    const pelletR2 = profile.pelletView * profile.pelletView;
+
+      
+      // Configurazione dei ruoli staff
+const STAFF_ROLES = {
+  owner: { tag: '[OWNER]', color: '#ff0055', name: 'Owner' },
+  admin: { tag: '[ADMIN]', color: '#ff9900', name: 'Admin' },
+  mod:   { tag: '[MOD]',   color: '#00d2ff', name: 'Moderatore' },
+  vip:   { tag: '[VIP]',   color: '#ffd700', name: 'VIP' },
+  user:  { tag: '',        color: '#ffffff', name: 'Utente' }
+};
+
+function getRoleData(role) {
+  const key = String(role || 'user').toLowerCase();
+  return STAFF_ROLES[key] || STAFF_ROLES.user;
+}
+
+// Sostituisci il metodo playerSummary nel tuo GameServer
+playerSummary(p) {
+  if (!p) return null;
+  const roleData = getRoleData(p.role);
+  return {
+    id: p.id,
+    name: p.name,
+    role: p.role || 'user',
+    roleTag: roleData.tag,
+    roleColor: roleData.color,
+    roleName: roleData.name,
+    mass: Math.round(p.totalMass),
+    kills: p.stats.kills,
+    deaths: p.stats.deaths,
+    assists: p.assists,
+    combo: p.combo,
+    bounty: Math.round(p.bounty),
+    team: p.team,
+    pvpPoints: Math.round(p.pvpPoints),
+    elo: Math.round(p.elo),
+    coins: Math.round(p.coins),
+    streak: p.killStreak
+  };
+}
+      
+      
+    const ranked = [];
+    for (const p of this.world.players.values()) {
+      if (p.id === viewer.id) continue;
+      if (p.dead) continue;
+      const pc = p.center;
+      if (!pc) continue;
+      const d2v = dist2(center, pc);
+      if (d2v <= r2) ranked.push({ p, d2: d2v });
+    }
+    ranked.sort((a, b) => a.d2 - b.d2);
+
+    const players = [this.playerSnapshot(viewer, now, true, 0)];
+    let added = 1;
+    for (const item of ranked) {
+      if (added >= profile.players) break;
+      const p = item.p;
+      const snap = this.playerSnapshot(p, now, false, profile.cells);
+      // Do not send invisible bots/players at full load unless the viewer has reveal.
+      if (p.invisible > now && (!viewer.revealUntil || viewer.revealUntil <= now)) {
+        if (item.d2 > 500 * 500) continue;
+        snap.invisible = true;
+      }
+      players.push(snap);
+      added++;
+    }
+
+    const nearby = this.world.nearbyPellets(center.x, center.y, profile.pelletView);
+    const pellets = [];
+    for (const pellet of nearby) {
+      if (pellet.consumed || dist2(center, pellet) > pelletR2) continue;
+      pellets.push({ pellet, d2: dist2(center, pellet) });
+    }
+    pellets.sort((a, b) => a.d2 - b.d2);
+    const pelletOut = pellets.slice(0, profile.pellets).map(({ pellet }) => ({ id: pellet.id, x: pellet.x, y: pellet.y, mass: pellet.mass, color: pellet.color || '#fff' }));
+
+    const powerups = [];
+    for (const pu of this.world.powerups) if (dist2(center, pu) <= pelletR2) powerups.push(pu);
+    const decoys = [];
+    for (const d of this.world.decoys) if (dist2(center, d) <= pelletR2) decoys.push(d);
+    const traps = [];
+    for (const t of this.world.traps) if (dist2(center, t) <= pelletR2) traps.push(t);
+    const mines = [];
+    for (const m of this.world.mines) if (dist2(center, m) <= pelletR2) mines.push(m);
+    const virusProjectiles = [];
+    for (const v of this.world.virusProjectiles) if (dist2(center, v) <= pelletR2) virusProjectiles.push(v);
+
+    const events = this.consumeEvents(viewer);
+    const out = {
+      players, pellets: pelletOut, powerups: powerups.slice(0, 20), virusProjectiles: virusProjectiles.slice(0, 40),
+      zones: this.world.zones, killfeed: this.world.killfeed.slice(0, 8), decoys: decoys.slice(0, 20),
+      traps: traps.slice(0, 24), mines: mines.slice(0, 24), events,
+      world: { width: CONFIG.WORLD.WIDTH, height: CONFIG.WORLD.HEIGHT },
+    };
+    // Backwards-compatible rich snapshot for tests/admin tools only; network snapshots stay lean.
+    if (!viewer.ws) Object.assign(out, {
+      teamScores: this.teamScores(), matchInfo: this.matchInfo(), pvpLeaderboard: this.pvpLeaderboard(10),
+      pvpEvent: this.pvpEvent, arena: this.arena, announcements: this.world.announcements,
+      playerSummary: this.playerSummary(viewer), wallet: this.getWallet(viewer), shopCatalog: this.getCatalog(),
+      shopSale: this.currentSale(), quests: this.getQuests(viewer), shopStats: this.shopStats(viewer),
+      nearbyThreats: this.nearbyThreats(viewer),
+    });
+    return out;
+  }
+
+  snapshot() {
+    return this.snapshotFor({ id: '__all__', center: { x: CONFIG.WORLD.WIDTH / 2, y: CONFIG.WORLD.HEIGHT / 2 } });
+  }
+
+  leaderboard() {
+    return [...this.world.players.values()]
+      .map((p) => ({ id: p.id, name: p.name, mass: Math.round(p.totalMass), isBot: p.isBot, role: p.isAdmin ? 'admin' : String(p.role || 'user').toLowerCase() }))
+      .sort((a, b) => b.mass - a.mass)
+      .slice(0, 10);
+  }
+}
+
+module.exports = { GameServer, CONFIG, cellRadius, rand, clamp, uid };

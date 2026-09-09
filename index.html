@@ -63,4 +63,13 @@
   document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{if(window.ZLAuth?.getToken?.()){overlay.style.display='none';document.body.classList.add('authenticated')}},250)});
 })();
 </script>
+  <div id="google_translate_element"></div>
+<script> 
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'en'
+  }, 'google_translate_element');
+}
+</script>
+<script src="http://translate.google.com/translate_a/element.js?cb=googleTranslateEle
 </body></html>

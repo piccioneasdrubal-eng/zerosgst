@@ -1,14 +1,6 @@
 <?php
 declare(strict_types=1);
 
-// --- FIX: qualsiasi output accidentale (warning PHP, notice, echo di debug
-// dentro db-config.php, BOM, spazi prima di "<?php", ecc.) viene bufferizzato
-// e scartato prima di stampare il JSON finale. Questo è ciò che causava
-// "Risposta auth non JSON (HTTP 200)" lato Node/client.
-ob_start();
-error_reporting(0);
-ini_set('display_errors', '0');
-
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -31,12 +23,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
 require_once __DIR__ . '/db-config.php';
 
 function respond(array $data, int $status = 200): void {
-    // Scarta qualunque output accumulato PRIMA del JSON (warning, notice,
-    // echo dimenticati, output di db-config.php, ecc.) così il body resta
-    // sempre JSON puro, qualunque cosa sia successo prima.
-    while (ob_get_level() > 0) {
-        ob_end_clean();
-    }
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;

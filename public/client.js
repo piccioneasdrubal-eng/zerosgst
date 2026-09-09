@@ -544,6 +544,12 @@
         img.onload = () => { entry.ready = true; };
         img.onerror = () => { entry.failed = true; };
         img.src = url;
+        // Keep the image attached (hidden) to the DOM so browsers continue
+        // decoding/advancing animated GIF/APNG/WebP frames. Detached <img>
+        // elements are frequently frozen on frame 0 by the browser.
+        img.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;';
+        img.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(img);
         skinImages.set(url, entry);
       }
       return entry;

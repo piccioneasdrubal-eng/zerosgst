@@ -291,7 +291,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (url.pathname === '/api/spawn-bot') {
-    if (process.env.ALLOW_PUBLIC_BOT_API !== '1') {
+    if (process.env.ALLOW_PUBLIC_BOT_API === '0') {
       return sendJson(res, 403, { ok: false, error: 'Endpoint bot pubblico disabilitato. Usa il pannello Admin/WebSocket.' });
     }
     const current = activeBotCount();
@@ -651,7 +651,7 @@ wss.on('connection', (ws, req) => {
         if (!text) return;
         if (player.mutedUntil > now || game.mutedNames.has(player.name.toLowerCase())) return;
         ws.lastChatAt = now;
-        const out = JSON.stringify({ type: 'chat', name: player.name, id: player.id, isBot: player.isBot, team: player.team, text });
+        const out = JSON.stringify({ type: 'chat', name: player.name, id: player.id, isBot: player.isBot, team: player.team, role: player.isAdmin ? 'admin' : String(player.role || 'user').toLowerCase(), text });
         for (const c of wss.clients) safeSend(c, out);
         break;
       }

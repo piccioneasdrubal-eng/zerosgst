@@ -660,10 +660,28 @@
     function renderCellPosition(c) {
       let r = renderCells.get(c.id);
       if (!r) {
-        r = { x: c.x, y: c.y };
+        // New split cells used to appear directly at the server's offset,
+        // which looked like a teleport. Start a little behind the current
+        // snapshot using the split impulse, then ease into the authoritative
+        // position over a short launch window.
+        const vx = Number(c.splitVx || c.vx) || 0;
+        const vy = Number(c.splitVy || c.vy) || 0;
+        const launchBack = Math.min(120, Math.hypot(vx, vy) * 0.085);
+        const len = Math.hypot(vx, vy);
+        const nx = len > 0.001 ? vx / len : 0;
+        const ny = len > 0.001 ? vy / len : 0;
+        const splitUntil = Number(c.splitUntil) || 0;
+        r = {
+          x: c.x - nx * launchBack,
+          y: c.y - ny * launchBack,
+          spawnAt: performance.now(),
+          spawnUntil: performance.now() + Math.max(90, Math.min(220, splitUntil ? splitUntil - Date.now() + 50 : 160)),
+        };
         renderCells.set(c.id, r);
       } else {
-        const ease = 0.34;
+        const now = performance.now();
+        const inSplitLaunch = r.spawnUntil && now < r.spawnUntil;
+        const ease = inSplitLaunch ? 0.16 : 0.34;
         r.x += (c.x - r.x) * ease;
         r.y += (c.y - r.y) * ease;
       }

@@ -8,66 +8,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const { WebSocketServer, WebSocket } = require('ws');
-
-// === Bypass della sfida anti-bot di InfinityFree (pagina "slowAES") ===
-// L'hosting PHP mette questa pagina davanti alle richieste che non sembrano
-// provenire da un browser reale (incluse le fetch() server-to-server di
-// questo backend). La sfida è solo una decifratura AES-128-CBC statica: la
-// risolviamo qui via codice invece di dover eseguire JavaScript reale.
-let antibotCookie = null;
-let antibotCookieAt = 0;
-const ANTIBOT_COOKIE_TTL_MS = 5 * 3600 * 1000; // un po' meno delle 6h di max-age dichiarate dalla sfida
-
-function isAntibotChallenge(text) {
-  return typeof text === 'string' && text.includes('slowAES') && text.includes('__test=');
-}
-
-function solveAntibotChallenge(html) {
-  const m = html.match(/toNumbers\("([0-9a-f]+)"\)\s*,\s*b\s*=\s*toNumbers\("([0-9a-f]+)"\)\s*,\s*c\s*=\s*toNumbers\("([0-9a-f]+)"\)/i);
-  if (!m) return null;
-  try {
-    const key = Buffer.from(m[1], 'hex');
-    const iv = Buffer.from(m[2], 'hex');
-    const ciphertext = Buffer.from(m[3], 'hex');
-    const decipher = crypto.createDecipheriv('aes-128-cbc', key, iv);
-    decipher.setAutoPadding(false);
-    const plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-    return plain.toString('hex');
-  } catch (_) {
-    return null;
-  }
-}
-
-// Wrapper attorno a fetch(): usa il cookie anti-bot già risolto se valido,
-// e se la risposta è comunque la pagina di sfida la risolve al volo e riprova.
-async function fetchWithAntibotBypass(url, options = {}) {
-  const headers = { ...(options.headers || {}) };
-  const now = Date.now();
-  if (antibotCookie && now - antibotCookieAt < ANTIBOT_COOKIE_TTL_MS) {
-    headers['Cookie'] = `__test=${antibotCookie}`;
-  }
-  let response = await fetch(url, { ...options, headers });
-  let text = await response.text();
-  if (isAntibotChallenge(text)) {
-    const cookieValue = solveAntibotChallenge(text);
-    if (cookieValue) {
-      antibotCookie = cookieValue;
-      antibotCookieAt = Date.now();
-      try {
-        const u = new URL(url);
-        await fetch(`${u.origin}${u.pathname}?i=1`, {
-          headers: { Cookie: `__test=${antibotCookie}`, 'User-Agent': headers['User-Agent'] || '' },
-        });
-      } catch (_) {}
-      const retryHeaders = { ...headers, Cookie: `__test=${antibotCookie}` };
-      response = await fetch(url, { ...options, headers: retryHeaders });
-      text = await response.text();
-    }
-  }
-  return { response, text };
-}
 
 // Carica automaticamente backend/.env senza richiedere la dipendenza dotenv.
 // Le variabili già presenti nell'ambiente hanno priorità.
@@ -164,24 +105,40 @@ async function economyRequest(action, payload = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 7000);
   try {
-    const { response, text } = await fetchWithAntibotBypass(ECONOMY_API_URL, {
+    const response = await fetch(ECONOMY_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'Accept':'application/json',
-        'X-Api-Secret':ECONOMY_INTERNAL_SECRET,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': 'https://zerothelegend.gamer.gd/',
-      },
+      headers: { 'Content-Type':'application/json', 'Accept':'application/json', 'X-Api-Secret':ECONOMY_INTERNAL_SECRET },
       body: JSON.stringify({ action, ...payload }),
       signal: controller.signal,
     });
-    let data = {};
-    try { data = JSON.parse(text || '{}'); } catch (_) { data = {}; }
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) return { ok:false, error:String(data.error || `Economy HTTP ${response.status}`) };
     return data;
   } catch (err) {
     return { ok:false, error:err?.name === 'AbortError' ? 'Economy timeout.' : 'Economy non raggiungibile.' };
+  } finally { clearTimeout(timeout); }
+}
+
+// Inoltra un'azione admin (ban/unban/mute/unmute) ad auth.php, che è la fonte di verità
+// persistita su DB. Il token dell'attore viene rigirato così: (a) auth.php ri-verifica lui
+// stesso il ruolo (difesa in profondità, stesso schema di admin_set_coins), (b) non serve
+// un secret "bypass" separato per queste azioni.
+async function authAdminAction(action, actorToken, payload = {}) {
+  if (!AUTH_VERIFY_URL || !API_SECRET) return { ok:false, error:'Backend auth non configurato.' };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    const response = await fetch(AUTH_VERIFY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'X-Api-Secret': API_SECRET },
+      body: JSON.stringify({ action, token: actorToken, ...payload }),
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return { ok:false, error:String(data.error || `Auth HTTP ${response.status}`) };
+    return data;
+  } catch (err) {
+    return { ok:false, error: err?.name === 'AbortError' ? 'Auth timeout.' : 'Auth non raggiungibile.' };
   } finally { clearTimeout(timeout); }
 }
 
@@ -194,18 +151,16 @@ async function verifyAuthToken(token) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const { response, text } = await fetchWithAntibotBypass(AUTH_VERIFY_URL, {
+    const response = await fetch(AUTH_VERIFY_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
         'X-Api-Secret': API_SECRET,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': 'https://zerothelegend.gamer.gd/',
       },
       body: JSON.stringify({ action: 'verify', token }),
       signal: controller.signal,
     });
+    const text = await response.text();
     let data = {};
     try { data = JSON.parse(text || '{}'); } catch (_) {
       data = { ok: false, error: `Risposta auth non JSON (HTTP ${response.status})` };
@@ -250,6 +205,57 @@ const server = http.createServer((req, res) => {
     return sendJson(res, 200, { ok: true, players: game.world.players.size, maxPlayers: CONFIG.SERVER.MAX_PLAYERS, bots: activeBotCount(), capacity: Math.max(0, CONFIG.SERVER.MAX_PLAYERS - game.world.players.size) });
   }
 
+  // Ricevuto da auth.php/economy.php (PHP) dopo una scrittura sul DB (coins, ban, mute...).
+  // Fire-and-forget dal lato PHP: qui spingiamo l'evento ai socket "portale" giusti e,
+  // per ban/mute, applichiamo l'effetto immediato a chi è già connesso al gioco.
+  if (req.method === 'POST' && url.pathname === '/api/portal/notify') {
+    void (async () => {
+      const given = String(req.headers['x-api-secret'] || '');
+      if (!ECONOMY_INTERNAL_SECRET || !given || given !== ECONOMY_INTERNAL_SECRET) return sendJson(res, 403, { ok:false, error:'Non autorizzato.' });
+      const body = await readRequestJson(req);
+      if (!body) return sendJson(res, 400, { ok:false, error:'JSON non valido.' });
+      const event = String(body.event || '');
+      const userId = Number(body.userId) || 0;
+      const payload = body.payload && typeof body.payload === 'object' ? body.payload : {};
+      switch (event) {
+        case 'wallet':
+          sendPortalWalletUpdate(userId, { coins: payload.coins, xp: payload.xp, level: payload.level, reason: payload.reason || null });
+          broadcastPortalAdminFeed({ event: 'wallet', userId, ...payload });
+          break;
+        case 'ban': {
+          sendPortalWalletUpdate(userId, { banned: true, reason: payload.reason || '' });
+          for (const p of game.world.players.values()) {
+            if (Number(p.accountId) === userId && p.ws) { try { p.ws.close(1008, 'Banned by admin'); } catch (_) {} }
+          }
+          broadcastPortalAdminFeed({ event: 'ban', userId, ...payload });
+          break;
+        }
+        case 'unban':
+          broadcastPortalAdminFeed({ event: 'unban', userId, ...payload });
+          break;
+        case 'mute': {
+          const untilMs = Date.parse(String(payload.until || '').replace(' ', 'T') + 'Z');
+          for (const p of game.world.players.values()) {
+            if (Number(p.accountId) === userId && Number.isFinite(untilMs)) p.mutedUntil = Math.max(p.mutedUntil || 0, untilMs);
+          }
+          sendPortalWalletUpdate(userId, { muted: true, reason: payload.reason || '' });
+          broadcastPortalAdminFeed({ event: 'mute', userId, ...payload });
+          break;
+        }
+        case 'unmute': {
+          for (const p of game.world.players.values()) { if (Number(p.accountId) === userId) p.mutedUntil = 0; }
+          sendPortalWalletUpdate(userId, { muted: false });
+          broadcastPortalAdminFeed({ event: 'unmute', userId, ...payload });
+          break;
+        }
+        default:
+          broadcastPortalAdminFeed({ event: event || 'unknown', userId, ...payload });
+      }
+      return sendJson(res, 200, { ok: true });
+    })();
+    return;
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/admin') {
     void (async () => {
       const body = await readRequestJson(req);
@@ -276,10 +282,42 @@ const server = http.createServer((req, res) => {
           case 'list': data = game.adminListPlayers(); break;
           case 'get': data = game.adminGetPlayer(target); ok = !!data; break;
           case 'kick': { const q=game.adminKick(target); ok=!!q; if(q?.ws){try{q.ws.close(1000,'Kicked by admin');}catch(_){}} break; }
-          case 'ban': { const q=game.adminBan(target); ok=!!q; if(q?.ws){try{q.ws.close(1008,'Banned by admin');}catch(_){}} break; }
-          case 'unban': ok=!!game.adminUnban(target); break;
-          case 'mute': ok=!!game.adminMute(target, Number(body.duration || 60000)); break;
-          case 'unmute': ok=!!game.adminUnmute(target); break;
+          // Ban/mute: applica l'effetto immediato sul giocatore online (per nome/id di gioco,
+          // come prima) E, se il pannello fornisce target_user_id (id reale sul DB, es. dalla
+          // lista utenti del portale), persiste anche su DB via auth.php — così vale pure per
+          // chi non è connesso in questo momento e sopravvive al riavvio del server.
+          case 'ban': {
+            const q=game.adminBan(target); ok=!!q; if(q?.ws){try{q.ws.close(1008,'Banned by admin');}catch(_){}}
+            if (body.target_user_id) {
+              const r = await authAdminAction('admin_ban', String(body.token||''), { target_user_id: Number(body.target_user_id), reason: String(body.reason||''), duration_minutes: Number(body.duration_minutes||0) });
+              ok = ok || !!r.ok; if (!r.ok) error = r.error || error;
+            }
+            break;
+          }
+          case 'unban': {
+            ok=!!game.adminUnban(target);
+            if (body.target_user_id) {
+              const r = await authAdminAction('admin_unban', String(body.token||''), { target_user_id: Number(body.target_user_id) });
+              ok = ok || !!r.ok; if (!r.ok) error = r.error || error;
+            }
+            break;
+          }
+          case 'mute': {
+            ok=!!game.adminMute(target, Number(body.duration || 60000));
+            if (body.target_user_id) {
+              const r = await authAdminAction('admin_mute', String(body.token||''), { target_user_id: Number(body.target_user_id), reason: String(body.reason||''), duration_minutes: Number(body.duration_minutes || Math.round(Number(body.duration||60000)/60000)) });
+              ok = ok || !!r.ok; if (!r.ok) error = r.error || error;
+            }
+            break;
+          }
+          case 'unmute': {
+            ok=!!game.adminUnmute(target);
+            if (body.target_user_id) {
+              const r = await authAdminAction('admin_unmute', String(body.token||''), { target_user_id: Number(body.target_user_id) });
+              ok = ok || !!r.ok; if (!r.ok) error = r.error || error;
+            }
+            break;
+          }
           case 'freeze': ok=!!game.adminFreeze(target); break;
           case 'unfreeze': ok=!!game.adminUnfreeze(target); break;
           case 'setMass': ok=!!game.adminSetMass(target, Number(value)); break;
@@ -431,6 +469,60 @@ const wss = new WebSocketServer({
 });
 const socketPlayers = new Map();
 
+// ---------------------------------------------------------------------------
+// Canale realtime "portale" (Fase 1). Riusa lo stesso WebSocketServer del gioco:
+// una connessione diventa "portale" se il suo PRIMO messaggio è {type:'portal-hello'}
+// invece di {type:'join'}. Non crea un game player, non entra nel loop fisico:
+// serve solo a spingere coins/xp aggiornati, conteggio online ed eventi admin
+// al sito (shop.html/admin.html/profile.html), senza bisogno di polling/reload.
+// ---------------------------------------------------------------------------
+const portalSocketsByUser = new Map(); // userId -> Set<ws>
+const portalStaffSockets = new Set();  // ws di utenti admin/moderator (per il feed azioni admin)
+
+function portalSend(ws, obj) { safeSend(ws, JSON.stringify(obj)); }
+
+function registerPortalSocket(ws, user) {
+  ws.isPortal = true;
+  ws.portalUserId = Number(user?.id) || 0;
+  if (ws.portalUserId > 0) {
+    if (!portalSocketsByUser.has(ws.portalUserId)) portalSocketsByUser.set(ws.portalUserId, new Set());
+    portalSocketsByUser.get(ws.portalUserId).add(ws);
+  }
+  const role = String(user?.role || '').toLowerCase();
+  if (user?.is_admin || user?.is_moderator || role === 'admin' || role === 'moderator') portalStaffSockets.add(ws);
+  portalSend(ws, { type: 'portal-welcome', user, online: game.world.players.size });
+}
+
+function unregisterPortalSocket(ws) {
+  if (ws.portalUserId && portalSocketsByUser.has(ws.portalUserId)) {
+    const set = portalSocketsByUser.get(ws.portalUserId);
+    set.delete(ws);
+    if (set.size === 0) portalSocketsByUser.delete(ws.portalUserId);
+  }
+  portalStaffSockets.delete(ws);
+}
+
+function broadcastPortalOnlineCount() {
+  const count = game.world.players.size;
+  for (const set of portalSocketsByUser.values()) for (const s of set) portalSend(s, { type: 'portal-online', players: count });
+}
+
+function sendPortalWalletUpdate(userId, payload) {
+  const set = portalSocketsByUser.get(Number(userId));
+  if (!set) return;
+  for (const s of set) portalSend(s, { type: 'portal-wallet', ...payload });
+}
+
+function broadcastPortalAdminFeed(entry) {
+  for (const s of portalStaffSockets) portalSend(s, { type: 'portal-admin-event', ...entry, ts: Date.now() });
+}
+
+// Se un utente autenticato entra in partita, colleghiamo il suo eventuale socket "portale"
+// già aperto (o viceversa) solo per coerenza del conteggio online; nessun dato sensibile qui.
+function registerPortalUserSocket(_authUser, _player) {
+  broadcastPortalOnlineCount();
+}
+
 function safeSend(ws, payload) {
   if (ws.readyState !== WebSocket.OPEN) return false;
   if (ws.bufferedAmount > CONFIG.NETWORK.MAX_BUFFERED_AMOUNT) return false;
@@ -466,6 +558,17 @@ wss.on('connection', (ws, req) => {
     if (!msg || typeof msg.type !== 'string') return;
 
     if (!player) {
+      if (msg.type === 'portal-hello') {
+        if (ws.isPortal) return;
+        const auth = await verifyAuthToken(String(msg.token || '').trim());
+        if (!auth.ok || !auth.user) {
+          safeSend(ws, JSON.stringify({ type: 'portal-error', error: auth.error || 'Sessione non valida.' }));
+          try { ws.close(1008, 'Auth required'); } catch (_) {}
+          return;
+        }
+        registerPortalSocket(ws, auth.user);
+        return;
+      }
       if (msg.type !== 'join') return;
       if (ws.joined || ws.joinPending) return;
       ws.joinPending = true;
@@ -475,6 +578,13 @@ wss.on('connection', (ws, req) => {
           ws.joinPending = false;
           safeSend(ws, JSON.stringify({ type: 'auth-error', error: auth.error || 'Autenticazione rifiutata' }));
           try { ws.close(1008, 'Authentication required'); } catch (_) {}
+          return;
+        }
+        // Ban persistito su DB (funziona anche se l'account non era online quando è stato bannato).
+        if (auth.user && auth.user.is_banned) {
+          ws.joinPending = false;
+          safeSend(ws, JSON.stringify({ type: 'auth-error', error: auth.user.ban_reason ? `Account sospeso: ${auth.user.ban_reason}` : 'Account sospeso.' }));
+          try { ws.close(1008, 'Banned'); } catch (_) {}
           return;
         }
 
@@ -513,6 +623,12 @@ wss.on('connection', (ws, req) => {
         }
         player = game.addPlayer(name, false, team, auth.user ? { ...auth.user, premium: auth.premium } : null);
         player.gameMode = mode;
+        // Mute persistito su DB: se l'admin ha mutato l'utente mentre era offline, si applica al reconnect.
+        if (auth.user && auth.user.is_muted && auth.user.muted_until) {
+          const untilMs = Date.parse(auth.user.muted_until.replace(' ', 'T') + 'Z');
+          if (Number.isFinite(untilMs)) player.mutedUntil = Math.max(player.mutedUntil || 0, untilMs);
+        }
+        registerPortalUserSocket(auth.user, player);
         if (typeof msg.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(msg.color)) player.color = msg.color;
         player.ws = ws;
         ws.joined = true;
@@ -729,7 +845,8 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.on('close', () => {
-    if (player) game.removePlayer(player.id);
+    if (ws.isPortal) { unregisterPortalSocket(ws); return; }
+    if (player) { game.removePlayer(player.id); broadcastPortalOnlineCount(); }
     socketPlayers.delete(ws);
   });
   ws.on('error', () => {});

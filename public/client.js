@@ -87,11 +87,11 @@
       adminTarget: el('admin-target'),
     };
 
-    let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
     let viewW = window.innerWidth;
     let viewH = window.innerHeight;
     function resize() {
-      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
       viewW = window.innerWidth;
       viewH = window.innerHeight;
       canvas.width = Math.max(1, Math.floor(viewW * dpr));
@@ -433,32 +433,18 @@
     // instantly at full size.
     function renderCellPosition(c, dt) {
       const targetR = Math.max(1, 10 * Math.sqrt(Math.max(1, Number(c.mass) || 1)));
-      const now = performance.now();
-      const splitUntil = Number(c.splitUntil) || 0;
-      const splitRemain = Math.max(0, splitUntil - Date.now());
-      const inSplitLaunch = splitRemain > 0;
-      const svx = Number(c.splitVx) || 0;
-      const svy = Number(c.splitVy) || 0;
       let r = renderCells.get(c.id);
       if (!r) {
-        const len = Math.hypot(svx, svy);
-        const nx = len > 0.001 ? svx / len : 0;
-        const ny = len > 0.001 ? svy / len : 0;
-        const back = inSplitLaunch ? Math.min(70, len * 0.055) : 0;
-        r = { x: c.x - nx * back, y: c.y - ny * back, r: targetR, spawnAt: now };
+        r = { x: c.x, y: c.y, r: targetR, spawnAt: performance.now() };
         renderCells.set(c.id, r);
       } else {
-        const posK = smoothFactor(inSplitLaunch ? 8.5 : SMOOTH_POS, dt);
+        const posK = smoothFactor(SMOOTH_POS, dt);
         const radK = smoothFactor(SMOOTH_RADIUS, dt);
         r.x += (c.x - r.x) * posK;
         r.y += (c.y - r.y) * posK;
-        if (inSplitLaunch) {
-          r.x += svx * dt * 0.20;
-          r.y += svy * dt * 0.20;
-        }
         r.r += (targetR - r.r) * radK;
       }
-      const age = now - r.spawnAt;
+      const age = performance.now() - r.spawnAt;
       const pop = age >= SPAWN_POP_MS ? 1 : 0.4 + 0.6 * easeOutBack(age / SPAWN_POP_MS);
       return { x: r.x, y: r.y, r: r.r, scale: pop };
     }
@@ -933,9 +919,8 @@
     }, 50);
 
     function frame(now) {
-      // Keep rendering at the display refresh rate. The old 30 FPS crowd cap
-      // made the game visibly stutter as soon as ~28 players were nearby.
-      const targetFrameMs = 16.667;
+      const crowded = state.players.length >= 28;
+      const targetFrameMs = crowded ? 33 : 16;
       if (now - lastFrameDrawAt < targetFrameMs) { requestAnimationFrame(frame); return; }
       const dtMs = lastFrameDrawAt ? (now - lastFrameDrawAt) : targetFrameMs;
       lastFrameDrawAt = now;

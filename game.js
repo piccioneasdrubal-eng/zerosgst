@@ -1639,4 +1639,4 @@ class GameServer {
       if (other.id === p.id || other.dead || (p.team !== null && p.team === other.team)) continue;
       const oc = other.center;
       if (!oc) continue;
-      const dist = Math.sqrt(dist2(Sono solo un modello linguistico e questo va oltre ciò per cui sono stato progettato.
+     const dist = Math.sqrt(dist2(player, nemico));

@@ -103,11 +103,11 @@
       gameServerStatus: el('game-server-status'),
     };
 
-    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     let viewW = window.innerWidth;
     let viewH = window.innerHeight;
     function resize() {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       viewW = window.innerWidth;
       viewH = window.innerHeight;
       canvas.width = Math.max(1, Math.floor(viewW * dpr));
@@ -260,6 +260,26 @@
     function soundEnabled() { try { return JSON.parse(localStorage.getItem('zl_user_settings') || '{}').sfx === true; } catch (_) { return false; } }
     function ensureAudio() { try { const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return null; if(!audioCtx)audioCtx=new AC(); if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{}); return audioCtx; } catch (_) { return null; } }
     function playSfx(kind) { if(!soundEnabled())return; const ac=ensureAudio(); if(!ac)return; const map={split:[320,0.09,'sawtooth'],eject:[220,0.07,'square'],eat:[620,0.06,'sine'],kill:[120,0.18,'triangle'],death:[75,0.35,'sawtooth'],godmode:[480,0.25,'sine'],error:[90,0.12,'square'],buy:[880,0.09,'sine']}; const [freq,dur,type]=map[kind]||map.eat; const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(freq,ac.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(45,freq*1.45),ac.currentTime+dur);g.gain.setValueAtTime(0.05,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+dur);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+dur); }
+    // --- Musica di sottofondo: brutal dubstep gaming drop (traccia originale) ---
+    let musicPlaying = false;
+    let musicAudio = null;
+    function musicSettings() {
+      try {
+        const s = JSON.parse(localStorage.getItem('zl_user_settings') || '{}');
+        return { on: s.music !== false && s.muteAll !== true, volume: clamp(Number(s.musicVolume ?? 0.28) || 0.28, 0, 1) };
+      } catch (_) { return { on: true, volume: 0.28 }; }
+    }
+    function startMusic() {
+      const { on, volume } = musicSettings();
+      if (!on) return stopMusic();
+      if (!musicAudio) { musicAudio = new Audio('/assets/brutal-dubstep-drop.wav'); musicAudio.loop = true; musicAudio.preload = 'auto'; musicAudio.setAttribute('aria-hidden', 'true'); }
+      musicAudio.volume = volume; musicPlaying = true;
+      const p = musicAudio.play(); if (p && typeof p.catch === 'function') p.catch(() => { musicPlaying = false; });
+    }
+    function stopMusic() { musicPlaying = false; if (musicAudio) { try { musicAudio.pause(); musicAudio.currentTime = 0; } catch (_) {} } }
+    function syncMusic() { startMusic(); }
+    window.addEventListener('zl-settings-changed', syncMusic);
+
     function fx(type,x,y,color='#6ee7ff',r=40) {
       const count = type === 'death' ? 34 : (type === 'kill' || type === 'godmode' ? 24 : 10);
       const particles = Array.from({length: count}, () => {
@@ -657,35 +677,43 @@
       setMouseTarget();
     }
 
-    function renderCellPosition(c) {
+    function renderCellPosition(c, dt = 1/60) {
+      const now = performance.now();
+      const splitUntil = Number(c.splitUntil) || 0;
+      const bornAt = Number(c.bornAt) || 0;
+      const ageMs = Math.max(0, Date.now() - bornAt);
+      const splitDuration = Math.max(1, splitUntil - bornAt);
+      const launchT = clamp(ageMs / splitDuration, 0, 1);
+      const inSplitLaunch = ageMs < splitDuration;
+      const vx = Number(c.vx) || 0, vy = Number(c.vy) || 0;
+      const svx = Number(c.splitVx) || 0, svy = Number(c.splitVy) || 0;
+      const curve = Number(c.splitCurve) || 0;
+      const phase = Number(c.splitPhase) || Math.atan2(svy, svx);
+      const normalX = -Math.sin(phase), normalY = Math.cos(phase);
       let r = renderCells.get(c.id);
       if (!r) {
-        // New split cells used to appear directly at the server's offset,
-        // which looked like a teleport. Start a little behind the current
-        // snapshot using the split impulse, then ease into the authoritative
-        // position over a short launch window.
-        const vx = Number(c.splitVx || c.vx) || 0;
-        const vy = Number(c.splitVy || c.vy) || 0;
-        const launchBack = Math.min(120, Math.hypot(vx, vy) * 0.085);
-        const len = Math.hypot(vx, vy);
-        const nx = len > 0.001 ? vx / len : 0;
-        const ny = len > 0.001 ? vy / len : 0;
-        const splitUntil = Number(c.splitUntil) || 0;
-        r = {
-          x: c.x - nx * launchBack,
-          y: c.y - ny * launchBack,
-          spawnAt: performance.now(),
-          spawnUntil: performance.now() + Math.max(90, Math.min(220, splitUntil ? splitUntil - Date.now() + 50 : 160)),
-        };
+        const len = Math.hypot(svx, svy), nx = len > 0.001 ? svx / len : 0, ny = len > 0.001 ? svy / len : 0;
+        const back = inSplitLaunch ? Math.min(85, len * 0.075) : 0;
+        r = { x:c.x - nx * back, y:c.y - ny * back, r:Math.max(1, 10 * Math.sqrt(Math.max(1, Number(c.mass) || 1))), spawnAt:now };
         renderCells.set(c.id, r);
-      } else {
-        const now = performance.now();
-        const inSplitLaunch = r.spawnUntil && now < r.spawnUntil;
-        const ease = inSplitLaunch ? 0.16 : 0.34;
-        r.x += (c.x - r.x) * ease;
-        r.y += (c.y - r.y) * ease;
       }
-      return r;
+      const posK = 1 - Math.exp(-(inSplitLaunch ? 11 : 15) * dt);
+      let tx = c.x, ty = c.y;
+      if (inSplitLaunch) {
+        const arc = Math.sin(Math.PI * launchT) * (curve * 115) * (1 - 0.35 * launchT);
+        const eased = 1 - Math.pow(1 - launchT, 2.2);
+        const lead = (1 - eased) * 24;
+        tx += normalX * arc + Math.cos(phase) * lead;
+        ty += normalY * arc + Math.sin(phase) * lead;
+        r.x += (tx - r.x) * posK + svx * dt * (0.16 * (1 - launchT));
+        r.y += (ty - r.y) * posK + svy * dt * (0.16 * (1 - launchT));
+      } else {
+        r.x += (tx - r.x) * posK + vx * dt * 0.06;
+        r.y += (ty - r.y) * posK + vy * dt * 0.06;
+      }
+      const targetR = Math.max(1, 10 * Math.sqrt(Math.max(1, Number(c.mass) || 1)));
+      r.r += (targetR - r.r) * (1 - Math.exp(-12 * dt));
+      return { x:r.x, y:r.y, r:r.r };
     }
 
     function drawGrid() {
@@ -1206,7 +1234,7 @@
 
     function frame(now) {
       const crowded = state.players.length >= 28;
-      const targetFrameMs = crowded ? 33 : 16;
+      const targetFrameMs = 16.667;
       if (now - lastFrameDrawAt < targetFrameMs) { requestAnimationFrame(frame); return; }
       lastFrameDrawAt = now;
       updateCamera();

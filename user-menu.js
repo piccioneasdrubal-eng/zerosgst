@@ -13,7 +13,7 @@
     friendlyOutline:true, arenaBorder:true, centerMarker:false, crosshair:false, aimLine:false, autoHideChat:false,
     fullscreenOnPlay:false, touchControls:true, autoRespawn:true, fastRestart:true, spawnProtection:true, autoSpectate:false,
     cameraCenter:true, showBackground:true, showVignette:true, showMiniPlayers:true, showOwnTrail:false,
-    chatFilter:true, confirmPurchases:true, confirmActions:true, soundUi:true, soundGameplay:true, music:false,
+    chatFilter:true, confirmPurchases:true, confirmActions:true, soundUi:true, soundGameplay:true, music:true,
     muteAll:false, menuBlur:true, compactHud:false, dynamicQuality:true, networkStats:false, pingMeter:true,
     showFps:true, showCoords:false, safeZoneWarnings:true, autoSave:true, rememberTab:true, rememberServer:true,
     preventAccidentalExit:true, keyboardHints:true, accessibilityMode:false, colorTheme:'neon', mode:'ffa'

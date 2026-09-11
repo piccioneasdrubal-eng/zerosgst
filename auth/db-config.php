@@ -3,7 +3,7 @@
 define('DB_HOST', 'sql313.infinityfree.com');
 define('DB_NAME', 'if0_42182483_mtmaster');
 define('DB_USER', 'if0_42182483');
-define('DB_PASS', 'R3bxf6zvnv0');
+define('DB_PASS', 'Elpro112!');
 // Secret condiviso con il backend Node. Mantieni questo identico al valore del backend.
 define('API_SECRET', 'agar-zero-secret-2026');
 

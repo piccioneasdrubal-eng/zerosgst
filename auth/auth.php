@@ -378,9 +378,21 @@ function make_unique_username(string $name, string $table): string {
 }
 
 try {
-    $table = ensure_auth_schema();
+    // I controlli di schema (ALTER/CREATE TABLE) sono costosi e su hosting con
+    // limiti stretti (poche connessioni MySQL simultanee, timeout brevi) possono
+    // far scadere o troncare la risposta se più richieste arrivano insieme.
+    // Li eseguiamo una sola volta, tenendo traccia con un file marcatore.
+    $schemaMarker = __DIR__ . '/.schema_ready';
+    if (!is_file($schemaMarker)) {
+        $table = ensure_auth_schema();
+        ensure_profile_schema();
+        @file_put_contents($schemaMarker, (string)time());
+    } else {
+        // Schema già verificato in passato: evitiamo table_exists()/column_exists()
+        // e ricaviamo solo il nome tabella, che è sempre 'zl_users'.
+        $table = 'zl_users';
+    }
     $GLOBALS['_zl_auth_table'] = $table;
-    ensure_profile_schema();
     $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 
     if ($method === 'GET') {

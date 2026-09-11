@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+ob_start(); // Cattura qualsiasi output accidentale (BOM, notice, ecc.) prima che rovini il JSON
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -16,6 +17,7 @@ if ($origin !== '') {
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+    while (ob_get_level() > 0) { @ob_end_clean(); }
     http_response_code(204);
     exit;
 }
@@ -23,6 +25,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
 require_once __DIR__ . '/db-config.php';
 
 function respond(array $data, int $status = 200): void {
+    // Scarta qualunque output accidentale accumulato nel buffer (avvisi, BOM, ecc.)
+    // cos\u00ec il client riceve SEMPRE e SOLO JSON pulito, mai testo corrotto davanti.
+    while (ob_get_level() > 0) { @ob_end_clean(); }
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
